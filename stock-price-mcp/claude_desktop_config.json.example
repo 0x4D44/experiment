@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "stock-price": {
+      "command": "/absolute/path/to/stock-price-mcp/target/release/stock-price-mcp",
+      "description": "Fetch real-time stock prices from Yahoo Finance"
+    }
+  }
+}
