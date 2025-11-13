@@ -1,0 +1,26 @@
+[package]
+name = "benchctl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.36", features = ["rt-multi-thread", "macros"] }
+sysinfo = { version = "0.30", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+schemars = { version = "0.8", features = ["chrono"] }
+toml = "0.8"
+thiserror = "1.0"
+hdrhistogram = "7.5"
+num_cpus = "1.16"
+ratatui = { version = "0.27", default-features = false, features = ["crossterm"] }
+crossterm = "0.27"
+tempfile = "3.10"
+libc = "0.2"
+tokio-util = { version = "0.7", features = ["compat"] }
+
+[dev-dependencies]
+assert_fs = "1.1"
