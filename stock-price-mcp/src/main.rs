@@ -7,6 +7,7 @@ use tokio::runtime::Runtime;
 /// JSON-RPC 2.0 Request structure
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
+    #[allow(dead_code)]
     jsonrpc: String,
     id: Option<Value>,
     method: String,
@@ -268,7 +269,10 @@ async fn fetch_stock_price(symbol: &str) -> Result<f64> {
 
     // Try multiple selectors for robustness
     let selectors = vec![
-        format!(r#"fin-streamer[data-symbol="{}"][data-field="regularMarketPrice"]"#, symbol),
+        format!(
+            r#"fin-streamer[data-symbol="{}"][data-field="regularMarketPrice"]"#,
+            symbol
+        ),
         r#"[data-test="qsp-price"]"#.to_string(),
         r#"[data-testid="qsp-price"]"#.to_string(),
     ];
@@ -311,7 +315,10 @@ async fn fetch_stock_info(symbol: &str) -> Result<StockInfo> {
 
     // Helper function to extract value
     let extract_value = |field: &str| -> Option<f64> {
-        let selector_str = format!(r#"fin-streamer[data-symbol="{}"][data-field="{}"]"#, symbol, field);
+        let selector_str = format!(
+            r#"fin-streamer[data-symbol="{}"][data-field="{}"]"#,
+            symbol, field
+        );
         let selector = scraper::Selector::parse(&selector_str).ok()?;
         let element = document.select(&selector).next()?;
 
@@ -323,8 +330,8 @@ async fn fetch_stock_info(symbol: &str) -> Result<StockInfo> {
         }
     };
 
-    let price = extract_value("regularMarketPrice")
-        .ok_or_else(|| anyhow!("Could not find price"))?;
+    let price =
+        extract_value("regularMarketPrice").ok_or_else(|| anyhow!("Could not find price"))?;
 
     let previous_close = extract_value("regularMarketPreviousClose").unwrap_or(0.0);
     let open = extract_value("regularMarketOpen").unwrap_or(0.0);
@@ -333,7 +340,7 @@ async fn fetch_stock_info(symbol: &str) -> Result<StockInfo> {
 
     // Extract market cap
     let market_cap = extract_value("marketCap")
-        .map(|v| format_market_cap(v))
+        .map(format_market_cap)
         .unwrap_or_else(|| "N/A".to_string());
 
     Ok(StockInfo {
