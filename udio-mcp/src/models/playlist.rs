@@ -299,4 +299,43 @@ mod tests {
             )]);
         assert!(!playlist_with_songs.is_empty());
     }
+
+    #[test]
+    fn test_songs_by_duration_ascending() {
+        let songs = vec![
+            create_test_song("song1", "Long Song", 300),
+            create_test_song("song2", "Short Song", 120),
+            create_test_song("song3", "Medium Song", 200),
+        ];
+        let playlist = Playlist::new("pl123", "My Playlist").with_songs(songs);
+
+        let sorted = playlist.songs_by_duration(true);
+        assert_eq!(sorted.len(), 3);
+        assert_eq!(sorted[0].duration_seconds, 120); // Shortest first
+        assert_eq!(sorted[1].duration_seconds, 200);
+        assert_eq!(sorted[2].duration_seconds, 300); // Longest last
+    }
+
+    #[test]
+    fn test_songs_by_duration_descending() {
+        let songs = vec![
+            create_test_song("song1", "Long Song", 300),
+            create_test_song("song2", "Short Song", 120),
+            create_test_song("song3", "Medium Song", 200),
+        ];
+        let playlist = Playlist::new("pl123", "My Playlist").with_songs(songs);
+
+        let sorted = playlist.songs_by_duration(false);
+        assert_eq!(sorted.len(), 3);
+        assert_eq!(sorted[0].duration_seconds, 300); // Longest first
+        assert_eq!(sorted[1].duration_seconds, 200);
+        assert_eq!(sorted[2].duration_seconds, 120); // Shortest last
+    }
+
+    #[test]
+    fn test_songs_by_duration_empty_playlist() {
+        let playlist = Playlist::new("pl123", "Empty Playlist");
+        let sorted = playlist.songs_by_duration(true);
+        assert_eq!(sorted.len(), 0);
+    }
 }
