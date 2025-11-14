@@ -9,6 +9,15 @@ use std::sync::Arc;
 
 use crate::mcp::error::{McpError, McpResult};
 
+// Concrete tool implementations
+pub mod list_playlist_songs;
+pub mod play_song;
+pub mod control_playback;
+
+pub use list_playlist_songs::ListPlaylistSongsTool;
+pub use play_song::PlaySongTool;
+pub use control_playback::ControlPlaybackTool;
+
 /// Tool trait that all tools must implement
 #[async_trait]
 pub trait Tool: Send + Sync {
