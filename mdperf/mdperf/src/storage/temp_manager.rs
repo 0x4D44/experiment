@@ -45,7 +45,7 @@ impl TempFileManager {
         let path = self
             .root
             .path()
-            .join(format!("benchctl-disk-{}.dat", self.files.len()));
+            .join(format!("mdperf-disk-{}.dat", self.files.len()));
         self.files.push(path.clone());
         self.used_bytes += bytes;
         Ok(path)
@@ -84,15 +84,15 @@ impl TempRoot {
 }
 
 fn ensure_free_space(path: &Path, required: u64) -> Result<()> {
-    if let Some(free) = free_space_bytes(path) {
-        if free < required {
-            anyhow::bail!(
-                "insufficient free space at {} (need {} MB, have {} MB)",
-                path.display(),
-                required / 1_048_576,
-                free / 1_048_576
-            );
-        }
+    if let Some(free) = free_space_bytes(path)
+        && free < required
+    {
+        anyhow::bail!(
+            "insufficient free space at {} (need {} MB, have {} MB)",
+            path.display(),
+            required / 1_048_576,
+            free / 1_048_576
+        );
     }
     Ok(())
 }
@@ -103,7 +103,7 @@ fn free_space_bytes(path: &Path) -> Option<u64> {
     let mut stat: libc::statvfs = unsafe { std::mem::zeroed() };
     let rc = unsafe { statvfs(c_path.as_ptr(), &mut stat) };
     if rc == 0 {
-        Some(stat.f_bavail as u64 * stat.f_frsize as u64)
+        Some(stat.f_bavail * stat.f_frsize)
     } else {
         None
     }

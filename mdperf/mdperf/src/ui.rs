@@ -6,7 +6,9 @@ use std::time::Duration;
 
 use anyhow::Result;
 use crossterm::{
-    cursor, event::{self, Event, KeyCode, KeyEvent, KeyModifiers}, execute,
+    cursor,
+    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
+    execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
@@ -45,6 +47,7 @@ pub struct CpuPerformancePoint {
     pub core_id: usize,
     pub core_type: CoreType,
     pub gops: f64,
+    #[allow(dead_code)]
     pub operation: String,
 }
 
@@ -121,7 +124,7 @@ impl UiController {
         let (tx, rx) = mpsc::channel();
         let use_terminal = io::stdout().is_terminal();
         let handle = thread::Builder::new()
-            .name("benchctl-ui".into())
+            .name("mdperf-ui".into())
             .spawn(move || {
                 if use_terminal {
                     if let Err(err) = run_terminal_ui(rx) {
@@ -139,7 +142,14 @@ impl UiController {
     }
 
     pub fn sender(&self) -> Option<UiSender> {
-        self.sender.as_ref().map(|tx| tx.clone())
+        self.sender.clone()
+    }
+
+    pub fn wait(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+        self.sender.take();
     }
 
     pub fn shutdown(&mut self) {
@@ -199,10 +209,10 @@ fn run_terminal_ui(rx: Receiver<UiMessage>) -> Result<()> {
         }
 
         // Handle keyboard input
-        if event::poll(Duration::from_millis(100))? {
-            if let Event::Key(key) = event::read()? {
-                app.handle_key_event(key);
-            }
+        if event::poll(Duration::from_millis(100))?
+            && let Event::Key(key) = event::read()?
+        {
+            app.handle_key_event(key);
         }
 
         // Render UI
@@ -283,22 +293,21 @@ impl UiApp {
                 // Check if all tests just completed
                 if self.are_tests_complete() && !self.tests_complete {
                     self.tests_complete = true;
-                    self.banner = "Tests complete • Press 'q' to quit • ↑↓ select • +/- expand".to_string();
+                    self.banner =
+                        "Tests complete • Press 'q' to quit • ↑↓ select • +/- expand".to_string();
                 }
             }
             UiMessage::SetBanner { text } => {
                 self.banner = text;
             }
-            UiMessage::UpdateChart { data } => {
-                match data {
-                    ChartDataPoint::Memory(point) => {
-                        self.memory_bandwidth_data.push(point);
-                    }
-                    ChartDataPoint::Cpu(point) => {
-                        self.cpu_per_core_data.push(point);
-                    }
+            UiMessage::UpdateChart { data } => match data {
+                ChartDataPoint::Memory(point) => {
+                    self.memory_bandwidth_data.push(point);
                 }
-            }
+                ChartDataPoint::Cpu(point) => {
+                    self.cpu_per_core_data.push(point);
+                }
+            },
             UiMessage::Shutdown => {
                 self.exit_requested = true;
             }
@@ -341,7 +350,8 @@ impl UiApp {
         if self.rows.is_empty() {
             return;
         }
-        let next = self.selected_index
+        let next = self
+            .selected_index
             .map(|i| (i + 1) % self.rows.len())
             .unwrap_or(0);
         self.selected_index = Some(next);
@@ -351,30 +361,31 @@ impl UiApp {
         if self.rows.is_empty() {
             return;
         }
-        let prev = self.selected_index
+        let prev = self
+            .selected_index
             .map(|i| if i == 0 { self.rows.len() - 1 } else { i - 1 })
             .unwrap_or(0);
         self.selected_index = Some(prev);
     }
 
     fn toggle_expand(&mut self) {
-        if let Some(idx) = self.selected_index {
-            if let Some(row) = self.rows.get(idx) {
-                let name = row.name.clone();
-                if self.expanded_modules.contains(&name) {
-                    self.expanded_modules.remove(&name);
-                } else {
-                    self.expanded_modules.insert(name);
-                }
+        if let Some(idx) = self.selected_index
+            && let Some(row) = self.rows.get(idx)
+        {
+            let name = row.name.clone();
+            if self.expanded_modules.contains(&name) {
+                self.expanded_modules.remove(&name);
+            } else {
+                self.expanded_modules.insert(name);
             }
         }
     }
 
     fn collapse_selected(&mut self) {
-        if let Some(idx) = self.selected_index {
-            if let Some(row) = self.rows.get(idx) {
-                self.expanded_modules.remove(&row.name);
-            }
+        if let Some(idx) = self.selected_index
+            && let Some(row) = self.rows.get(idx)
+        {
+            self.expanded_modules.remove(&row.name);
         }
     }
 
@@ -382,9 +393,9 @@ impl UiApp {
         let area = f.size();
         let layout = Layout::default()
             .constraints([
-                Constraint::Length(3),  // Header
-                Constraint::Min(10),    // Module table + Charts
-                Constraint::Length(1),  // Footer
+                Constraint::Length(3), // Header
+                Constraint::Min(10),   // Module table + Charts
+                Constraint::Length(1), // Footer
             ])
             .split(area);
 
@@ -392,8 +403,8 @@ impl UiApp {
         let content_layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
-                Constraint::Percentage(40),  // Module list
-                Constraint::Percentage(60),  // Charts
+                Constraint::Percentage(40), // Module list
+                Constraint::Percentage(60), // Charts
             ])
             .split(layout[1]);
 
@@ -409,7 +420,7 @@ impl UiApp {
         };
         let header_line = Line::from(vec![
             Span::styled(
-                "benchctl",
+                "mdperf",
                 Style::default()
                     .fg(self.theme.header_title_fg)
                     .add_modifier(Modifier::BOLD),
@@ -500,20 +511,19 @@ impl UiApp {
         };
 
         let main_row = Row::new(vec![
-            Cell::from(format!("{}{}{}", prefix, expand_indicator, row.name))
-                .style(Style::default()
+            Cell::from(format!("{}{}{}", prefix, expand_indicator, row.name)).style(
+                Style::default()
                     .fg(palette.accent)
-                    .add_modifier(Modifier::BOLD)),
+                    .add_modifier(Modifier::BOLD),
+            ),
             Cell::from(badge_text).style(badge_style),
             Cell::from(detail_text).style(detail_style),
         ])
-        .style(Style::default().bg(
-            if is_selected {
-                self.theme.selected_bg
-            } else {
-                row_background(idx, row.status, &self.theme, &palette)
-            }
-        ));
+        .style(Style::default().bg(if is_selected {
+            self.theme.selected_bg
+        } else {
+            row_background(idx, row.status, &self.theme, &palette)
+        }));
 
         rows.push(main_row);
 
@@ -527,13 +537,11 @@ impl UiApp {
                     Cell::from(format!("{} {}", sub_test.value, sub_test.unit))
                         .style(Style::default().fg(palette.detail)),
                 ])
-                .style(Style::default().bg(
-                    if is_selected {
-                        self.theme.selected_bg_dim
-                    } else {
-                        row_background(idx, row.status, &self.theme, &palette)
-                    }
-                ));
+                .style(Style::default().bg(if is_selected {
+                    self.theme.selected_bg_dim
+                } else {
+                    row_background(idx, row.status, &self.theme, &palette)
+                }));
                 rows.push(sub_row);
             }
         }
@@ -548,14 +556,15 @@ impl UiApp {
             "Running tests... • Ctrl+C to abort • ↑↓ select module • +/- expand/collapse"
         };
 
-        let footer = Paragraph::new(status_text)
-            .style(Style::default()
+        let footer = Paragraph::new(status_text).style(
+            Style::default()
                 .fg(if self.tests_complete {
                     Color::Green
                 } else {
                     Color::Yellow
                 })
-                .add_modifier(Modifier::BOLD));
+                .add_modifier(Modifier::BOLD),
+        );
 
         f.render_widget(footer, area);
     }
@@ -565,8 +574,8 @@ impl UiApp {
         let chart_layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints([
-                Constraint::Percentage(50),  // Memory bandwidth chart
-                Constraint::Percentage(50),  // CPU per-core chart
+                Constraint::Percentage(50), // Memory bandwidth chart
+                Constraint::Percentage(50), // CPU per-core chart
             ])
             .split(area);
 
@@ -578,18 +587,39 @@ impl UiApp {
         if self.memory_bandwidth_data.is_empty() {
             let placeholder = Paragraph::new("Memory cache hierarchy test not yet run")
                 .style(Style::default().fg(self.theme.placeholder_fg))
-                .block(Block::default()
-                    .title("Memory Bandwidth by Buffer Size (Cache Hierarchy)")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(self.theme.table_border)));
+                .block(
+                    Block::default()
+                        .title("Memory Bandwidth by Buffer Size (Cache Hierarchy)")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(self.theme.table_border)),
+                );
             f.render_widget(placeholder, area);
             return;
         }
 
-        // Simple text-based chart for now (will enhance with graphics later)
+        // Find max bandwidth for scaling
+        let max_bandwidth = self
+            .memory_bandwidth_data
+            .iter()
+            .flat_map(|p| [p.copy_gbps, p.scale_gbps, p.triad_gbps])
+            .fold(0.0f64, |acc, v| acc.max(v));
+
+        // Bar chart width (leave space for labels)
+        let chart_width = area.width.saturating_sub(20) as usize;
+        let bar_width = chart_width.saturating_sub(10);
+
         let mut lines = vec![];
-        lines.push(Line::from("Buffer Size → Bandwidth (GB/s)"));
-        lines.push(Line::from("─".repeat(area.width as usize - 4)));
+        lines.push(Line::from(vec![
+            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled("█ Copy", Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled("█ Scale", Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled("█ Triad", Style::default().fg(Color::Magenta)),
+        ]));
+        lines.push(Line::from(
+            "─".repeat(area.width.saturating_sub(4) as usize),
+        ));
 
         for point in &self.memory_bandwidth_data {
             let size_str = if point.buffer_size_kb < 1024 {
@@ -598,30 +628,54 @@ impl UiApp {
                 format!("{:>6} MB", point.buffer_size_kb / 1024)
             };
 
+            // Copy operation bar
+            let copy_bar_len = if max_bandwidth > 0.0 {
+                ((point.copy_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
             lines.push(Line::from(vec![
-                Span::raw(format!("{:>8}: ", size_str)),
+                Span::raw(format!("{:>8} ", size_str)),
+                Span::styled("█".repeat(copy_bar_len), Style::default().fg(Color::Cyan)),
+                Span::raw(format!(" {:.1} GB/s", point.copy_gbps)),
+            ]));
+
+            // Scale operation bar
+            let scale_bar_len = if max_bandwidth > 0.0 {
+                ((point.scale_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled("█".repeat(scale_bar_len), Style::default().fg(Color::Green)),
+                Span::raw(format!(" {:.1} GB/s", point.scale_gbps)),
+            ]));
+
+            // Triad operation bar
+            let triad_bar_len = if max_bandwidth > 0.0 {
+                ((point.triad_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
+            lines.push(Line::from(vec![
+                Span::raw("         "),
                 Span::styled(
-                    format!("copy {:.1}", point.copy_gbps),
-                    Style::default().fg(Color::Cyan),
-                ),
-                Span::raw(" | "),
-                Span::styled(
-                    format!("scale {:.1}", point.scale_gbps),
-                    Style::default().fg(Color::Green),
-                ),
-                Span::raw(" | "),
-                Span::styled(
-                    format!("triad {:.1}", point.triad_gbps),
+                    "█".repeat(triad_bar_len),
                     Style::default().fg(Color::Magenta),
                 ),
+                Span::raw(format!(" {:.1} GB/s", point.triad_gbps)),
             ]));
+
+            lines.push(Line::from("")); // Spacing between buffer sizes
         }
 
-        let chart = Paragraph::new(lines)
-            .block(Block::default()
+        let chart = Paragraph::new(lines).block(
+            Block::default()
                 .title("Memory Bandwidth by Buffer Size (Cache Hierarchy)")
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(self.theme.table_border)));
+                .border_style(Style::default().fg(self.theme.table_border)),
+        );
 
         f.render_widget(chart, area);
     }
@@ -630,18 +684,37 @@ impl UiApp {
         if self.cpu_per_core_data.is_empty() {
             let placeholder = Paragraph::new("CPU per-core test not yet run")
                 .style(Style::default().fg(self.theme.placeholder_fg))
-                .block(Block::default()
-                    .title("CPU Performance by Core (E-core vs P-core)")
-                    .borders(Borders::ALL)
-                    .border_style(Style::default().fg(self.theme.table_border)));
+                .block(
+                    Block::default()
+                        .title("CPU Performance by Core (E-core vs P-core)")
+                        .borders(Borders::ALL)
+                        .border_style(Style::default().fg(self.theme.table_border)),
+                );
             f.render_widget(placeholder, area);
             return;
         }
 
-        // Simple text-based chart for now
+        // Find max GOPS for scaling
+        let max_gops = self
+            .cpu_per_core_data
+            .iter()
+            .map(|p| p.gops)
+            .fold(0.0f64, |acc, v| acc.max(v));
+
+        // Bar chart width (leave space for labels)
+        let chart_width = area.width.saturating_sub(20) as usize;
+        let bar_width = chart_width.saturating_sub(10);
+
         let mut lines = vec![];
-        lines.push(Line::from("Core ID → Performance (GOPS)"));
-        lines.push(Line::from("─".repeat(area.width as usize - 4)));
+        lines.push(Line::from(vec![
+            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled("█ P-core", Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled("█ E-core", Style::default().fg(Color::Green)),
+        ]));
+        lines.push(Line::from(
+            "─".repeat(area.width.saturating_sub(4) as usize),
+        ));
 
         for point in &self.cpu_per_core_data {
             let core_type_str = match point.core_type {
@@ -656,22 +729,31 @@ impl UiApp {
                 CoreType::Unknown => Color::Gray,
             };
 
+            // Calculate bar length
+            let bar_len = if max_gops > 0.0 {
+                ((point.gops / max_gops) * bar_width as f64) as usize
+            } else {
+                0
+            };
+
             lines.push(Line::from(vec![
                 Span::raw(format!("Core {:>2} ", point.core_id)),
-                Span::styled(format!("[{}]", core_type_str), Style::default().fg(color)),
-                Span::raw(": "),
                 Span::styled(
-                    format!("{:.2} GOPS", point.gops),
-                    Style::default().fg(color),
+                    format!("[{}]", core_type_str),
+                    Style::default().fg(color).add_modifier(Modifier::BOLD),
                 ),
+                Span::raw(" "),
+                Span::styled("█".repeat(bar_len), Style::default().fg(color)),
+                Span::raw(format!(" {:.2} GOPS", point.gops)),
             ]));
         }
 
-        let chart = Paragraph::new(lines)
-            .block(Block::default()
+        let chart = Paragraph::new(lines).block(
+            Block::default()
                 .title("CPU Performance by Core (E-core vs P-core)")
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(self.theme.table_border)));
+                .border_style(Style::default().fg(self.theme.table_border)),
+        );
 
         f.render_widget(chart, area);
     }
@@ -731,10 +813,10 @@ fn status_badge(status: UiStatus, theme: &Theme) -> (String, Style) {
 }
 
 fn detail_cell(detail: &Option<String>, palette: &ModulePalette, theme: &Theme) -> (String, Style) {
-    if let Some(text) = detail {
-        if !text.trim().is_empty() {
-            return (text.clone(), Style::default().fg(palette.detail));
-        }
+    if let Some(text) = detail
+        && !text.trim().is_empty()
+    {
+        return (text.clone(), Style::default().fg(palette.detail));
     }
     (
         "waiting for metrics".to_string(),
@@ -801,7 +883,7 @@ impl Theme {
     }
 
     fn zebra(&self, index: usize) -> Color {
-        if index % 2 == 0 {
+        if index.is_multiple_of(2) {
             self.zebra_dark
         } else {
             self.zebra_light
