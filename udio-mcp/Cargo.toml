@@ -30,8 +30,12 @@ toml = "0.8"
 # Async trait
 async-trait = "0.1"
 
+# Browser automation (Stage 2)
+chromiumoxide = { version = "0.5", features = ["tokio-runtime"] }
+futures = "0.3"
+url = "2.5"
+
 # To be added in later stages
-# chromiumoxide = "0.5"
 # keyring = "2.0"
 # sled = "0.34"
 

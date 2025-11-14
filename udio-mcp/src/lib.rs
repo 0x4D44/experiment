@@ -6,7 +6,7 @@
 
 pub mod mcp;
 // pub mod auth;      // To be implemented
-// pub mod browser;   // To be implemented
+pub mod browser;   // Stage 2: Browser automation
 // pub mod cache;     // To be implemented
 // pub mod config;    // To be implemented
 // pub mod models;    // To be implemented
