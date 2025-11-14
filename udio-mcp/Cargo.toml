@@ -35,8 +35,12 @@ chromiumoxide = { version = "0.5", features = ["tokio-runtime"] }
 futures = "0.3"
 url = "2.5"
 
+# Authentication (Stage 3)
+keyring = "2.0"
+ring = "0.17"
+base64 = "0.21"
+
 # To be added in later stages
-# keyring = "2.0"
 # sled = "0.34"
 
 [dev-dependencies]

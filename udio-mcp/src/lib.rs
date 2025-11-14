@@ -5,7 +5,7 @@
 #![doc = include_str!("../mcp-server-comprehensive-guide.md")]
 
 pub mod mcp;
-// pub mod auth;      // To be implemented
+pub mod auth;      // Stage 3: Authentication
 pub mod browser;   // Stage 2: Browser automation
 // pub mod cache;     // To be implemented
 // pub mod config;    // To be implemented
