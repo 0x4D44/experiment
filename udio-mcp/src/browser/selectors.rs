@@ -300,4 +300,50 @@ mod tests {
         assert!(song_sel.title.primary().is_some());
         assert!(song_sel.play_button.primary().is_some());
     }
+
+    #[test]
+    fn test_load_default() {
+        let selectors = Selectors::load_default();
+
+        // Verify all selector groups are populated
+        assert!(!selectors.playlist.container.is_empty());
+        assert!(!selectors.song.item.is_empty());
+        assert!(!selectors.player.play_pause_button.is_empty());
+        assert!(!selectors.auth.email_input.is_empty());
+    }
+
+    #[test]
+    fn test_player_selectors() {
+        let player_sel = PlayerSelectors::default();
+
+        assert!(player_sel.play_pause_button.primary().is_some());
+        assert!(player_sel.next_button.primary().is_some());
+        assert!(player_sel.previous_button.primary().is_some());
+        assert!(player_sel.progress_bar.primary().is_some());
+    }
+
+    #[test]
+    fn test_auth_selectors() {
+        let auth_sel = AuthSelectors::default();
+
+        assert!(auth_sel.email_input.primary().is_some());
+        assert!(auth_sel.password_input.primary().is_some());
+        assert!(auth_sel.submit_button.primary().is_some());
+    }
+
+    #[test]
+    fn test_selector_fallback_chain() {
+        let song_sel = SongSelectors::default();
+
+        // Verify fallback chain has multiple options
+        assert!(song_sel.title.len() >= 2);
+        assert!(song_sel.duration.len() >= 2);
+    }
+
+    #[test]
+    fn test_empty_selector_vec() {
+        let empty_selectors: Vec<String> = vec![];
+        assert!(empty_selectors.primary().is_none());
+        assert_eq!(empty_selectors.fallbacks().len(), 0);
+    }
 }
