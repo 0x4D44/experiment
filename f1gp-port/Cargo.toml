@@ -5,6 +5,7 @@ members = [
     "tools/track_viewer",
     "tools/track_inspector",
     "tools/graphics_test",
+    "tools/playable_demo",
 ]
 
 [workspace.package]
