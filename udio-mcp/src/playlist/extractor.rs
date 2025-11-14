@@ -5,7 +5,7 @@ use anyhow::{Result, Context};
 use chromiumoxide::Page;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::browser::{automation, extractor, selectors::Selectors};
+use crate::browser::{automation, selectors::Selectors};
 use crate::models::{Playlist, Song};
 
 /// Extracts playlist data from Udio web pages
@@ -276,14 +276,14 @@ mod tests {
 
     #[test]
     fn test_playlist_extractor_creation() {
-        let extractor = PlaylistExtractor::new();
+        let _extractor = PlaylistExtractor::new();
         // Verify it can be created
         assert!(true);
     }
 
     #[test]
     fn test_playlist_extractor_default() {
-        let extractor = PlaylistExtractor::default();
+        let _extractor = PlaylistExtractor::default();
         // Verify it can be created
         assert!(true);
     }

@@ -9,9 +9,9 @@ pub mod auth;      // Stage 3: Authentication
 pub mod browser;   // Stage 2: Browser automation
 pub mod models;    // Stage 4: Data models
 pub mod playlist;  // Stage 4: Playlist operations
+pub mod playback;  // Stage 5: Playback control
 // pub mod cache;     // To be implemented
 // pub mod config;    // To be implemented
-// pub mod playback;  // To be implemented
 // pub mod utils;     // To be implemented
 
 /// Re-export commonly used types

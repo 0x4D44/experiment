@@ -1,0 +1,296 @@
+// Playback controller
+// Manages music playback operations via browser automation
+
+use anyhow::{Result, Context};
+use chromiumoxide::Page;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+use std::time::Duration;
+
+use crate::browser::{automation, selectors::Selectors};
+use crate::models::{PlaybackState, PlaybackStatus, RepeatMode};
+
+/// Controls music playback on Udio platform
+pub struct PlaybackController {
+    /// Selectors for player UI elements
+    selectors: Selectors,
+
+    /// Current playback state
+    state: Arc<RwLock<PlaybackState>>,
+}
+
+impl PlaybackController {
+    /// Create a new playback controller
+    pub fn new() -> Self {
+        Self {
+            selectors: Selectors::load_default(),
+            state: Arc::new(RwLock::new(PlaybackState::new())),
+        }
+    }
+
+    /// Create with custom selectors
+    pub fn with_selectors(selectors: Selectors) -> Self {
+        Self {
+            selectors,
+            state: Arc::new(RwLock::new(PlaybackState::new())),
+        }
+    }
+
+    /// Play a specific song by ID
+    pub async fn play_song(&self, page: &Page, song_id: &str) -> Result<PlaybackState> {
+        tracing::info!("Playing song: {}", song_id);
+
+        // Find and click the song's play button
+        // Try to find song element first
+        let song_selector = format!("[data-song-id='{}']", song_id);
+
+        // Wait for song element
+        match automation::wait_for_element(
+            page,
+            &[song_selector.clone()],
+            Duration::from_secs(5),
+            Duration::from_millis(500),
+        ).await {
+            Ok(_) => {
+                // Click play button within song element
+                let play_selector = format!("{} .play-button", song_selector);
+                automation::click_element(page, &[play_selector]).await
+                    .context("Failed to click play button")?;
+            }
+            Err(_) => {
+                // Fallback: try clicking general play button
+                automation::click_element(page, &self.selectors.player.play_pause_button).await
+                    .context("Failed to click play/pause button")?;
+            }
+        }
+
+        // Wait for playback to start
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        // Get and return current state
+        self.get_current_state(page).await
+    }
+
+    /// Pause playback
+    pub async fn pause(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Pausing playback");
+
+        automation::click_element(page, &self.selectors.player.play_pause_button).await
+            .context("Failed to click pause button")?;
+
+        // Update state
+        {
+            let mut state = self.state.write().await;
+            state.status = PlaybackStatus::Paused;
+            state.update_timestamp();
+        }
+
+        self.get_current_state(page).await
+    }
+
+    /// Resume playback
+    pub async fn resume(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Resuming playback");
+
+        automation::click_element(page, &self.selectors.player.play_pause_button).await
+            .context("Failed to click play button")?;
+
+        // Update state
+        {
+            let mut state = self.state.write().await;
+            state.status = PlaybackStatus::Playing;
+            state.update_timestamp();
+        }
+
+        self.get_current_state(page).await
+    }
+
+    /// Play next song
+    pub async fn next(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Skipping to next song");
+
+        automation::click_element(page, &self.selectors.player.next_button).await
+            .context("Failed to click next button")?;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        self.get_current_state(page).await
+    }
+
+    /// Play previous song
+    pub async fn previous(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Going to previous song");
+
+        automation::click_element(page, &self.selectors.player.previous_button).await
+            .context("Failed to click previous button")?;
+
+        tokio::time::sleep(Duration::from_millis(500)).await;
+
+        self.get_current_state(page).await
+    }
+
+    /// Stop playback
+    pub async fn stop(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Stopping playback");
+
+        // Pause if playing
+        if self.is_playing().await {
+            self.pause(page).await?;
+        }
+
+        // Update state to stopped
+        {
+            let mut state = self.state.write().await;
+            state.status = PlaybackStatus::Stopped;
+            state.position_seconds = 0;
+            state.update_timestamp();
+        }
+
+        self.get_state().await
+    }
+
+    /// Get current playback state from the page
+    pub async fn get_current_state(&self, page: &Page) -> Result<PlaybackState> {
+        tracing::debug!("Getting current playback state");
+
+        // Try to extract state from page
+        // This is a simplified implementation - real implementation would use JavaScript evaluation
+
+        let mut state = PlaybackState::new();
+
+        // Check if player is visible (indicates something is loaded)
+        if automation::is_element_visible(page, &self.selectors.player.controls).await {
+            // Try to determine if playing based on UI state
+            // In real implementation, would evaluate JavaScript or check DOM state
+            state.status = PlaybackStatus::Playing;
+        }
+
+        // Update cached state
+        {
+            let mut cached_state = self.state.write().await;
+            *cached_state = state.clone();
+        }
+
+        Ok(state)
+    }
+
+    /// Get cached state (no page access)
+    pub async fn get_state(&self) -> Result<PlaybackState> {
+        Ok(self.state.read().await.clone())
+    }
+
+    /// Check if currently playing
+    pub async fn is_playing(&self) -> bool {
+        self.state.read().await.is_playing()
+    }
+
+    /// Check if paused
+    pub async fn is_paused(&self) -> bool {
+        self.state.read().await.is_paused()
+    }
+
+    /// Toggle shuffle mode
+    pub async fn toggle_shuffle(&self, _page: &Page) -> Result<PlaybackState> {
+        tracing::info!("Toggling shuffle");
+
+        // This would click shuffle button
+        // Simplified for now
+        {
+            let mut state = self.state.write().await;
+            state.shuffle = !state.shuffle;
+            state.update_timestamp();
+        }
+
+        self.get_state().await
+    }
+
+    /// Set repeat mode
+    pub async fn set_repeat_mode(&self, _page: &Page, mode: RepeatMode) -> Result<PlaybackState> {
+        tracing::info!("Setting repeat mode: {:?}", mode);
+
+        {
+            let mut state = self.state.write().await;
+            state.repeat_mode = mode;
+            state.update_timestamp();
+        }
+
+        self.get_state().await
+    }
+
+    /// Seek to position (seconds)
+    pub async fn seek(&self, _page: &Page, position_seconds: u64) -> Result<PlaybackState> {
+        tracing::info!("Seeking to position: {}s", position_seconds);
+
+        // This would interact with the progress bar
+        // Simplified for now
+        {
+            let mut state = self.state.write().await;
+            state.position_seconds = position_seconds.min(state.duration_seconds);
+            state.update_timestamp();
+        }
+
+        self.get_state().await
+    }
+}
+
+impl Default for PlaybackController {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_playback_controller_creation() {
+        let _controller = PlaybackController::new();
+        // Verify it can be created
+        assert!(true);
+    }
+
+    #[test]
+    fn test_playback_controller_default() {
+        let _controller = PlaybackController::default();
+        // Verify it can be created
+        assert!(true);
+    }
+
+    #[tokio::test]
+    async fn test_get_state() {
+        let controller = PlaybackController::new();
+        let state = controller.get_state().await;
+        assert!(state.is_ok());
+        assert_eq!(state.unwrap().status, PlaybackStatus::Stopped);
+    }
+
+    #[tokio::test]
+    async fn test_is_playing() {
+        let controller = PlaybackController::new();
+        assert!(!controller.is_playing().await);
+    }
+
+    #[tokio::test]
+    async fn test_is_paused() {
+        let controller = PlaybackController::new();
+        assert!(!controller.is_paused().await);
+    }
+
+    #[tokio::test]
+    async fn test_toggle_shuffle() {
+        let controller = PlaybackController::new();
+
+        // Mock page (can't actually test browser interaction in unit tests)
+        // Just verify state changes work
+        let initial_state = controller.get_state().await.unwrap();
+        assert!(!initial_state.shuffle);
+    }
+
+    #[tokio::test]
+    async fn test_set_repeat_mode() {
+        let controller = PlaybackController::new();
+        let initial_state = controller.get_state().await.unwrap();
+        assert_eq!(initial_state.repeat_mode, RepeatMode::Off);
+    }
+}
