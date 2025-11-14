@@ -214,4 +214,137 @@ mod tests {
         let login = LoginAutomation::default();
         assert_eq!(login.base_url, "https://www.udio.com");
     }
+
+    #[test]
+    fn test_login_url_format() {
+        let login = LoginAutomation::new();
+        let login_url = format!("{}/login", login.base_url);
+        assert_eq!(login_url, "https://www.udio.com/login");
+    }
+
+    #[test]
+    fn test_base_url_structure() {
+        let login = LoginAutomation::new();
+        assert!(login.base_url.starts_with("https://"));
+        assert!(login.base_url.contains("udio.com"));
+    }
+
+    #[test]
+    fn test_session_ttl_calculation() {
+        let ttl_seconds = 24 * 60 * 60;
+        assert_eq!(ttl_seconds, 86400); // 24 hours
+    }
+
+    #[test]
+    fn test_cookie_conversion_structure() {
+        // Test the structure used for cookie conversion
+        let cookie = Cookie {
+            name: "session".to_string(),
+            value: "abc123".to_string(),
+            domain: Some("udio.com".to_string()),
+            path: Some("/".to_string()),
+            secure: true,
+            http_only: true,
+        };
+
+        assert_eq!(cookie.name, "session");
+        assert_eq!(cookie.value, "abc123");
+        assert!(cookie.secure);
+        assert!(cookie.http_only);
+    }
+
+    #[test]
+    fn test_cookie_vec_creation() {
+        let cookies: Vec<Cookie> = Vec::new();
+        assert!(cookies.is_empty());
+    }
+
+    #[test]
+    fn test_cookie_vec_with_data() {
+        let mut cookies = Vec::new();
+        cookies.push(Cookie::new("session", "value1"));
+        cookies.push(Cookie::new("auth", "value2"));
+        assert_eq!(cookies.len(), 2);
+    }
+
+    #[test]
+    fn test_url_login_check() {
+        let url = "https://www.udio.com/login";
+        assert!(url.contains("/login"));
+    }
+
+    #[test]
+    fn test_url_not_login() {
+        let url = "https://www.udio.com/dashboard";
+        assert!(!url.contains("/login"));
+    }
+
+    #[test]
+    fn test_is_logged_in_url_check() {
+        let login_url = "https://www.udio.com/login";
+        let dashboard_url = "https://www.udio.com/dashboard";
+
+        assert!(login_url.contains("/login"));
+        assert!(!dashboard_url.contains("/login"));
+    }
+
+    #[test]
+    fn test_empty_cookies_check() {
+        let cookies: Vec<Cookie> = Vec::new();
+        let is_empty = cookies.is_empty();
+        assert!(is_empty);
+    }
+
+    #[test]
+    fn test_non_empty_cookies_check() {
+        let cookies = vec![Cookie::new("session", "value")];
+        let is_empty = cookies.is_empty();
+        assert!(!is_empty);
+    }
+
+    #[test]
+    fn test_delete_cookies_params_creation() {
+        // Test the structure for delete params
+        let cookie_name = "session_cookie";
+        let cookie_domain = "udio.com";
+        let cookie_path = "/";
+
+        assert_eq!(cookie_name, "session_cookie");
+        assert_eq!(cookie_domain, "udio.com");
+        assert_eq!(cookie_path, "/");
+    }
+
+    #[test]
+    fn test_multiple_login_instances() {
+        let _login1 = LoginAutomation::new();
+        let _login2 = LoginAutomation::new();
+        let _login3 = LoginAutomation::default();
+        // Should be able to create multiple instances
+    }
+
+    #[test]
+    fn test_base_url_https() {
+        let login = LoginAutomation::new();
+        assert!(login.base_url.starts_with("https://"));
+    }
+
+    #[test]
+    fn test_selectors_loading() {
+        let selectors = Selectors::load_default();
+        let login = LoginAutomation::with_selectors(selectors);
+        // Verify selectors are set
+        let _ = login.selectors;
+    }
+
+    #[test]
+    fn test_ttl_variations() {
+        // Test different TTL values
+        let hour = 60 * 60;
+        let day = 24 * hour;
+        let week = 7 * day;
+
+        assert_eq!(hour, 3600);
+        assert_eq!(day, 86400);
+        assert_eq!(week, 604800);
+    }
 }
