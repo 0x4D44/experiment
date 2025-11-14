@@ -171,23 +171,409 @@ impl ConfigManager {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::{
+        BrowserConfig, CacheConfig, DatabaseConfig, LoggingConfig, ScraperConfig, SearchFilters,
+        ServerConfig,
+    };
     use chrono::Utc;
+    use tempfile::NamedTempFile;
+
+    fn create_test_config_toml() -> String {
+        r#"
+[server]
+name = "test-ebay-mcp"
+version = "1.0.0"
+log_level = "info"
+
+[browser]
+pool_min_size = 1
+pool_max_size = 3
+headless = true
+page_load_timeout = 30000
+element_timeout = 5000
+user_agents = ["Mozilla/5.0"]
+randomize_delay = false
+delay_min_ms = 0
+delay_max_ms = 0
+
+[database]
+path = "test.db"
+auto_migrate = true
+
+[cache]
+enabled = true
+ttl_seconds = 300
+max_memory_entries = 100
+enable_disk_cache = false
+disk_cache_dir = "/tmp/cache"
+
+[logging]
+level = "info"
+file = "test.log"
+max_file_size = "10MB"
+max_backups = 3
+
+[scraper]
+base_url = "https://www.ebay.com"
+max_retries = 3
+screenshot_on_error = false
+screenshot_dir = "/tmp"
+"#
+        .to_string()
+    }
+
+    fn create_test_phrases_toml() -> String {
+        r#"
+version = "1.0"
+
+[[phrases]]
+id = "phrase1"
+name = "Vintage Cameras"
+query = "vintage camera"
+tags = ["photography", "vintage"]
+created_at = "2024-01-01T00:00:00Z"
+usage_count = 5
+"#
+        .to_string()
+    }
+
+    async fn create_temp_config_files() -> (NamedTempFile, NamedTempFile) {
+        let config_file = NamedTempFile::new().unwrap();
+        let phrases_file = NamedTempFile::new().unwrap();
+
+        tokio::fs::write(config_file.path(), create_test_config_toml())
+            .await
+            .unwrap();
+        tokio::fs::write(phrases_file.path(), create_test_phrases_toml())
+            .await
+            .unwrap();
+
+        (config_file, phrases_file)
+    }
 
     #[tokio::test]
-    async fn test_config_loading() {
-        let config_path = PathBuf::from("config/config.toml");
-        let phrases_path = PathBuf::from("config/search_phrases.toml");
+    async fn test_config_manager_load() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
 
-        if config_path.exists() {
-            let manager = ConfigManager::load(config_path, phrases_path)
-                .await
-                .expect("Failed to load config");
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
 
-            let config = manager.get_config().await;
-            assert_eq!(config.server.name, "ebay-search-mcp");
+        let config = manager.get_config().await;
+        assert_eq!(config.server.name, "test-ebay-mcp");
+        assert_eq!(config.server.version, "1.0.0");
+        assert_eq!(config.browser.pool_min_size, 1);
+        assert_eq!(config.browser.pool_max_size, 3);
+    }
 
-            let phrases = manager.get_phrases().await;
-            assert!(!phrases.is_empty());
-        }
+    #[tokio::test]
+    async fn test_config_manager_load_missing_config() {
+        let phrases_file = NamedTempFile::new().unwrap();
+
+        let result =
+            ConfigManager::load(PathBuf::from("/nonexistent.toml"), phrases_file.path().to_path_buf())
+                .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_config_manager_load_without_phrases_file() {
+        let config_file = NamedTempFile::new().unwrap();
+        tokio::fs::write(config_file.path(), create_test_config_toml())
+            .await
+            .unwrap();
+
+        let phrases_path = PathBuf::from("/tmp/nonexistent_phrases.toml");
+
+        let manager = ConfigManager::load(config_file.path().to_path_buf(), phrases_path)
+            .await
+            .unwrap();
+
+        let phrases = manager.get_phrases().await;
+        assert_eq!(phrases.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_config() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let config = manager.get_config().await;
+        assert_eq!(config.server.name, "test-ebay-mcp");
+        assert_eq!(config.cache.enabled, true);
+        assert_eq!(config.database.auto_migrate, true);
+    }
+
+    #[tokio::test]
+    async fn test_get_phrases() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrases = manager.get_phrases().await;
+        assert_eq!(phrases.len(), 1);
+        assert_eq!(phrases[0].id, "phrase1");
+        assert_eq!(phrases[0].name, "Vintage Cameras");
+        assert_eq!(phrases[0].query, "vintage camera");
+    }
+
+    #[tokio::test]
+    async fn test_get_phrase_found() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrase = manager.get_phrase("phrase1").await.unwrap();
+        assert_eq!(phrase.id, "phrase1");
+        assert_eq!(phrase.name, "Vintage Cameras");
+    }
+
+    #[tokio::test]
+    async fn test_get_phrase_not_found() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let result = manager.get_phrase("nonexistent").await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), EbayMcpError::PhraseNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_save_phrase() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let new_phrase = SavedSearchPhrase {
+            id: "phrase2".to_string(),
+            name: "Vintage Watches".to_string(),
+            query: "vintage watch".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec!["watches".to_string()],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        manager.save_phrase(new_phrase).await.unwrap();
+
+        let phrases = manager.get_phrases().await;
+        assert_eq!(phrases.len(), 2);
+
+        let saved = manager.get_phrase("phrase2").await.unwrap();
+        assert_eq!(saved.name, "Vintage Watches");
+    }
+
+    #[tokio::test]
+    async fn test_save_phrase_duplicate_id() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let duplicate_phrase = SavedSearchPhrase {
+            id: "phrase1".to_string(), // Already exists
+            name: "Duplicate".to_string(),
+            query: "duplicate".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        let result = manager.save_phrase(duplicate_phrase).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), EbayMcpError::InvalidInput(_)));
+    }
+
+    #[tokio::test]
+    async fn test_update_phrase() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let updated_phrase = SavedSearchPhrase {
+            id: "phrase1".to_string(),
+            name: "Updated Name".to_string(),
+            query: "updated query".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec!["updated".to_string()],
+            created_at: Utc::now(),
+            last_used: Some(Utc::now()),
+            usage_count: 10,
+        };
+
+        manager
+            .update_phrase("phrase1", updated_phrase)
+            .await
+            .unwrap();
+
+        let phrase = manager.get_phrase("phrase1").await.unwrap();
+        assert_eq!(phrase.name, "Updated Name");
+        assert_eq!(phrase.query, "updated query");
+        assert_eq!(phrase.usage_count, 10);
+    }
+
+    #[tokio::test]
+    async fn test_update_phrase_not_found() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrase = SavedSearchPhrase {
+            id: "nonexistent".to_string(),
+            name: "Test".to_string(),
+            query: "test".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        let result = manager.update_phrase("nonexistent", phrase).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), EbayMcpError::PhraseNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_delete_phrase() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        manager.delete_phrase("phrase1").await.unwrap();
+
+        let phrases = manager.get_phrases().await;
+        assert_eq!(phrases.len(), 0);
+
+        let result = manager.get_phrase("phrase1").await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_delete_phrase_not_found() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let result = manager.delete_phrase("nonexistent").await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), EbayMcpError::PhraseNotFound(_)));
+    }
+
+    #[tokio::test]
+    async fn test_reload_config() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Modify config file
+        let modified_config = create_test_config_toml().replace("test-ebay-mcp", "reloaded-mcp");
+        tokio::fs::write(config_file.path(), modified_config)
+            .await
+            .unwrap();
+
+        manager.reload().await.unwrap();
+
+        let config = manager.get_config().await;
+        assert_eq!(config.server.name, "reloaded-mcp");
+    }
+
+    #[tokio::test]
+    async fn test_persist_phrases() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let new_phrase = SavedSearchPhrase {
+            id: "phrase_persist".to_string(),
+            name: "Persist Test".to_string(),
+            query: "persist query".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        manager.save_phrase(new_phrase).await.unwrap();
+
+        // Verify it was written to disk by creating a new manager
+        let manager2 = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrase = manager2.get_phrase("phrase_persist").await.unwrap();
+        assert_eq!(phrase.name, "Persist Test");
     }
 }
