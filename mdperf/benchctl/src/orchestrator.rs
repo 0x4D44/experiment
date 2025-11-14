@@ -279,7 +279,7 @@ fn run_modules_sequential(
             timestamp,
             entry.name,
             progress_cb,
-        );
+        ).with_ui_sender(ui_tx.clone());
         run_module(entry.module.as_mut(), &ctx, tests, warnings, ui_tx.clone());
     }
 }
@@ -303,7 +303,8 @@ fn run_modules_parallel(
         handles.push(thread::spawn(move || {
             let progress_cb = build_progress_callback(entry.name, ui_tx_clone.clone());
             let ctx =
-                ModuleContext::new(config, runtime_strategy, timestamp, entry.name, progress_cb);
+                ModuleContext::new(config, runtime_strategy, timestamp, entry.name, progress_cb)
+                    .with_ui_sender(ui_tx_clone.clone());
             let mut local_tests = Vec::new();
             let mut local_warnings = Vec::new();
             run_module(
