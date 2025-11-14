@@ -8,6 +8,7 @@ use serde_json;
 
 use crate::modules::{BenchModule, ModuleContext, ResourceKind};
 use crate::reporter::{TestReport, TestStatus};
+use crate::ui::{ChartDataPoint, MemoryBandwidthPoint, UiMessage};
 
 pub struct MemoryModule;
 
@@ -69,6 +70,9 @@ impl BenchModule for MemoryModule {
             .map(|cb| cb.as_ref() as &(dyn Fn(&str, f64) + Send + Sync));
 
         let kernel_metrics = run_kernels(&mut a, &mut b, &mut c, duration, false, progress_ref)?;
+
+        // Run cache hierarchy test (quick test across multiple buffer sizes for charts)
+        run_cache_hierarchy_test(ctx);
 
         let metrics = MemoryMetrics {
             buffer_mb,
@@ -288,6 +292,83 @@ impl MemoryMetrics {
                     kernel.mean_gbps, kernel.name, self.buffer_mb
                 )
             })
+    }
+}
+
+// Cache hierarchy test buffer sizes (in KB): 4KB to 512MB
+// Designed to show L1, L2, L3 cache, and main memory performance
+const CACHE_TEST_SIZES_KB: &[u64] = &[
+    4,      // L1 cache (typically 32-64KB per core)
+    32,     // L1/L2 boundary
+    256,    // L2 cache (typically 256KB-1MB per core)
+    2048,   // L2/L3 boundary (2MB)
+    8192,   // L3 cache (typically 8-32MB shared)
+    65536,  // Beyond L3 (64MB)
+    524288, // Main memory (512MB)
+];
+
+fn run_cache_hierarchy_test(ctx: &ModuleContext) {
+    // Only run if we have a UI to send data to
+    let Some(ui_sender) = ctx.ui_sender() else {
+        return;
+    };
+
+    ctx.emit_progress("running cache hierarchy test for charts");
+
+    // Quick test duration per buffer size (1 second each to keep it fast)
+    let test_duration = Duration::from_secs(1);
+
+    for &buffer_kb in CACHE_TEST_SIZES_KB {
+        let buffer_bytes = (buffer_kb * 1024) as usize;
+        let len = buffer_bytes / std::mem::size_of::<f64>();
+
+        // Allocate buffers for this size
+        let mut a = vec![1.0f64; len];
+        let mut b = vec![2.0f64; len];
+        let mut c = vec![0.0f64; len];
+
+        // Run kernels and collect metrics
+        if let Ok(kernel_metrics) = run_kernels(&mut a, &mut b, &mut c, test_duration, false, None) {
+            // Extract bandwidth values
+            let copy_gbps = kernel_metrics.iter()
+                .find(|k| k.name == "copy")
+                .map(|k| k.mean_gbps)
+                .unwrap_or(0.0);
+
+            let scale_gbps = kernel_metrics.iter()
+                .find(|k| k.name == "scale")
+                .map(|k| k.mean_gbps)
+                .unwrap_or(0.0);
+
+            let triad_gbps = kernel_metrics.iter()
+                .find(|k| k.name == "triad")
+                .map(|k| k.mean_gbps)
+                .unwrap_or(0.0);
+
+            // Create chart data point
+            let point = MemoryBandwidthPoint {
+                buffer_size_kb: buffer_kb,
+                copy_gbps,
+                scale_gbps,
+                triad_gbps,
+            };
+
+            // Send progress message
+            let message = format!("cache test: {} → copy {:.1} GB/s",
+                if buffer_kb < 1024 {
+                    format!("{} KB", buffer_kb)
+                } else {
+                    format!("{} MB", buffer_kb / 1024)
+                },
+                copy_gbps
+            );
+            ctx.emit_progress(&message);
+
+            // Send chart update to UI
+            let _ = ui_sender.send(UiMessage::UpdateChart {
+                data: ChartDataPoint::Memory(point),
+            });
+        }
     }
 }
 
