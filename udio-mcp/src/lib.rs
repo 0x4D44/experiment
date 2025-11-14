@@ -16,7 +16,11 @@ pub mod mcp;
 
 /// Re-export commonly used types
 pub mod prelude {
+    pub use crate::mcp::capabilities::{ServerCapabilities, ServerInfo};
     pub use crate::mcp::error::{McpError, McpResult};
+    pub use crate::mcp::server::McpServer;
+    pub use crate::mcp::tools::{Tool, ToolRegistry};
+    pub use crate::mcp::transport::{Transport, stdio::StdioTransport};
     pub use crate::mcp::types::{Request, Response, Notification, RequestId, ErrorObject, Message};
     pub use crate::mcp::protocol;
 }
