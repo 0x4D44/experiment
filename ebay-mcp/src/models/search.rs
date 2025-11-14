@@ -181,3 +181,226 @@ mod duration_serde {
         Ok(Duration::from_millis(millis))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_search_filters_default() {
+        let filters = SearchFilters::default();
+
+        assert!(filters.category.is_none());
+        assert!(filters.price_min.is_none());
+        assert!(filters.price_max.is_none());
+        assert!(filters.condition.is_none());
+        assert!(filters.buying_format.is_none());
+        assert!(filters.location.is_none());
+        assert!(filters.shipping.is_none());
+        assert!(filters.sort_by.is_none());
+        assert!(filters.item_specifics.is_none());
+    }
+
+    #[test]
+    fn test_search_filters_serialization() {
+        let mut filters = SearchFilters::default();
+        filters.category = Some("Electronics".to_string());
+        filters.price_min = Some(10.0);
+        filters.price_max = Some(100.0);
+
+        let json = serde_json::to_string(&filters).unwrap();
+        let deserialized: SearchFilters = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.category, Some("Electronics".to_string()));
+        assert_eq!(deserialized.price_min, Some(10.0));
+        assert_eq!(deserialized.price_max, Some(100.0));
+    }
+
+    #[test]
+    fn test_search_filters_with_condition() {
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec!["New".to_string(), "Used".to_string()]);
+
+        let json = serde_json::to_string(&filters).unwrap();
+        let deserialized: SearchFilters = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.condition.unwrap().len(), 2);
+    }
+
+    #[test]
+    fn test_sort_order_to_ebay_param() {
+        assert_eq!(SortOrder::BestMatch.to_ebay_param(), "12");
+        assert_eq!(SortOrder::PricePlusShippingLowest.to_ebay_param(), "15");
+        assert_eq!(SortOrder::PricePlusShippingHighest.to_ebay_param(), "16");
+        assert_eq!(SortOrder::PriceLowest.to_ebay_param(), "1");
+        assert_eq!(SortOrder::PriceHighest.to_ebay_param(), "2");
+        assert_eq!(SortOrder::DistanceNearest.to_ebay_param(), "7");
+        assert_eq!(SortOrder::TimeEndingSoonest.to_ebay_param(), "1");
+        assert_eq!(SortOrder::TimeNewlyListed.to_ebay_param(), "10");
+    }
+
+    #[test]
+    fn test_sort_order_serialization() {
+        let order = SortOrder::PriceLowest;
+        let json = serde_json::to_string(&order).unwrap();
+        let deserialized: SortOrder = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.to_ebay_param(), "1");
+    }
+
+    #[test]
+    fn test_shipping_options_default() {
+        let shipping = ShippingOptions::default();
+
+        assert_eq!(shipping.free_shipping, false);
+        assert_eq!(shipping.local_pickup, false);
+        assert_eq!(shipping.international, false);
+    }
+
+    #[test]
+    fn test_shipping_options_serialization() {
+        let mut shipping = ShippingOptions::default();
+        shipping.free_shipping = true;
+        shipping.international = true;
+
+        let json = serde_json::to_string(&shipping).unwrap();
+        let deserialized: ShippingOptions = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.free_shipping, true);
+        assert_eq!(deserialized.local_pickup, false);
+        assert_eq!(deserialized.international, true);
+    }
+
+    #[test]
+    fn test_saved_search_phrase_serialization() {
+        use uuid::Uuid;
+
+        let phrase = SavedSearchPhrase {
+            id: Uuid::new_v4().to_string(),
+            name: "Vintage Cameras".to_string(),
+            query: "vintage camera".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec!["cameras".to_string(), "vintage".to_string()],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 5,
+        };
+
+        let json = serde_json::to_string(&phrase).unwrap();
+        let deserialized: SavedSearchPhrase = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "Vintage Cameras");
+        assert_eq!(deserialized.query, "vintage camera");
+        assert_eq!(deserialized.tags.len(), 2);
+        assert_eq!(deserialized.usage_count, 5);
+        assert!(deserialized.last_used.is_none());
+    }
+
+    #[test]
+    fn test_saved_search_phrase_with_last_used() {
+        use uuid::Uuid;
+
+        let now = Utc::now();
+        let phrase = SavedSearchPhrase {
+            id: Uuid::new_v4().to_string(),
+            name: "Test".to_string(),
+            query: "test query".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: now,
+            last_used: Some(now),
+            usage_count: 10,
+        };
+
+        let json = serde_json::to_string(&phrase).unwrap();
+        let deserialized: SavedSearchPhrase = serde_json::from_str(&json).unwrap();
+
+        assert!(deserialized.last_used.is_some());
+        assert_eq!(deserialized.usage_count, 10);
+    }
+
+    #[test]
+    fn test_search_history_entry_serialization() {
+        let entry = SearchHistoryEntry {
+            id: 1,
+            query: "test search".to_string(),
+            filters_json: Some(r#"{"price_min":10.0}"#.to_string()),
+            result_count: 42,
+            searched_at: Utc::now(),
+            duration_ms: 1500,
+            success: true,
+            error_message: None,
+        };
+
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: SearchHistoryEntry = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.id, 1);
+        assert_eq!(deserialized.query, "test search");
+        assert_eq!(deserialized.result_count, 42);
+        assert_eq!(deserialized.duration_ms, 1500);
+        assert_eq!(deserialized.success, true);
+        assert!(deserialized.error_message.is_none());
+    }
+
+    #[test]
+    fn test_search_history_entry_with_error() {
+        let entry = SearchHistoryEntry {
+            id: 2,
+            query: "failed search".to_string(),
+            filters_json: None,
+            result_count: 0,
+            searched_at: Utc::now(),
+            duration_ms: 500,
+            success: false,
+            error_message: Some("Network timeout".to_string()),
+        };
+
+        let json = serde_json::to_string(&entry).unwrap();
+        let deserialized: SearchHistoryEntry = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.success, false);
+        assert_eq!(deserialized.error_message, Some("Network timeout".to_string()));
+    }
+
+    #[test]
+    fn test_search_filters_with_item_specifics() {
+        let mut filters = SearchFilters::default();
+        let mut specifics = HashMap::new();
+        specifics.insert("Brand".to_string(), "Canon".to_string());
+        specifics.insert("Condition".to_string(), "New".to_string());
+        filters.item_specifics = Some(specifics);
+
+        let json = serde_json::to_string(&filters).unwrap();
+        let deserialized: SearchFilters = serde_json::from_str(&json).unwrap();
+
+        let item_specifics = deserialized.item_specifics.unwrap();
+        assert_eq!(item_specifics.get("Brand"), Some(&"Canon".to_string()));
+        assert_eq!(item_specifics.get("Condition"), Some(&"New".to_string()));
+    }
+
+    #[test]
+    fn test_search_filters_complete() {
+        let mut filters = SearchFilters::default();
+        filters.category = Some("Cameras".to_string());
+        filters.price_min = Some(50.0);
+        filters.price_max = Some(500.0);
+        filters.condition = Some(vec!["New".to_string()]);
+        filters.buying_format = Some(vec!["BuyItNow".to_string()]);
+        filters.location = Some("US".to_string());
+        filters.shipping = Some(ShippingOptions {
+            free_shipping: true,
+            local_pickup: false,
+            international: false,
+        });
+        filters.sort_by = Some(SortOrder::PriceLowest);
+
+        let json = serde_json::to_string(&filters).unwrap();
+        let deserialized: SearchFilters = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.category, Some("Cameras".to_string()));
+        assert_eq!(deserialized.price_min, Some(50.0));
+        assert_eq!(deserialized.price_max, Some(500.0));
+        assert!(deserialized.shipping.unwrap().free_shipping);
+    }
+}
