@@ -219,4 +219,183 @@ mod tests {
         let current = manager.get_current_user().await;
         assert!(current.is_none());
     }
+
+    #[test]
+    fn test_manager_with_custom_components() {
+        let creds_store = CredentialsStore::default();
+        let session_store = SessionStore::default();
+        let login_auto = LoginAutomation::default();
+
+        let _manager = AuthManager::with_components(creds_store, session_store, login_auto);
+        // Verify it can be created with custom components
+    }
+
+    #[test]
+    fn test_arc_wrapped_components() {
+        let manager = AuthManager::new();
+
+        // Verify Arc wrapping by cloning
+        let _creds_clone = Arc::clone(&manager.credentials_store);
+        let _session_clone = Arc::clone(&manager.session_store);
+        let _login_clone = Arc::clone(&manager.login_automation);
+        let _user_clone = Arc::clone(&manager.current_user);
+    }
+
+    #[tokio::test]
+    async fn test_current_user_write() {
+        let manager = AuthManager::new();
+
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user@example.com".to_string());
+        }
+
+        let current = manager.get_current_user().await;
+        assert_eq!(current, Some("user@example.com".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_current_user_clear() {
+        let manager = AuthManager::new();
+
+        // Set user
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user@example.com".to_string());
+        }
+
+        // Clear user
+        {
+            let mut current = manager.current_user.write().await;
+            *current = None;
+        }
+
+        let current = manager.get_current_user().await;
+        assert!(current.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_current_user_clone() {
+        let manager = AuthManager::new();
+
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user@example.com".to_string());
+        }
+
+        let user1 = manager.get_current_user().await;
+        let user2 = manager.get_current_user().await;
+
+        assert_eq!(user1, user2);
+    }
+
+    #[tokio::test]
+    async fn test_multiple_concurrent_reads() {
+        let manager = Arc::new(AuthManager::new());
+
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user@example.com".to_string());
+        }
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let mgr = Arc::clone(&manager);
+                tokio::spawn(async move {
+                    let _ = mgr.get_current_user().await;
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
+    #[test]
+    fn test_cleanup_expired_sessions() {
+        let manager = AuthManager::new();
+        manager.cleanup_expired_sessions();
+        // Should not panic
+    }
+
+    #[test]
+    fn test_multiple_manager_instances() {
+        let _manager1 = AuthManager::new();
+        let _manager2 = AuthManager::new();
+        let _manager3 = AuthManager::default();
+        // Should be able to create multiple independent managers
+    }
+
+    #[test]
+    fn test_credentials_store_access() {
+        let manager = AuthManager::new();
+        let email = "nonexistent@example.com";
+
+        assert!(!manager.has_credentials(email));
+    }
+
+    #[test]
+    fn test_session_store_access() {
+        let manager = AuthManager::new();
+        let email = "nonexistent@example.com";
+
+        assert!(!manager.has_valid_session(email));
+    }
+
+    #[tokio::test]
+    async fn test_current_user_comparison() {
+        let manager = AuthManager::new();
+
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user@example.com".to_string());
+        }
+
+        let current = manager.current_user.read().await;
+        let email = "user@example.com".to_string();
+
+        assert_eq!(current.as_ref(), Some(&email));
+    }
+
+    #[tokio::test]
+    async fn test_current_user_mismatch() {
+        let manager = AuthManager::new();
+
+        {
+            let mut current = manager.current_user.write().await;
+            *current = Some("user1@example.com".to_string());
+        }
+
+        let current = manager.current_user.read().await;
+        let different_email = "user2@example.com".to_string();
+
+        assert_ne!(current.as_ref(), Some(&different_email));
+    }
+
+    #[test]
+    fn test_component_creation_pattern() {
+        let creds_store = CredentialsStore::default();
+        let session_store = SessionStore::default();
+        let login_auto = LoginAutomation::default();
+
+        let _ = Arc::new(creds_store);
+        let _ = Arc::new(session_store);
+        let _ = Arc::new(login_auto);
+    }
+
+    #[tokio::test]
+    async fn test_rwlock_none_initialization() {
+        let user: Arc<RwLock<Option<String>>> = Arc::new(RwLock::new(None));
+        let read = user.read().await;
+        assert!(read.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_rwlock_some_initialization() {
+        let user: Arc<RwLock<Option<String>>> = Arc::new(RwLock::new(Some("user@example.com".to_string())));
+        let read = user.read().await;
+        assert!(read.is_some());
+        assert_eq!(read.as_ref().unwrap(), "user@example.com");
+    }
 }
