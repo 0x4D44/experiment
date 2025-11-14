@@ -18,3 +18,7 @@
 # OS files
 .DS_Store
 Thumbs.db
+
+# Benchmark output files
+bench_report.json
+benchctl/bench_report.json

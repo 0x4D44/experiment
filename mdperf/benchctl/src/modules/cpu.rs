@@ -11,6 +11,7 @@ use serde_json;
 use crate::config::{CpuOperation, ThreadSelector};
 use crate::modules::{BenchModule, ModuleContext, ResourceKind};
 use crate::reporter::{TestReport, TestStatus};
+use crate::ui::{ChartDataPoint, CoreType, CpuPerformancePoint, UiMessage};
 
 pub struct CpuModule;
 
@@ -78,6 +79,9 @@ impl BenchModule for CpuModule {
             .map(|cb| cb.as_ref() as &(dyn Fn(f64) + Send + Sync));
 
         let counters = run_workers(&operations, thread_count, duration, progress_ref);
+
+        // Run per-core test for chart data
+        run_per_core_test(ctx, &operations);
 
         let metrics = CpuMetrics::from_counters(thread_count, duration, &operations, counters);
 
@@ -168,6 +172,98 @@ fn worker_loop(
             counters[*idx].fetch_add(iterations, Ordering::Relaxed);
         }
     }
+}
+
+fn run_per_core_test(ctx: &ModuleContext, operations: &[CpuOperation]) {
+    // Only run if we have a UI to send data to
+    let Some(ui_sender) = ctx.ui_sender() else {
+        return;
+    };
+
+    ctx.emit_progress("running per-core test for charts");
+
+    // Get available cores
+    let core_ids = core_affinity::get_core_ids();
+    if core_ids.is_none() {
+        return;
+    }
+    let core_ids = core_ids.unwrap();
+
+    // Quick test duration per core (500ms each to keep it fast)
+    let test_duration = Duration::from_millis(500);
+
+    // Store performance results for core type detection
+    let mut core_performances: Vec<(usize, f64)> = Vec::new();
+
+    // Test each core individually
+    for (idx, core_id) in core_ids.iter().enumerate() {
+        // Test with the first operation (typically int)
+        let operation = operations.first().cloned().unwrap_or(CpuOperation::Int);
+
+        // Run test on this specific core
+        let iterations = test_single_core(*core_id, operation.clone(), test_duration);
+        let duration_secs = test_duration.as_secs_f64().max(f64::EPSILON);
+        let iterations_per_sec = iterations as f64 / duration_secs;
+        let gops = iterations_per_sec / 1_000_000_000.0;
+
+        core_performances.push((idx, gops));
+
+        // Send progress message
+        ctx.emit_progress(&format!("core {} → {:.3} GOPS", idx, gops));
+    }
+
+    // Detect core types based on performance (heuristic)
+    // If there's significant performance variance, classify as P/E cores
+    let avg_gops: f64 = core_performances.iter().map(|(_, gops)| gops).sum::<f64>()
+        / core_performances.len() as f64;
+
+    for (core_id, gops) in core_performances {
+        let operation = operations.first().cloned().unwrap_or(CpuOperation::Int);
+
+        // Simple heuristic: cores significantly above average are P-cores,
+        // significantly below are E-cores, near average are Unknown
+        let core_type = if gops > avg_gops * 1.15 {
+            CoreType::Performance
+        } else if gops < avg_gops * 0.85 {
+            CoreType::Efficient
+        } else {
+            CoreType::Unknown
+        };
+
+        // Create chart data point
+        let point = CpuPerformancePoint {
+            core_id,
+            core_type,
+            gops,
+            operation: operation.label().to_string(),
+        };
+
+        // Send chart update to UI
+        let _ = ui_sender.send(UiMessage::UpdateChart {
+            data: ChartDataPoint::Cpu(point),
+        });
+    }
+}
+
+fn test_single_core(core_id: core_affinity::CoreId, operation: CpuOperation, duration: Duration) -> u64 {
+    let counter = Arc::new(AtomicU64::new(0));
+    let counter_clone = Arc::clone(&counter);
+
+    let handle = thread::spawn(move || {
+        // Set core affinity for this thread
+        if !core_affinity::set_for_current(core_id) {
+            return;
+        }
+
+        let start = Instant::now();
+        while start.elapsed() < duration {
+            let iterations = execute_operation(operation.clone());
+            counter_clone.fetch_add(iterations, Ordering::Relaxed);
+        }
+    });
+
+    let _ = handle.join();
+    counter.load(Ordering::Relaxed)
 }
 
 const WORK_UNIT: u64 = 10_000;
