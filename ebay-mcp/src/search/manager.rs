@@ -222,3 +222,7 @@ pub struct SearchManagerStats {
     pub cache_entries: usize,
     pub cache_enabled: bool,
 }
+
+// TODO: Add integration tests for SearchManager
+// These require complex setup with ConfigManager, BrowserPool, Cache, and Database
+// For now, focusing on easier-to-test modules to boost coverage quickly
