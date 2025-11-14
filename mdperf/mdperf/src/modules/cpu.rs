@@ -209,7 +209,7 @@ fn run_per_core_test(ctx: &ModuleContext, operations: &[CpuOperation]) {
         core_performances.push((idx, gops));
 
         // Send progress message
-        ctx.emit_progress(&format!("core {} → {:.3} GOPS", idx, gops));
+        ctx.emit_progress(format!("core {} → {:.3} GOPS", idx, gops));
     }
 
     // Detect core types based on performance (heuristic)
@@ -245,7 +245,11 @@ fn run_per_core_test(ctx: &ModuleContext, operations: &[CpuOperation]) {
     }
 }
 
-fn test_single_core(core_id: core_affinity::CoreId, operation: CpuOperation, duration: Duration) -> u64 {
+fn test_single_core(
+    core_id: core_affinity::CoreId,
+    operation: CpuOperation,
+    duration: Duration,
+) -> u64 {
     let counter = Arc::new(AtomicU64::new(0));
     let counter_clone = Arc::clone(&counter);
 

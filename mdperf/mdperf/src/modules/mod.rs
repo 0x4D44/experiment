@@ -9,8 +9,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::{config::BenchConfig, reporter::TestReport, runtime::RuntimeStrategy};
 use crate::ui::UiSender;
+use crate::{config::BenchConfig, reporter::TestReport, runtime::RuntimeStrategy};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
