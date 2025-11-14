@@ -265,3 +265,393 @@ impl JsonRpcResponse {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_request_id_string() {
+        let id = RequestId::String("test-123".to_string());
+        let json = serde_json::to_string(&id).unwrap();
+        let deserialized: RequestId = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            RequestId::String(s) => assert_eq!(s, "test-123"),
+            _ => panic!("Expected String variant"),
+        }
+    }
+
+    #[test]
+    fn test_request_id_number() {
+        let id = RequestId::Number(42);
+        let json = serde_json::to_string(&id).unwrap();
+        let deserialized: RequestId = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            RequestId::Number(n) => assert_eq!(n, 42),
+            _ => panic!("Expected Number variant"),
+        }
+    }
+
+    #[test]
+    fn test_jsonrpc_request() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::String("1".to_string()),
+            method: "initialize".to_string(),
+            params: Some(json!({"test": "value"})),
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        let deserialized: JsonRpcRequest = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.jsonrpc, "2.0");
+        assert_eq!(deserialized.method, "initialize");
+        assert!(deserialized.params.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_request_without_params() {
+        let request = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: RequestId::Number(1),
+            method: "list_tools".to_string(),
+            params: None,
+        };
+
+        let json = serde_json::to_string(&request).unwrap();
+        assert!(!json.contains("params"));
+    }
+
+    #[test]
+    fn test_jsonrpc_response_success() {
+        let response = JsonRpcResponse::success(
+            RequestId::String("1".to_string()),
+            json!({"status": "ok"}),
+        );
+
+        assert_eq!(response.jsonrpc, "2.0");
+        assert!(response.result.is_some());
+        assert!(response.error.is_none());
+
+        let json = serde_json::to_string(&response).unwrap();
+        let deserialized: JsonRpcResponse = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.result.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_response_error() {
+        let response = JsonRpcResponse::error(
+            RequestId::Number(1),
+            -32600,
+            "Invalid Request".to_string(),
+            Some(json!({"detail": "missing method"})),
+        );
+
+        assert_eq!(response.jsonrpc, "2.0");
+        assert!(response.result.is_none());
+        assert!(response.error.is_some());
+
+        let error = response.error.unwrap();
+        assert_eq!(error.code, -32600);
+        assert_eq!(error.message, "Invalid Request");
+        assert!(error.data.is_some());
+    }
+
+    #[test]
+    fn test_jsonrpc_notification() {
+        let notification = JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "notifications/initialized".to_string(),
+            params: None,
+        };
+
+        let json = serde_json::to_string(&notification).unwrap();
+        let deserialized: JsonRpcNotification = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.method, "notifications/initialized");
+    }
+
+    #[test]
+    fn test_client_capabilities_default() {
+        let caps = ClientCapabilities::default();
+        assert!(caps.tools.is_none());
+        assert!(caps.resources.is_none());
+        assert!(caps.prompts.is_none());
+    }
+
+    #[test]
+    fn test_initialize_params() {
+        let params = InitializeParams {
+            protocol_version: "2024-11-05".to_string(),
+            capabilities: ClientCapabilities {
+                tools: Some(ToolCapability {}),
+                resources: None,
+                prompts: None,
+            },
+            client_info: ClientInfo {
+                name: "test-client".to_string(),
+                version: "1.0.0".to_string(),
+            },
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: InitializeParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.protocol_version, "2024-11-05");
+        assert_eq!(deserialized.client_info.name, "test-client");
+        assert!(deserialized.capabilities.tools.is_some());
+    }
+
+    #[test]
+    fn test_initialize_result() {
+        let result = InitializeResult {
+            protocol_version: "2024-11-05".to_string(),
+            capabilities: ServerCapabilities {
+                tools: ToolCapability {},
+                resources: ResourceCapability { subscribe: false },
+                prompts: PromptCapability {},
+            },
+            server_info: ServerInfo {
+                name: "ebay-mcp".to_string(),
+                version: "1.0.0".to_string(),
+            },
+            instructions: Some("Search eBay listings".to_string()),
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: InitializeResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.server_info.name, "ebay-mcp");
+        assert!(deserialized.instructions.is_some());
+    }
+
+    #[test]
+    fn test_content_text() {
+        let content = Content::Text {
+            text: "Hello, world!".to_string(),
+        };
+
+        let json = serde_json::to_string(&content).unwrap();
+        assert!(json.contains("\"type\":\"text\""));
+
+        let deserialized: Content = serde_json::from_str(&json).unwrap();
+        match deserialized {
+            Content::Text { text } => assert_eq!(text, "Hello, world!"),
+            _ => panic!("Expected Text variant"),
+        }
+    }
+
+    #[test]
+    fn test_content_image() {
+        let content = Content::Image {
+            data: "base64data".to_string(),
+            mime_type: "image/png".to_string(),
+        };
+
+        let json = serde_json::to_string(&content).unwrap();
+        assert!(json.contains("\"type\":\"image\""));
+
+        let deserialized: Content = serde_json::from_str(&json).unwrap();
+        match deserialized {
+            Content::Image { data, mime_type } => {
+                assert_eq!(data, "base64data");
+                assert_eq!(mime_type, "image/png");
+            }
+            _ => panic!("Expected Image variant"),
+        }
+    }
+
+    #[test]
+    fn test_call_tool_params() {
+        let params = CallToolParams {
+            name: "search_ebay".to_string(),
+            arguments: json!({"query": "vintage camera"}),
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: CallToolParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "search_ebay");
+    }
+
+    #[test]
+    fn test_call_tool_result_success() {
+        let result = CallToolResult {
+            content: vec![Content::Text {
+                text: "Found 10 results".to_string(),
+            }],
+            is_error: None,
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: CallToolResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.content.len(), 1);
+        assert!(deserialized.is_error.is_none());
+    }
+
+    #[test]
+    fn test_call_tool_result_error() {
+        let result = CallToolResult {
+            content: vec![Content::Text {
+                text: "Error occurred".to_string(),
+            }],
+            is_error: Some(true),
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: CallToolResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.is_error, Some(true));
+    }
+
+    #[test]
+    fn test_tool_definition() {
+        let tool = Tool {
+            name: "search_ebay".to_string(),
+            description: "Search eBay listings".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"}
+                }
+            }),
+        };
+
+        let json = serde_json::to_string(&tool).unwrap();
+        let deserialized: Tool = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "search_ebay");
+        assert!(deserialized.input_schema.is_object());
+    }
+
+    #[test]
+    fn test_list_tools_result() {
+        let result = ListToolsResult {
+            tools: vec![
+                Tool {
+                    name: "search".to_string(),
+                    description: "Search".to_string(),
+                    input_schema: json!({}),
+                },
+            ],
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        let deserialized: ListToolsResult = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.tools.len(), 1);
+    }
+
+    #[test]
+    fn test_resource_contents() {
+        let contents = ResourceContents {
+            uri: "ebay://search/history".to_string(),
+            mime_type: "application/json".to_string(),
+            text: Some("{\"results\": []}".to_string()),
+        };
+
+        let json = serde_json::to_string(&contents).unwrap();
+        let deserialized: ResourceContents = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.uri, "ebay://search/history");
+        assert!(deserialized.text.is_some());
+    }
+
+    #[test]
+    fn test_resource_definition() {
+        let resource = Resource {
+            uri: "ebay://search/history".to_string(),
+            name: "Search History".to_string(),
+            description: "Recent searches".to_string(),
+            mime_type: "application/json".to_string(),
+        };
+
+        let json = serde_json::to_string(&resource).unwrap();
+        let deserialized: Resource = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "Search History");
+    }
+
+    #[test]
+    fn test_read_resource_params() {
+        let params = ReadResourceParams {
+            uri: "ebay://search/history".to_string(),
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: ReadResourceParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.uri, "ebay://search/history");
+    }
+
+    #[test]
+    fn test_prompt_message() {
+        let message = PromptMessage {
+            role: "user".to_string(),
+            content: Content::Text {
+                text: "Search for cameras".to_string(),
+            },
+        };
+
+        let json = serde_json::to_string(&message).unwrap();
+        let deserialized: PromptMessage = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.role, "user");
+    }
+
+    #[test]
+    fn test_prompt_definition() {
+        let prompt = Prompt {
+            name: "search_template".to_string(),
+            description: "Template for searching".to_string(),
+            arguments: Some(vec![PromptArgument {
+                name: "query".to_string(),
+                description: "Search query".to_string(),
+                required: true,
+            }]),
+        };
+
+        let json = serde_json::to_string(&prompt).unwrap();
+        let deserialized: Prompt = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "search_template");
+        assert!(deserialized.arguments.is_some());
+        assert_eq!(deserialized.arguments.unwrap()[0].required, true);
+    }
+
+    #[test]
+    fn test_get_prompt_params() {
+        let params = GetPromptParams {
+            name: "search_template".to_string(),
+            arguments: json!({"query": "vintage"}),
+        };
+
+        let json = serde_json::to_string(&params).unwrap();
+        let deserialized: GetPromptParams = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "search_template");
+    }
+
+    #[test]
+    fn test_resource_capability_default_subscribe() {
+        let json = r#"{"subscribe": false}"#;
+        let cap: ResourceCapability = serde_json::from_str(json).unwrap();
+        assert_eq!(cap.subscribe, false);
+    }
+
+    #[test]
+    fn test_jsonrpc_error_without_data() {
+        let error = JsonRpcError {
+            code: -32700,
+            message: "Parse error".to_string(),
+            data: None,
+        };
+
+        let json = serde_json::to_string(&error).unwrap();
+        assert!(!json.contains("\"data\""));
+    }
+}
