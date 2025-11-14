@@ -16,6 +16,8 @@ use crate::{
     ui::{SubTestResult, UiMessage, UiSender, UiStatus},
 };
 
+type ParallelResults = Arc<Mutex<Vec<(Vec<TestReport>, Vec<String>)>>>;
+
 pub struct Orchestrator {
     config: BenchConfig,
     runtime_strategy: RuntimeStrategy,
@@ -279,7 +281,8 @@ fn run_modules_sequential(
             timestamp,
             entry.name,
             progress_cb,
-        ).with_ui_sender(ui_tx.clone());
+        )
+        .with_ui_sender(ui_tx.clone());
         run_module(entry.module.as_mut(), &ctx, tests, warnings, ui_tx.clone());
     }
 }
@@ -293,7 +296,7 @@ fn run_modules_parallel(
     tests: &mut Vec<TestReport>,
     warnings: &mut Vec<String>,
 ) {
-    let results: Arc<Mutex<Vec<(Vec<TestReport>, Vec<String>)>>> = Arc::new(Mutex::new(Vec::new()));
+    let results: ParallelResults = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 
     for mut entry in modules {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::runtime::RuntimeStrategy;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(default)]
 pub struct BenchConfig {
     pub general: GeneralConfig,
@@ -40,18 +40,6 @@ impl BenchConfig {
         self.memory.validate()?;
         self.disk.validate()?;
         Ok(())
-    }
-}
-
-impl Default for BenchConfig {
-    fn default() -> Self {
-        Self {
-            general: GeneralConfig::default(),
-            cpu: CpuConfig::default(),
-            memory: MemoryConfig::default(),
-            disk: DiskConfig::default(),
-            network: NetworkConfig::default(),
-        }
     }
 }
 
@@ -116,40 +104,30 @@ impl Default for CpuConfig {
 
 impl CpuConfig {
     fn validate(&self) -> Result<()> {
-        if let ThreadSelector::Fixed(threads) = self.threads {
-            if threads == 0 {
-                anyhow::bail!("cpu.threads cannot be zero");
-            }
+        if let ThreadSelector::Fixed(threads) = self.threads
+            && threads == 0
+        {
+            anyhow::bail!("cpu.threads cannot be zero");
         }
         Ok(())
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum CpuOperation {
+    #[default]
     Int,
     Float,
     Hash,
 }
 
-impl Default for CpuOperation {
-    fn default() -> Self {
-        CpuOperation::Int
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ThreadSelector {
+    #[default]
     Auto,
     Fixed(u16),
-}
-
-impl Default for ThreadSelector {
-    fn default() -> Self {
-        ThreadSelector::Auto
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
