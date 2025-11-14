@@ -4,6 +4,8 @@
 
 pub mod engine;
 pub mod car;
+pub mod collision;
 
 pub use engine::{BodyId, PhysicsBody, PhysicsWorld, PHYSICS_TIMESTEP};
 pub use car::{CarPhysics, TireGrip};
+pub use collision::{CollisionResult, SurfacePhysics, TrackCollision};

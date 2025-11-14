@@ -5,7 +5,7 @@
 use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
-use crate::physics::{BodyId, CarPhysics, PhysicsWorld};
+use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, TrackRenderer};
 use anyhow::Result;
@@ -39,6 +39,9 @@ pub struct GameState {
     /// Track renderer
     track_renderer: Option<TrackRenderer>,
 
+    /// Track collision detector
+    track_collision: Option<TrackCollision>,
+
     /// Car renderer
     car_renderer: CarRenderer,
 
@@ -62,6 +65,9 @@ pub struct GameState {
 
     /// Best lap time
     best_lap: Option<f32>,
+
+    /// Previous track section (for lap counting)
+    prev_section: usize,
 }
 
 impl GameState {
@@ -84,6 +90,7 @@ impl GameState {
             car_database,
             track: None,
             track_renderer: None,
+            track_collision: None,
             car_renderer,
             camera,
             input_manager,
@@ -92,6 +99,7 @@ impl GameState {
             total_time: 0.0,
             lap_time: 0.0,
             best_lap: None,
+            prev_section: 0,
         }
     }
 
@@ -103,7 +111,11 @@ impl GameState {
         // Fit camera to track bounds
         self.camera.fit_bounds(track_renderer.bounds);
 
+        // Create track collision detector
+        let track_collision = TrackCollision::new(track.clone());
+
         self.track_renderer = Some(track_renderer);
+        self.track_collision = Some(track_collision);
         self.track = Some(track);
     }
 
@@ -149,6 +161,27 @@ impl GameState {
 
     /// Update physics simulation
     fn update_physics(&mut self, delta_time: f32) {
+        // Check collision and apply surface physics
+        if let Some(collision_detector) = &self.track_collision {
+            let collision_result = collision_detector.check_collision(self.player_car.body.position);
+
+            // Apply surface grip to car
+            self.player_car.apply_surface_grip(collision_result.grip_multiplier);
+            self.player_car.on_track = collision_result.on_track;
+
+            // Check for lap crossing
+            if collision_detector.check_lap_crossing(self.prev_section, collision_result.nearest_section) {
+                // Record lap time
+                if self.lap_time > 1.0 {
+                    self.set_best_lap(self.lap_time);
+                    log::info!("Lap completed: {:.2}s", self.lap_time);
+                    self.lap_time = 0.0;
+                }
+            }
+
+            self.prev_section = collision_result.nearest_section;
+        }
+
         // Update player car physics
         self.player_car.update(delta_time);
 
