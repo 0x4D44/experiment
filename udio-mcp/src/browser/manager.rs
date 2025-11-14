@@ -200,6 +200,159 @@ mod tests {
         assert!(!manager.is_active().await);
     }
 
+    #[tokio::test]
+    async fn test_manager_initial_not_launched() {
+        let manager = BrowserManager::default();
+
+        assert!(!manager.is_launched().await);
+    }
+
+    #[test]
+    fn test_manager_with_custom_config() {
+        let config = BrowserConfig::new()
+            .with_window_size(800, 600)
+            .with_headless(true);
+
+        let manager = BrowserManager::new(config);
+        assert_eq!(manager.config.window_width, 800);
+        assert_eq!(manager.config.window_height, 600);
+        assert!(manager.config.headless);
+    }
+
+    #[test]
+    fn test_manager_with_custom_chrome_args() {
+        let config = BrowserConfig::new()
+            .with_arg("--disable-gpu");
+
+        let manager = BrowserManager::new(config);
+        // Default config has 2 args, we added 1 more = 3 total
+        assert_eq!(manager.config.chrome_args.len(), 3);
+        assert!(manager.config.chrome_args.contains(&"--disable-gpu".to_string()));
+    }
+
+    #[test]
+    fn test_manager_with_user_agent() {
+        let config = BrowserConfig::new()
+            .with_user_agent("Mozilla/5.0 TestBot");
+
+        let manager = BrowserManager::new(config);
+        assert!(manager.config.user_agent.is_some());
+        assert_eq!(manager.config.user_agent.clone().unwrap(), "Mozilla/5.0 TestBot");
+    }
+
+    #[test]
+    fn test_manager_with_chrome_path() {
+        let config = BrowserConfig::new()
+            .with_chrome_path("/usr/bin/chromium");
+
+        let manager = BrowserManager::new(config);
+        assert!(manager.config.chrome_path.is_some());
+        assert_eq!(manager.config.chrome_path.clone().unwrap(), "/usr/bin/chromium");
+    }
+
+    #[test]
+    fn test_manager_arc_rwlock_creation() {
+        let manager = BrowserManager::default();
+
+        // Verify Arc<RwLock> is created properly
+        // These should not panic
+        let _ = Arc::clone(&manager.browser);
+        let _ = Arc::clone(&manager.active);
+    }
+
+    #[tokio::test]
+    async fn test_manager_browser_lock_read() {
+        let manager = BrowserManager::default();
+
+        // Should be able to read browser lock
+        let browser_lock = manager.browser.read().await;
+        assert!(browser_lock.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_manager_active_lock_read() {
+        let manager = BrowserManager::default();
+
+        // Should be able to read active lock
+        let active = manager.active.read().await;
+        assert!(!*active);
+    }
+
+    #[tokio::test]
+    async fn test_manager_active_lock_write() {
+        let manager = BrowserManager::default();
+
+        // Should be able to write to active lock
+        {
+            let mut active = manager.active.write().await;
+            *active = true;
+        }
+
+        let active = manager.active.read().await;
+        assert!(*active);
+    }
+
+    #[tokio::test]
+    async fn test_manager_shutdown_when_not_launched() {
+        let manager = BrowserManager::default();
+
+        // Should not error when shutting down without launching
+        let result = manager.shutdown().await;
+        assert!(result.is_ok());
+
+        assert!(!manager.is_active().await);
+        assert!(!manager.is_launched().await);
+    }
+
+    #[test]
+    fn test_manager_drop() {
+        let manager = BrowserManager::default();
+        drop(manager);
+        // Should not panic on drop
+    }
+
+    #[test]
+    fn test_manager_config_headless_default() {
+        let manager = BrowserManager::default();
+        assert!(manager.config.headless); // Default is headless
+    }
+
+    #[test]
+    fn test_manager_config_window_size_default() {
+        let manager = BrowserManager::default();
+        assert_eq!(manager.config.window_width, 1920);
+        assert_eq!(manager.config.window_height, 1080);
+    }
+
+    #[test]
+    fn test_manager_multiple_instances() {
+        let _manager1 = BrowserManager::default();
+        let _manager2 = BrowserManager::default();
+        let _manager3 = BrowserManager::default();
+        // Should be able to create multiple managers
+    }
+
+    #[tokio::test]
+    async fn test_manager_concurrent_state_access() {
+        let manager = Arc::new(BrowserManager::default());
+
+        // Spawn multiple tasks accessing state concurrently
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let mgr = Arc::clone(&manager);
+                tokio::spawn(async move {
+                    let _ = mgr.is_active().await;
+                    let _ = mgr.is_launched().await;
+                })
+            })
+            .collect();
+
+        // Wait for all tasks to complete
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
     // Note: We can't test actual browser launch in CI without Chrome installed
     // These tests would be run manually or in a Docker environment with Chrome
 }
