@@ -3,6 +3,7 @@ members = [
     ".",
     "tools/extract_iso",
     "tools/track_viewer",
+    "tools/track_inspector",
 ]
 
 [workspace.package]
