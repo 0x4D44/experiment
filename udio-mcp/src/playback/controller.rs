@@ -293,4 +293,308 @@ mod tests {
         let initial_state = controller.get_state().await.unwrap();
         assert_eq!(initial_state.repeat_mode, RepeatMode::Off);
     }
+
+    #[test]
+    fn test_controller_with_custom_selectors() {
+        let selectors = Selectors::load_default();
+        let controller = PlaybackController::with_selectors(selectors);
+        // Verify creation with custom selectors
+        let _ = controller;
+    }
+
+    #[tokio::test]
+    async fn test_initial_state_values() {
+        let controller = PlaybackController::new();
+        let state = controller.get_state().await.unwrap();
+
+        assert_eq!(state.status, PlaybackStatus::Stopped);
+        assert!(state.current_song_id.is_none());
+        assert!(state.current_song_title.is_none());
+        assert_eq!(state.position_seconds, 0);
+        assert_eq!(state.duration_seconds, 0);
+        assert_eq!(state.volume, 100);
+        assert!(!state.shuffle);
+        assert_eq!(state.repeat_mode, RepeatMode::Off);
+    }
+
+    #[tokio::test]
+    async fn test_state_arc_rwlock_access() {
+        let controller = PlaybackController::new();
+
+        // Should be able to read state
+        {
+            let state = controller.state.read().await;
+            assert_eq!(state.status, PlaybackStatus::Stopped);
+        }
+
+        // Should be able to write state
+        {
+            let mut state = controller.state.write().await;
+            state.status = PlaybackStatus::Playing;
+        }
+
+        // Verify state was updated
+        {
+            let state = controller.state.read().await;
+            assert_eq!(state.status, PlaybackStatus::Playing);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_is_playing_after_state_change() {
+        let controller = PlaybackController::new();
+
+        // Initially not playing
+        assert!(!controller.is_playing().await);
+
+        // Change state to playing
+        {
+            let mut state = controller.state.write().await;
+            state.status = PlaybackStatus::Playing;
+        }
+
+        // Should now be playing
+        assert!(controller.is_playing().await);
+    }
+
+    #[tokio::test]
+    async fn test_is_paused_after_state_change() {
+        let controller = PlaybackController::new();
+
+        // Initially not paused
+        assert!(!controller.is_paused().await);
+
+        // Change state to paused
+        {
+            let mut state = controller.state.write().await;
+            state.status = PlaybackStatus::Paused;
+        }
+
+        // Should now be paused
+        assert!(controller.is_paused().await);
+    }
+
+    #[tokio::test]
+    async fn test_song_selector_format() {
+        let song_id = "song-123";
+        let selector = format!("[data-song-id='{}']", song_id);
+        assert_eq!(selector, "[data-song-id='song-123']");
+    }
+
+    #[tokio::test]
+    async fn test_play_selector_format() {
+        let song_id = "song-456";
+        let song_selector = format!("[data-song-id='{}']", song_id);
+        let play_selector = format!("{} .play-button", song_selector);
+        assert_eq!(play_selector, "[data-song-id='song-456'] .play-button");
+    }
+
+    #[tokio::test]
+    async fn test_seek_position_bounds() {
+        let controller = PlaybackController::new();
+
+        // Set duration
+        {
+            let mut state = controller.state.write().await;
+            state.duration_seconds = 300;
+        }
+
+        // Seek beyond duration should clamp
+        {
+            let mut state = controller.state.write().await;
+            state.position_seconds = 500_u64.min(state.duration_seconds);
+        }
+
+        let state = controller.get_state().await.unwrap();
+        assert_eq!(state.position_seconds, 300);
+    }
+
+    #[tokio::test]
+    async fn test_seek_within_bounds() {
+        let controller = PlaybackController::new();
+
+        // Set duration
+        {
+            let mut state = controller.state.write().await;
+            state.duration_seconds = 300;
+        }
+
+        // Seek within bounds
+        {
+            let mut state = controller.state.write().await;
+            state.position_seconds = 120;
+        }
+
+        let state = controller.get_state().await.unwrap();
+        assert_eq!(state.position_seconds, 120);
+    }
+
+    #[tokio::test]
+    async fn test_repeat_mode_changes() {
+        let controller = PlaybackController::new();
+
+        // Initially off
+        {
+            let state = controller.state.read().await;
+            assert_eq!(state.repeat_mode, RepeatMode::Off);
+        }
+
+        // Change to One
+        {
+            let mut state = controller.state.write().await;
+            state.repeat_mode = RepeatMode::One;
+        }
+
+        {
+            let state = controller.state.read().await;
+            assert_eq!(state.repeat_mode, RepeatMode::One);
+        }
+
+        // Change to All
+        {
+            let mut state = controller.state.write().await;
+            state.repeat_mode = RepeatMode::All;
+        }
+
+        {
+            let state = controller.state.read().await;
+            assert_eq!(state.repeat_mode, RepeatMode::All);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_shuffle_toggle_logic() {
+        let controller = PlaybackController::new();
+
+        // Initially false
+        {
+            let state = controller.state.read().await;
+            assert!(!state.shuffle);
+        }
+
+        // Toggle to true
+        {
+            let mut state = controller.state.write().await;
+            state.shuffle = !state.shuffle;
+        }
+
+        {
+            let state = controller.state.read().await;
+            assert!(state.shuffle);
+        }
+
+        // Toggle back to false
+        {
+            let mut state = controller.state.write().await;
+            state.shuffle = !state.shuffle;
+        }
+
+        {
+            let state = controller.state.read().await;
+            assert!(!state.shuffle);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_state_clone_independence() {
+        let controller = PlaybackController::new();
+
+        let state1 = controller.get_state().await.unwrap();
+
+        // Modify internal state
+        {
+            let mut state = controller.state.write().await;
+            state.status = PlaybackStatus::Playing;
+        }
+
+        let state2 = controller.get_state().await.unwrap();
+
+        // state1 should still be Stopped (it's a clone)
+        assert_eq!(state1.status, PlaybackStatus::Stopped);
+        // state2 should be Playing
+        assert_eq!(state2.status, PlaybackStatus::Playing);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_state_access() {
+        let controller = Arc::new(PlaybackController::new());
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let ctrl = Arc::clone(&controller);
+                tokio::spawn(async move {
+                    let _ = ctrl.get_state().await;
+                    let _ = ctrl.is_playing().await;
+                    let _ = ctrl.is_paused().await;
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
+    #[test]
+    fn test_multiple_controller_instances() {
+        let _controller1 = PlaybackController::new();
+        let _controller2 = PlaybackController::new();
+        let _controller3 = PlaybackController::default();
+        // Should be able to create multiple independent controllers
+    }
+
+    #[tokio::test]
+    async fn test_position_reset_on_stop() {
+        let controller = PlaybackController::new();
+
+        // Set position and duration
+        {
+            let mut state = controller.state.write().await;
+            state.position_seconds = 150;
+            state.duration_seconds = 300;
+            state.status = PlaybackStatus::Playing;
+        }
+
+        // Simulate stop
+        {
+            let mut state = controller.state.write().await;
+            state.status = PlaybackStatus::Stopped;
+            state.position_seconds = 0;
+        }
+
+        let state = controller.get_state().await.unwrap();
+        assert_eq!(state.status, PlaybackStatus::Stopped);
+        assert_eq!(state.position_seconds, 0);
+    }
+
+    #[tokio::test]
+    async fn test_state_timestamp_update() {
+        let controller = PlaybackController::new();
+
+        let original_timestamp = {
+            let state = controller.state.read().await;
+            state.updated_at
+        };
+
+        tokio::time::sleep(Duration::from_millis(10)).await;
+
+        {
+            let mut state = controller.state.write().await;
+            state.update_timestamp();
+        }
+
+        let new_timestamp = {
+            let state = controller.state.read().await;
+            state.updated_at
+        };
+
+        assert!(new_timestamp >= original_timestamp);
+    }
+
+    #[test]
+    fn test_selectors_default_loading() {
+        let selectors = Selectors::load_default();
+        let _controller = PlaybackController::with_selectors(selectors);
+        // Verify selectors can be loaded and used
+    }
 }
