@@ -45,7 +45,7 @@ impl TempFileManager {
         let path = self
             .root
             .path()
-            .join(format!("benchctl-disk-{}.dat", self.files.len()));
+            .join(format!("mdperf-disk-{}.dat", self.files.len()));
         self.files.push(path.clone());
         self.used_bytes += bytes;
         Ok(path)
