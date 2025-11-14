@@ -1,0 +1,20 @@
+# Rust build artifacts
+/target/
+/benchctl/target/
+
+# Cargo lock (for applications, not libraries)
+# Cargo.lock is committed for this project
+
+# Debug files
+**/*.pdb
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
