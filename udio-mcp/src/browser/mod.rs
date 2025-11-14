@@ -4,8 +4,8 @@
 pub mod manager;
 pub mod config;
 pub mod selectors;
-// pub mod automation;  // To be implemented
-// pub mod extractor;   // To be implemented
+pub mod automation;
+pub mod extractor;
 
 pub use manager::BrowserManager;
 pub use config::BrowserConfig;
