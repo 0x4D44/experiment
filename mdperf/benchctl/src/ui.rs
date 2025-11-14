@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::io::{self, IsTerminal};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread;
@@ -5,7 +6,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use crossterm::{
-    cursor, execute,
+    cursor, event::{self, Event, KeyCode, KeyEvent, KeyModifiers}, execute,
     terminal::{self, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::{
@@ -16,6 +17,13 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, Borders, Cell, Paragraph, Row, Table},
 };
+
+#[derive(Clone, Debug)]
+pub struct SubTestResult {
+    pub name: String,
+    pub value: String,
+    pub unit: String,
+}
 
 #[derive(Clone, Debug)]
 pub enum UiMessage {
@@ -29,6 +37,7 @@ pub enum UiMessage {
         name: String,
         status: UiStatus,
         detail: Option<String>,
+        sub_tests: Vec<SubTestResult>,
     },
     Shutdown,
 }
@@ -130,6 +139,7 @@ fn run_plain_ui(rx: Receiver<UiMessage>) {
                 name,
                 status,
                 detail,
+                ..
             } => {
                 let detail_suffix = detail.map(|d| format!(" - {d}")).unwrap_or_default();
                 println!("[{}] {}{}", status.as_str(), name, detail_suffix);
@@ -148,17 +158,25 @@ fn run_terminal_ui(rx: Receiver<UiMessage>) -> Result<()> {
     let mut app = UiApp::default();
 
     loop {
+        // Process incoming messages from test orchestrator
         while let Ok(msg) = rx.try_recv() {
             app.handle(msg);
         }
 
+        // Handle keyboard input
+        if event::poll(Duration::from_millis(100))? {
+            if let Event::Key(key) = event::read()? {
+                app.handle_key_event(key);
+            }
+        }
+
+        // Render UI
         terminal.draw(|f| app.draw(f))?;
 
+        // Check exit condition
         if app.should_exit() {
             break;
         }
-
-        thread::sleep(Duration::from_millis(100));
     }
 
     terminal::disable_raw_mode()?;
@@ -169,7 +187,10 @@ fn run_terminal_ui(rx: Receiver<UiMessage>) -> Result<()> {
 
 struct UiApp {
     rows: Vec<ModuleRow>,
+    selected_index: Option<usize>,
+    expanded_modules: HashSet<String>,
     exit_requested: bool,
+    tests_complete: bool,
     banner: String,
     theme: Theme,
 }
@@ -178,7 +199,10 @@ impl Default for UiApp {
     fn default() -> Self {
         Self {
             rows: Vec::new(),
+            selected_index: None,
+            expanded_modules: HashSet::new(),
             exit_requested: false,
+            tests_complete: false,
             banner: String::new(),
             theme: Theme::default(),
         }
@@ -194,6 +218,7 @@ impl UiApp {
                         name,
                         status: UiStatus::Pending,
                         detail: None,
+                        sub_tests: Vec::new(),
                     });
                 }
             }
@@ -201,16 +226,25 @@ impl UiApp {
                 name,
                 status,
                 detail,
+                sub_tests,
             } => {
                 if let Some(row) = self.rows.iter_mut().find(|r| r.name == name) {
                     row.status = status;
                     row.detail = detail;
+                    row.sub_tests = sub_tests;
                 } else {
                     self.rows.push(ModuleRow {
                         name,
                         status,
                         detail,
+                        sub_tests,
                     });
+                }
+
+                // Check if all tests just completed
+                if self.are_tests_complete() && !self.tests_complete {
+                    self.tests_complete = true;
+                    self.banner = "Tests complete • Press 'q' to quit • ↑↓ select • +/- expand".to_string();
                 }
             }
             UiMessage::SetBanner { text } => {
@@ -222,16 +256,90 @@ impl UiApp {
         }
     }
 
+    fn are_tests_complete(&self) -> bool {
+        !self.rows.is_empty() && self.rows.iter().all(|row| row.status.is_terminal())
+    }
+
     fn should_exit(&self) -> bool {
-        self.exit_requested && self.rows.iter().all(|row| row.status.is_terminal())
+        self.exit_requested
+    }
+
+    fn handle_key_event(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Char('q') | KeyCode::Char('Q') => {
+                self.exit_requested = true;
+            }
+            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.exit_requested = true;
+            }
+            KeyCode::Down => {
+                self.select_next();
+            }
+            KeyCode::Up => {
+                self.select_previous();
+            }
+            KeyCode::Char('+') | KeyCode::Enter => {
+                self.toggle_expand();
+            }
+            KeyCode::Char('-') => {
+                self.collapse_selected();
+            }
+            _ => {}
+        }
+    }
+
+    fn select_next(&mut self) {
+        if self.rows.is_empty() {
+            return;
+        }
+        let next = self.selected_index
+            .map(|i| (i + 1) % self.rows.len())
+            .unwrap_or(0);
+        self.selected_index = Some(next);
+    }
+
+    fn select_previous(&mut self) {
+        if self.rows.is_empty() {
+            return;
+        }
+        let prev = self.selected_index
+            .map(|i| if i == 0 { self.rows.len() - 1 } else { i - 1 })
+            .unwrap_or(0);
+        self.selected_index = Some(prev);
+    }
+
+    fn toggle_expand(&mut self) {
+        if let Some(idx) = self.selected_index {
+            if let Some(row) = self.rows.get(idx) {
+                let name = row.name.clone();
+                if self.expanded_modules.contains(&name) {
+                    self.expanded_modules.remove(&name);
+                } else {
+                    self.expanded_modules.insert(name);
+                }
+            }
+        }
+    }
+
+    fn collapse_selected(&mut self) {
+        if let Some(idx) = self.selected_index {
+            if let Some(row) = self.rows.get(idx) {
+                self.expanded_modules.remove(&row.name);
+            }
+        }
     }
 
     fn draw(&self, f: &mut Frame) {
         let area = f.size();
         let layout = Layout::default()
-            .constraints([Constraint::Length(3), Constraint::Min(1)])
+            .constraints([
+                Constraint::Length(3),  // Header
+                Constraint::Min(1),     // Module table
+                Constraint::Length(1),  // Footer
+            ])
             .split(area);
 
+        // Render header
         let banner_text = if self.banner.is_empty() {
             if self.rows.is_empty() {
                 "waiting for modules..."
@@ -266,38 +374,22 @@ impl UiApp {
         );
         f.render_widget(header, layout[0]);
 
-        let rows: Vec<Row> = self
-            .rows
-            .iter()
-            .enumerate()
-            .map(|(idx, row)| {
-                let palette = palette_for_module(&row.name);
-                let (badge_text, badge_style) = status_badge(row.status, &self.theme);
-                let (detail_text, detail_style) = detail_cell(&row.detail, &palette, &self.theme);
-                Row::new(vec![
-                    Cell::from(format!(" {}", row.name)).style(
-                        Style::default()
-                            .fg(palette.accent)
-                            .add_modifier(Modifier::BOLD),
-                    ),
-                    Cell::from(badge_text).style(badge_style),
-                    Cell::from(detail_text).style(detail_style),
-                ])
-                .style(Style::default().bg(row_background(
-                    idx,
-                    row.status,
-                    &self.theme,
-                    &palette,
-                )))
-            })
-            .collect();
+        // Build rows with expansion support
+        let mut table_rows: Vec<Row> = Vec::new();
+        for (idx, module_row) in self.rows.iter().enumerate() {
+            let is_selected = self.selected_index == Some(idx);
+            let is_expanded = self.expanded_modules.contains(&module_row.name);
+
+            let mut rows = self.render_module_row(module_row, idx, is_selected, is_expanded);
+            table_rows.append(&mut rows);
+        }
 
         let widths = [
             Constraint::Percentage(30),
             Constraint::Length(12),
             Constraint::Percentage(58),
         ];
-        let table = Table::new(rows, widths)
+        let table = Table::new(table_rows, widths)
             .header(
                 Row::new(vec!["Module", "Status", "Detail"]).style(
                     Style::default()
@@ -321,6 +413,90 @@ impl UiApp {
             .column_spacing(2);
 
         f.render_widget(table, layout[1]);
+
+        // Render footer
+        self.render_footer(layout[2], f);
+    }
+
+    fn render_module_row(
+        &self,
+        row: &ModuleRow,
+        idx: usize,
+        is_selected: bool,
+        is_expanded: bool,
+    ) -> Vec<Row<'static>> {
+        let mut rows = Vec::new();
+        let palette = palette_for_module(&row.name);
+
+        // Main module row
+        let (badge_text, badge_style) = status_badge(row.status, &self.theme);
+        let (detail_text, detail_style) = detail_cell(&row.detail, &palette, &self.theme);
+        let prefix = if is_selected { "> " } else { "  " };
+        let expand_indicator = if !row.sub_tests.is_empty() {
+            if is_expanded { "▼ " } else { "▶ " }
+        } else {
+            ""
+        };
+
+        let main_row = Row::new(vec![
+            Cell::from(format!("{}{}{}", prefix, expand_indicator, row.name))
+                .style(Style::default()
+                    .fg(palette.accent)
+                    .add_modifier(Modifier::BOLD)),
+            Cell::from(badge_text).style(badge_style),
+            Cell::from(detail_text).style(detail_style),
+        ])
+        .style(Style::default().bg(
+            if is_selected {
+                self.theme.selected_bg
+            } else {
+                row_background(idx, row.status, &self.theme, &palette)
+            }
+        ));
+
+        rows.push(main_row);
+
+        // Sub-test rows (if expanded)
+        if is_expanded {
+            for sub_test in &row.sub_tests {
+                let sub_row = Row::new(vec![
+                    Cell::from(format!("    ├─ {}", sub_test.name))
+                        .style(Style::default().fg(palette.detail)),
+                    Cell::from(""),
+                    Cell::from(format!("{} {}", sub_test.value, sub_test.unit))
+                        .style(Style::default().fg(palette.detail)),
+                ])
+                .style(Style::default().bg(
+                    if is_selected {
+                        self.theme.selected_bg_dim
+                    } else {
+                        row_background(idx, row.status, &self.theme, &palette)
+                    }
+                ));
+                rows.push(sub_row);
+            }
+        }
+
+        rows
+    }
+
+    fn render_footer(&self, area: ratatui::layout::Rect, f: &mut Frame) {
+        let status_text = if self.tests_complete {
+            "Tests complete • Press 'q' to quit • ↑↓ select module • +/- expand/collapse"
+        } else {
+            "Running tests... • Ctrl+C to abort • ↑↓ select module • +/- expand/collapse"
+        };
+
+        let footer = Paragraph::new(status_text)
+            .style(Style::default()
+                .fg(if self.tests_complete {
+                    Color::Green
+                } else {
+                    Color::Yellow
+                })
+                .add_modifier(Modifier::BOLD));
+
+        f.render_widget(footer, area);
     }
 }
 
@@ -328,6 +504,7 @@ struct ModuleRow {
     name: String,
     status: UiStatus,
     detail: Option<String>,
+    sub_tests: Vec<SubTestResult>,
 }
 
 struct ModulePalette {
@@ -417,6 +594,8 @@ struct Theme {
     failure_bg: Color,
     skipped_bg: Color,
     placeholder_fg: Color,
+    selected_bg: Color,
+    selected_bg_dim: Color,
     status_palette: StatusPalette,
 }
 
@@ -438,6 +617,8 @@ impl Theme {
             failure_bg: Color::Rgb(45, 20, 24),
             skipped_bg: Color::Rgb(20, 24, 38),
             placeholder_fg: Color::Rgb(120, 128, 160),
+            selected_bg: Color::Rgb(30, 35, 60),
+            selected_bg_dim: Color::Rgb(20, 25, 45),
             status_palette: StatusPalette::default(),
         }
     }
