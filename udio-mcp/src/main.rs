@@ -1,10 +1,15 @@
 // Udio MCP Server - Main entry point
 // This server implements the Model Context Protocol for Udio music control
 
-use tracing::{info, error};
-use tracing_subscriber;
+use tracing::info;
+use udio_mcp_server::mcp::{
+    capabilities::ServerCapabilities,
+    server::McpServer,
+    transport::stdio::StdioTransport,
+};
 
-fn main() {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -13,12 +18,32 @@ fn main() {
         )
         .init();
 
-    info!("Udio MCP Server starting...");
-    info!("Version: {}", env!("CARGO_PKG_VERSION"));
+    info!("Udio MCP Server v{}", env!("CARGO_PKG_VERSION"));
+    info!("Starting server...");
 
-    // TODO: Initialize server and start listening
-    info!("Server initialization not yet implemented");
+    // Create server with capabilities
+    let capabilities = ServerCapabilities::new()
+        .with_tools(false) // Tools can change dynamically
+        .with_logging();
 
-    println!("Udio MCP Server v{}", env!("CARGO_PKG_VERSION"));
-    println!("Ready to implement!");
+    let server = McpServer::with_config(
+        Default::default(),
+        capabilities,
+    );
+
+    // Get tool registry and register example tools
+    // TODO: Register actual Udio tools when implemented
+    info!("Tool registry ready (0 tools registered)");
+
+    // Create stdio transport
+    let transport = StdioTransport::new();
+
+    info!("Starting MCP server on stdio transport");
+    info!("Ready to accept MCP requests");
+
+    // Run the server
+    server.run(transport).await?;
+
+    info!("Server shutdown complete");
+    Ok(())
 }
