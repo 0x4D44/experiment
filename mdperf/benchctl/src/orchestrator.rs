@@ -13,7 +13,7 @@ use crate::{
     reporter::{BenchReport, RunMetadata, TestReport, TestStatus},
     runtime::{BenchRuntime, RuntimeStrategy},
     telemetry::HostMetadata,
-    ui::{UiMessage, UiSender, UiStatus},
+    ui::{SubTestResult, UiMessage, UiSender, UiStatus},
 };
 
 pub struct Orchestrator {
@@ -183,6 +183,7 @@ fn run_module<M: BenchModule + ?Sized>(
             name: name.clone(),
             status: UiStatus::Running,
             detail: None,
+            sub_tests: Vec::new(),
         },
     );
 
@@ -190,12 +191,14 @@ fn run_module<M: BenchModule + ?Sized>(
         Ok(report) => {
             let status = map_status(&report.status);
             let detail = report.summary.clone();
+            let sub_tests = extract_sub_tests(&name, &report.metrics);
             notify_ui(
                 &ui_tx,
                 UiMessage::Update {
                     name,
                     status,
                     detail,
+                    sub_tests,
                 },
             );
             tests.push(report);
@@ -216,6 +219,7 @@ fn run_module<M: BenchModule + ?Sized>(
                     name,
                     status: UiStatus::Failure,
                     detail: Some(err.to_string()),
+                    sub_tests: Vec::new(),
                 },
             );
         }
@@ -275,7 +279,7 @@ fn run_modules_sequential(
             timestamp,
             entry.name,
             progress_cb,
-        );
+        ).with_ui_sender(ui_tx.clone());
         run_module(entry.module.as_mut(), &ctx, tests, warnings, ui_tx.clone());
     }
 }
@@ -299,7 +303,8 @@ fn run_modules_parallel(
         handles.push(thread::spawn(move || {
             let progress_cb = build_progress_callback(entry.name, ui_tx_clone.clone());
             let ctx =
-                ModuleContext::new(config, runtime_strategy, timestamp, entry.name, progress_cb);
+                ModuleContext::new(config, runtime_strategy, timestamp, entry.name, progress_cb)
+                    .with_ui_sender(ui_tx_clone.clone());
             let mut local_tests = Vec::new();
             let mut local_warnings = Vec::new();
             run_module(
@@ -352,7 +357,86 @@ fn build_progress_callback(
                 name: name.clone(),
                 status: UiStatus::Running,
                 detail: Some(detail),
+                sub_tests: Vec::new(),
             });
         }) as Arc<ProgressCallback>
     })
+}
+
+fn extract_sub_tests(module_name: &str, metrics: &serde_json::Value) -> Vec<SubTestResult> {
+    let mut sub_tests = Vec::new();
+
+    match module_name.to_lowercase().as_str() {
+        "cpu" => {
+            // Extract from operations array
+            if let Some(operations) = metrics.get("operations").and_then(|v| v.as_array()) {
+                for op in operations {
+                    if let (Some(name), Some(gops)) = (
+                        op.get("name").and_then(|v| v.as_str()),
+                        op.get("approx_gops").and_then(|v| v.as_f64()),
+                    ) {
+                        sub_tests.push(SubTestResult {
+                            name: name.to_string(),
+                            value: format!("{:.2}", gops),
+                            unit: "GOPS".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+        "memory" => {
+            // Extract from kernels array
+            if let Some(kernels) = metrics.get("kernels").and_then(|v| v.as_array()) {
+                for kernel in kernels {
+                    if let (Some(name), Some(gbps)) = (
+                        kernel.get("name").and_then(|v| v.as_str()),
+                        kernel.get("mean_gbps").and_then(|v| v.as_f64()),
+                    ) {
+                        sub_tests.push(SubTestResult {
+                            name: name.to_string(),
+                            value: format!("{:.2}", gbps),
+                            unit: "GB/s".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+        "disk" => {
+            // Extract from patterns array
+            if let Some(patterns) = metrics.get("patterns").and_then(|v| v.as_array()) {
+                for pattern in patterns {
+                    if let (Some(name), Some(mbps)) = (
+                        pattern.get("pattern").and_then(|v| v.as_str()),
+                        pattern.get("mb_per_sec").and_then(|v| v.as_f64()),
+                    ) {
+                        sub_tests.push(SubTestResult {
+                            name: name.to_string(),
+                            value: format!("{:.1}", mbps),
+                            unit: "MB/s".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+        "network" => {
+            // Extract flat fields
+            if let Some(mbps) = metrics.get("mb_per_sec").and_then(|v| v.as_f64()) {
+                sub_tests.push(SubTestResult {
+                    name: "throughput".to_string(),
+                    value: format!("{:.2}", mbps),
+                    unit: "MB/s".to_string(),
+                });
+            }
+            if let Some(duration) = metrics.get("duration_secs").and_then(|v| v.as_f64()) {
+                sub_tests.push(SubTestResult {
+                    name: "duration".to_string(),
+                    value: format!("{:.1}", duration),
+                    unit: "seconds".to_string(),
+                });
+            }
+        }
+        _ => {}
+    }
+
+    sub_tests
 }

@@ -22,6 +22,7 @@ tempfile = "3.10"
 libc = "0.2"
 crossbeam-channel = "0.5"
 tokio-util = { version = "0.7", features = ["compat"] }
+core_affinity = "0.8.3"
 
 [dev-dependencies]
 assert_fs = "1.1"

@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
 use crate::{config::BenchConfig, reporter::TestReport, runtime::RuntimeStrategy};
+use crate::ui::UiSender;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -31,6 +32,7 @@ pub struct ModuleContext {
     #[allow(dead_code)]
     pub timestamp: DateTime<Utc>,
     progress_cb: Option<Arc<ProgressCallback>>,
+    ui_sender: Option<UiSender>,
     #[allow(dead_code)]
     module_name: &'static str,
 }
@@ -48,8 +50,14 @@ impl ModuleContext {
             runtime_strategy,
             timestamp,
             progress_cb,
+            ui_sender: None,
             module_name,
         }
+    }
+
+    pub fn with_ui_sender(mut self, ui_sender: Option<UiSender>) -> Self {
+        self.ui_sender = ui_sender;
+        self
     }
 
     pub fn emit_progress<S: Into<String>>(&self, detail: S) {
@@ -60,6 +68,10 @@ impl ModuleContext {
 
     pub fn progress_callback(&self) -> Option<Arc<ProgressCallback>> {
         self.progress_cb.as_ref().map(Arc::clone)
+    }
+
+    pub fn ui_sender(&self) -> Option<&UiSender> {
+        self.ui_sender.as_ref()
     }
 }
 
