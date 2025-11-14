@@ -1,0 +1,35 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (C) 2025 F1GP Port Team
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+IMPORTANT NOTICE REGARDING ORIGINAL GAME ASSETS:
+
+This software is a clean-room reimplementation of the Formula One Grand Prix
+racing simulator. The original game, its assets, code, and associated materials
+are copyrighted by their respective owners (Geoff Crammond, MicroProse, and
+subsequent rights holders).
+
+This project:
+1. Does NOT include any copyrighted game assets
+2. Does NOT distribute the original game or its files
+3. Is NOT affiliated with or endorsed by the original creators or publishers
+4. Requires users to legally obtain the original game files separately
+
+Users must own a legal copy of the original game to use its assets with
+this software.
