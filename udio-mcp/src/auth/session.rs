@@ -278,4 +278,180 @@ mod tests {
         assert!(store.delete("user@example.com").is_ok());
         assert!(!store.exists("user@example.com"));
     }
+
+    #[test]
+    fn test_session_time_until_expiration() {
+        let cookies = vec![Cookie::new("session_id", "abc123")];
+        let session = Session::new("user@example.com", cookies, 3600);
+
+        let time_left = session.time_until_expiration();
+        assert!(time_left.is_some());
+        assert!(time_left.unwrap().as_secs() <= 3600);
+        assert!(time_left.unwrap().as_secs() > 3500); // Should be close to 3600
+    }
+
+    #[test]
+    fn test_session_time_until_expiration_expired() {
+        let cookies = vec![Cookie::new("session_id", "abc123")];
+        let mut session = Session::new("user@example.com", cookies, 3600);
+
+        // Set expiration to past
+        session.expires_at = 0;
+        assert!(session.time_until_expiration().is_none());
+    }
+
+    #[test]
+    fn test_session_store_retrieve_expired() {
+        let store = SessionStore::new();
+        let cookies = vec![Cookie::new("session_id", "abc123")];
+        let mut session = Session::new("user@example.com", cookies, 3600);
+
+        // Set expiration to past
+        session.expires_at = 0;
+        store.store(session).unwrap();
+
+        // Should fail to retrieve expired session
+        let result = store.retrieve("user@example.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("expired"));
+    }
+
+    #[test]
+    fn test_session_store_retrieve_nonexistent() {
+        let store = SessionStore::new();
+        let result = store.retrieve("nonexistent@example.com");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No session found"));
+    }
+
+    #[test]
+    fn test_session_store_cleanup_expired() {
+        let store = SessionStore::new();
+
+        // Add valid session
+        let cookies1 = vec![Cookie::new("session_id", "abc123")];
+        let session1 = Session::new("valid@example.com", cookies1, 3600);
+        store.store(session1).unwrap();
+
+        // Add expired session
+        let cookies2 = vec![Cookie::new("session_id", "xyz789")];
+        let mut session2 = Session::new("expired@example.com", cookies2, 3600);
+        session2.expires_at = 0;
+        store.store(session2).unwrap();
+
+        // Before cleanup
+        assert!(store.exists("valid@example.com"));
+        // Expired session exists but is_valid returns false
+        assert!(!store.exists("expired@example.com"));
+
+        // Cleanup
+        store.cleanup_expired();
+
+        // After cleanup
+        assert!(store.exists("valid@example.com"));
+        assert!(!store.exists("expired@example.com"));
+    }
+
+    #[test]
+    fn test_session_with_empty_cookies() {
+        let session = Session::new("user@example.com", vec![], 3600);
+        assert_eq!(session.email, "user@example.com");
+        assert_eq!(session.cookies.len(), 0);
+        assert!(session.is_valid());
+    }
+
+    #[test]
+    fn test_cookie_default_values() {
+        let cookie = Cookie::new("test", "value");
+        assert_eq!(cookie.name, "test");
+        assert_eq!(cookie.value, "value");
+        assert!(cookie.domain.is_none());
+        assert!(cookie.path.is_none());
+        assert!(!cookie.secure);
+        assert!(!cookie.http_only);
+    }
+
+    #[test]
+    fn test_session_store_multiple_sessions() {
+        let store = SessionStore::new();
+
+        let session1 = Session::new("user1@example.com", vec![Cookie::new("s1", "v1")], 3600);
+        let session2 = Session::new("user2@example.com", vec![Cookie::new("s2", "v2")], 3600);
+        let session3 = Session::new("user3@example.com", vec![Cookie::new("s3", "v3")], 3600);
+
+        store.store(session1).unwrap();
+        store.store(session2).unwrap();
+        store.store(session3).unwrap();
+
+        assert!(store.exists("user1@example.com"));
+        assert!(store.exists("user2@example.com"));
+        assert!(store.exists("user3@example.com"));
+
+        // Retrieve specific session
+        let retrieved = store.retrieve("user2@example.com").unwrap();
+        assert_eq!(retrieved.email, "user2@example.com");
+    }
+
+    #[test]
+    fn test_session_extend_expired() {
+        let cookies = vec![Cookie::new("session_id", "abc123")];
+        let mut session = Session::new("user@example.com", cookies, 3600);
+
+        // Set to expired
+        session.expires_at = 0;
+        assert!(session.is_expired());
+
+        // Extend won't make it valid if it was already past
+        session.extend(3600);
+        // Still expired because extension from 0 + 3600 is still less than now
+        assert!(session.is_expired());
+    }
+
+    #[test]
+    fn test_session_store_default() {
+        let store = SessionStore::default();
+        let session = Session::new("user@example.com", vec![Cookie::new("s", "v")], 3600);
+
+        assert!(store.store(session).is_ok());
+        assert!(store.exists("user@example.com"));
+    }
+
+    #[test]
+    fn test_session_store_overwrite() {
+        let store = SessionStore::new();
+
+        // Store first session
+        let session1 = Session::new("user@example.com", vec![Cookie::new("old", "value")], 3600);
+        store.store(session1).unwrap();
+
+        // Store second session with same email (should overwrite)
+        let session2 = Session::new("user@example.com", vec![Cookie::new("new", "value")], 7200);
+        store.store(session2).unwrap();
+
+        // Should retrieve the new session
+        let retrieved = store.retrieve("user@example.com").unwrap();
+        assert_eq!(retrieved.cookies[0].name, "new");
+    }
+
+    #[test]
+    fn test_cookie_builder_partial() {
+        let cookie = Cookie::new("test", "value")
+            .with_domain("example.com")
+            .with_secure(true);
+
+        assert_eq!(cookie.domain, Some("example.com".to_string()));
+        assert!(cookie.secure);
+        assert!(cookie.path.is_none()); // Not set
+        assert!(!cookie.http_only); // Not set
+    }
+
+    #[test]
+    fn test_session_zero_ttl() {
+        let cookies = vec![Cookie::new("session_id", "abc123")];
+        let session = Session::new("user@example.com", cookies, 0);
+
+        // Session with 0 TTL is immediately expired
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        assert!(session.is_expired());
+    }
 }

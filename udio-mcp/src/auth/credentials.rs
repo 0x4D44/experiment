@@ -146,4 +146,91 @@ mod tests {
         // Just verify it can be created
         assert!(true);
     }
+
+    #[test]
+    fn test_credentials_validate_email_no_at() {
+        let creds = Credentials::new("userexample.com", "password123");
+        let result = creds.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid email"));
+    }
+
+    #[test]
+    fn test_credentials_validate_email_no_dot() {
+        let creds = Credentials::new("user@examplecom", "password123");
+        let result = creds.validate();
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid email"));
+    }
+
+    #[test]
+    fn test_credentials_validate_password_exactly_six() {
+        let creds = Credentials::new("user@example.com", "123456");
+        assert!(creds.validate().is_ok()); // Exactly 6 should be valid
+    }
+
+    #[test]
+    fn test_credentials_is_complete_partial_email() {
+        let creds = Credentials::new("", "password");
+        assert!(!creds.is_complete());
+    }
+
+    #[test]
+    fn test_credentials_is_complete_partial_password() {
+        let creds = Credentials::new("user@example.com", "");
+        assert!(!creds.is_complete());
+    }
+
+    #[test]
+    fn test_credentials_password_not_serialized() {
+        let creds = Credentials::new("user@example.com", "secret_password");
+        let json = serde_json::to_string(&creds).unwrap();
+
+        // Password should not appear in serialized JSON
+        assert!(!json.contains("secret_password"));
+        assert!(json.contains("user@example.com"));
+    }
+
+    #[test]
+    fn test_credentials_store_with_default() {
+        let store = CredentialsStore::default();
+        // Verify store can be created with default keychain
+        // Note: Actual OS operations are tested manually
+        let _ = store;
+    }
+
+    #[test]
+    fn test_credentials_clone() {
+        let creds = Credentials::new("user@example.com", "password123");
+        let cloned = creds.clone();
+        assert_eq!(creds.email, cloned.email);
+        assert_eq!(creds.password, cloned.password);
+    }
+
+    #[test]
+    fn test_credentials_validate_long_password() {
+        let long_password = "a".repeat(1000);
+        let creds = Credentials::new("user@example.com", long_password);
+        assert!(creds.validate().is_ok());
+    }
+
+    #[test]
+    fn test_credentials_validate_special_chars_email() {
+        let creds = Credentials::new("user+test@example.co.uk", "password123");
+        assert!(creds.validate().is_ok());
+    }
+
+    #[test]
+    fn test_credentials_validate_unicode_password() {
+        let creds = Credentials::new("user@example.com", "password123世界");
+        assert!(creds.validate().is_ok());
+    }
+
+    #[test]
+    fn test_credentials_store_creation_with_custom_keychain() {
+        let keychain = KeychainManager::new("test-service");
+        let store = CredentialsStore::new(keychain);
+        // Just verify construction works
+        let _ = store;
+    }
 }
