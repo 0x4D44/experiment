@@ -129,8 +129,15 @@ impl Database {
             .query_map([limit, offset], |row| {
                 // Parse the timestamp string to DateTime<Utc>
                 let timestamp_str: String = row.get(4)?;
+                // SQLite's CURRENT_TIMESTAMP format is "YYYY-MM-DD HH:MM:SS"
+                // Try RFC3339 first, then SQLite format
                 let searched_at = DateTime::parse_from_rfc3339(&timestamp_str)
                     .map(|dt| dt.with_timezone(&Utc))
+                    .or_else(|_| {
+                        // Try SQLite native format: "YYYY-MM-DD HH:MM:SS"
+                        chrono::NaiveDateTime::parse_from_str(&timestamp_str, "%Y-%m-%d %H:%M:%S")
+                            .map(|ndt| DateTime::<Utc>::from_naive_utc_and_offset(ndt, Utc))
+                    })
                     .map_err(|e| {
                         rusqlite::Error::FromSqlConversionFailure(
                             4,

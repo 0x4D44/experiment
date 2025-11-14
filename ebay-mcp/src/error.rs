@@ -106,3 +106,206 @@ impl EbayMcpError {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_browser_error_display() {
+        let err = EbayMcpError::Browser("connection failed".to_string());
+        assert_eq!(err.to_string(), "Browser error: connection failed");
+    }
+
+    #[test]
+    fn test_config_error_display() {
+        let err = EbayMcpError::Config("invalid port".to_string());
+        assert_eq!(err.to_string(), "Configuration error: invalid port");
+    }
+
+    #[test]
+    fn test_phrase_not_found_error() {
+        let err = EbayMcpError::PhraseNotFound("test-phrase".to_string());
+        assert_eq!(err.to_string(), "Search phrase not found: test-phrase");
+    }
+
+    #[test]
+    fn test_scraping_failed_error() {
+        let err = EbayMcpError::ScrapingFailed("timeout".to_string());
+        assert_eq!(err.to_string(), "Scraping failed: timeout");
+    }
+
+    #[test]
+    fn test_database_error() {
+        let err = EbayMcpError::Database("connection lost".to_string());
+        assert_eq!(err.to_string(), "Database error: connection lost");
+    }
+
+    #[test]
+    fn test_captcha_detected_error() {
+        let err = EbayMcpError::CaptchaDetected;
+        assert_eq!(
+            err.to_string(),
+            "CAPTCHA detected - manual intervention required"
+        );
+    }
+
+    #[test]
+    fn test_rate_limited_error() {
+        let err = EbayMcpError::RateLimited;
+        assert_eq!(err.to_string(), "Rate limited by eBay");
+    }
+
+    #[test]
+    fn test_network_error() {
+        let err = EbayMcpError::Network("DNS failure".to_string());
+        assert_eq!(err.to_string(), "Network error: DNS failure");
+    }
+
+    #[test]
+    fn test_protocol_error() {
+        let err = EbayMcpError::Protocol("invalid JSON-RPC".to_string());
+        assert_eq!(err.to_string(), "MCP protocol error: invalid JSON-RPC");
+    }
+
+    #[test]
+    fn test_invalid_input_error() {
+        let err = EbayMcpError::InvalidInput("empty query".to_string());
+        assert_eq!(err.to_string(), "Invalid input: empty query");
+    }
+
+    #[test]
+    fn test_not_implemented_error() {
+        let err = EbayMcpError::NotImplemented("feature X".to_string());
+        assert_eq!(err.to_string(), "Not implemented: feature X");
+    }
+
+    #[test]
+    fn test_from_io_error() {
+        let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+        let err: EbayMcpError = io_err.into();
+        match err {
+            EbayMcpError::Cache(_) => (),
+            _ => panic!("Expected Cache error"),
+        }
+    }
+
+    #[test]
+    fn test_from_serde_json_error() {
+        let json_err = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+        let err: EbayMcpError = json_err.into();
+        match err {
+            EbayMcpError::Serialization(_) => (),
+            _ => panic!("Expected Serialization error"),
+        }
+    }
+
+    #[test]
+    fn test_from_toml_error() {
+        let toml_err = toml::from_str::<toml::Value>("invalid = toml [").unwrap_err();
+        let err: EbayMcpError = toml_err.into();
+        match err {
+            EbayMcpError::TomlError(_) => (),
+            _ => panic!("Expected TomlError"),
+        }
+    }
+
+    #[test]
+    fn test_from_rusqlite_error() {
+        use rusqlite::{Connection, Error as SqlError};
+        let conn = Connection::open_in_memory().unwrap();
+        let sql_err = conn.execute("INVALID SQL", []).unwrap_err();
+        let err: EbayMcpError = sql_err.into();
+        match err {
+            EbayMcpError::Database(_) => (),
+            _ => panic!("Expected Database error"),
+        }
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_phrase_not_found() {
+        let err = EbayMcpError::PhraseNotFound("test".to_string());
+        assert_eq!(err.to_mcp_error_code(), -32602);
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_invalid_input() {
+        let err = EbayMcpError::InvalidInput("test".to_string());
+        assert_eq!(err.to_mcp_error_code(), -32602);
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_captcha() {
+        let err = EbayMcpError::CaptchaDetected;
+        assert_eq!(err.to_mcp_error_code(), -32000);
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_rate_limited() {
+        let err = EbayMcpError::RateLimited;
+        assert_eq!(err.to_mcp_error_code(), -32000);
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_protocol() {
+        let err = EbayMcpError::Protocol("test".to_string());
+        assert_eq!(err.to_mcp_error_code(), -32600);
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_default() {
+        let err = EbayMcpError::Browser("test".to_string());
+        assert_eq!(err.to_mcp_error_code(), -32603);
+    }
+
+    #[test]
+    fn test_user_message_captcha() {
+        let err = EbayMcpError::CaptchaDetected;
+        assert_eq!(
+            err.user_message(),
+            "eBay requires manual verification. Please try again later."
+        );
+    }
+
+    #[test]
+    fn test_user_message_rate_limited() {
+        let err = EbayMcpError::RateLimited;
+        assert_eq!(
+            err.user_message(),
+            "Too many requests to eBay. Please wait a moment and try again."
+        );
+    }
+
+    #[test]
+    fn test_user_message_phrase_not_found() {
+        let err = EbayMcpError::PhraseNotFound("my-phrase".to_string());
+        assert_eq!(err.user_message(), "Search phrase 'my-phrase' not found");
+    }
+
+    #[test]
+    fn test_user_message_default() {
+        let err = EbayMcpError::Browser("test error".to_string());
+        assert_eq!(err.user_message(), "Browser error: test error");
+    }
+
+    #[test]
+    fn test_result_type_alias() {
+        fn returns_result() -> Result<i32> {
+            Ok(42)
+        }
+
+        let result = returns_result();
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), 42);
+    }
+
+    #[test]
+    fn test_result_error() {
+        fn returns_error() -> Result<i32> {
+            Err(EbayMcpError::Browser("failed".to_string()))
+        }
+
+        let result = returns_error();
+        assert!(result.is_err());
+    }
+}
