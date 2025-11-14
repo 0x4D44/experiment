@@ -342,6 +342,22 @@ impl CarPhysics {
             self.gear -= 1;
         }
     }
+
+    /// Apply surface-based grip multiplier to all tires
+    /// This modifies the tire grip based on the surface type (track, grass, gravel, etc.)
+    pub fn apply_surface_grip(&mut self, surface_multiplier: f32) {
+        // Multiply all tire grips by the surface multiplier
+        self.tire_grip.front_left *= surface_multiplier;
+        self.tire_grip.front_right *= surface_multiplier;
+        self.tire_grip.rear_left *= surface_multiplier;
+        self.tire_grip.rear_right *= surface_multiplier;
+
+        // Clamp to valid range
+        self.tire_grip.front_left = self.tire_grip.front_left.clamp(0.0, 1.0);
+        self.tire_grip.front_right = self.tire_grip.front_right.clamp(0.0, 1.0);
+        self.tire_grip.rear_left = self.tire_grip.rear_left.clamp(0.0, 1.0);
+        self.tire_grip.rear_right = self.tire_grip.rear_right.clamp(0.0, 1.0);
+    }
 }
 
 #[cfg(test)]
