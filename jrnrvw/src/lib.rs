@@ -10,6 +10,7 @@ pub mod discovery;
 pub mod parser;
 pub mod analyzer;
 pub mod output;
+pub mod llm;
 
 // Re-export commonly used types
 pub use error::{JrnrvwError, Result};

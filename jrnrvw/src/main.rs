@@ -91,6 +91,61 @@ fn run() -> Result<()> {
         .with_grouping(group_by, sort_by)
         .build()?;
 
+    // Check if AI summarization is requested
+    if cli.summarize {
+        if cli.verbose {
+            eprintln!("Generating AI summary using {}...", format!("{:?}", cli.llm).to_lowercase());
+        }
+
+        // Get repositories and date range from report
+        let repositories = &report.repositories;
+        let date_range = report.metadata.period.as_ref().map(|dr| (dr.from, dr.to));
+
+        // Convert CLI LlmArg to LlmProvider
+        let llm_provider = match cli.llm {
+            jrnrvw::cli::LlmArg::Claude => jrnrvw::llm::LlmProvider::Claude,
+            jrnrvw::cli::LlmArg::Codex => jrnrvw::llm::LlmProvider::Codex,
+        };
+
+        // Generate summary
+        let summary = jrnrvw::llm::summarize(llm_provider, repositories, date_range)?;
+
+        // Write summary output
+        if let Some(ref summary_path) = cli.summary_output {
+            fs::write(summary_path, &summary)?;
+            if !cli.quiet {
+                eprintln!("AI summary written to {}", summary_path.display());
+            }
+        } else {
+            println!("{}", summary);
+            io::stdout().flush()?;
+        }
+
+        // If --summary-output is specified, also generate the regular report
+        if cli.summary_output.is_some() && cli.output.is_some() {
+            let output_options = OutputOptions {
+                colored: !cli.no_color && atty::is(atty::Stream::Stdout),
+                verbose: cli.verbose,
+                include_activities: cli.with_activities || !cli.summary,
+                include_notes: cli.with_notes,
+                include_stats: cli.stats || !cli.summary,
+                summary_only: cli.summary,
+            };
+
+            let output_format = convert_format(cli.format);
+            let formatted = format_report(&report, output_format, &output_options)?;
+
+            if let Some(output_path) = cli.output {
+                fs::write(&output_path, formatted)?;
+                if !cli.quiet {
+                    eprintln!("Report written to {}", output_path.display());
+                }
+            }
+        }
+
+        return Ok(());
+    }
+
     // Build output options
     let output_options = OutputOptions {
         colored: !cli.no_color && atty::is(atty::Stream::Stdout),

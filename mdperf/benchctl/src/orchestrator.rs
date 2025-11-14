@@ -8,7 +8,7 @@ use crate::{
     config::{BenchConfig, ExecutionMode},
     modules::{
         BenchModule, ModuleContext, ProgressCallback, ResourceKind, cpu::CpuModule,
-        disk::DiskModule, memory::MemoryModule,
+        disk::DiskModule, memory::MemoryModule, network::NetworkModule,
     },
     reporter::{BenchReport, RunMetadata, TestReport, TestStatus},
     runtime::{BenchRuntime, RuntimeStrategy},
@@ -77,6 +77,11 @@ impl Orchestrator {
                 let module_box: Box<dyn BenchModule> = Box::new(DiskModule::new());
                 let resources = module_box.resources().to_vec();
                 modules.push(ModuleEntry::new("disk", resources, module_box));
+            }
+            if self.config.network.enabled {
+                let module_box: Box<dyn BenchModule> = Box::new(NetworkModule::new());
+                let resources = module_box.resources().to_vec();
+                modules.push(ModuleEntry::new("network", resources, module_box));
             }
 
             let conflicts = detect_conflicts(&modules);

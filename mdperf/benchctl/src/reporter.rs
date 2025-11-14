@@ -77,7 +77,7 @@ pub struct TestReport {
     pub resources: Vec<ResourceKind>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum TestStatus {
     Pending,
