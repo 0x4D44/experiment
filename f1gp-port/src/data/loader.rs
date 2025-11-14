@@ -3,6 +3,8 @@
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
+use super::parser::parse_track;
+use super::track::Track;
 
 /// Load raw bytes from a file
 pub fn load_file_bytes<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
@@ -36,6 +38,51 @@ pub fn verify_checksum(data: &[u8]) -> bool {
     // TODO: Calculate actual checksum and compare
     // For now, just return true if checksum exists
     stored != 0
+}
+
+/// Load and parse a complete track file
+///
+/// Reads a track file (F1CT*.DAT), parses it, and returns a Track structure.
+///
+/// # Arguments
+/// * `path` - Path to the track file
+/// * `name` - Track name (optional, defaults to filename without extension)
+///
+/// # Example
+/// ```no_run
+/// use f1gp_port::load_track;
+/// let track = load_track("assets/original/HARDDISK/F1CT01.DAT", Some("Monaco".to_string())).unwrap();
+/// ```
+pub fn load_track<P: AsRef<Path>>(path: P, name: Option<String>) -> Result<Track> {
+    let path_ref = path.as_ref();
+
+    // Determine track name
+    let track_name = name.unwrap_or_else(|| {
+        path_ref
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Unknown")
+            .to_string()
+    });
+
+    // Load file bytes
+    let data = load_file_bytes(path_ref)?;
+
+    // Verify checksum (basic validation)
+    if !verify_checksum(&data) {
+        log::warn!("Track file has invalid or missing checksum: {}", track_name);
+    }
+
+    // Parse track
+    let track = parse_track(data, track_name)?;
+
+    // Validate parsed data
+    // Note: Currently we don't have enough data to validate fully
+    // track.validate()?;
+
+    log::info!("Loaded track: {} ({} bytes)", track.name, track.checksum);
+
+    Ok(track)
 }
 
 #[cfg(test)]
