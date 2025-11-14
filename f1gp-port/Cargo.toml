@@ -4,6 +4,7 @@ members = [
     "tools/extract_iso",
     "tools/track_viewer",
     "tools/track_inspector",
+    "tools/graphics_test",
 ]
 
 [workspace.package]
@@ -61,8 +62,8 @@ serde_json.workspace = true
 bytemuck.workspace = true
 memmap2.workspace = true
 
-# Graphics (SDL2) - will add later
-# sdl2 = "0.37"
+# Graphics (SDL2)
+sdl2 = { version = "0.37", features = ["bundled"] }
 
 [dev-dependencies]
 criterion.workspace = true
