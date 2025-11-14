@@ -293,4 +293,88 @@ mod tests {
         assert_eq!(RepeatMode::One.to_string(), "Repeat One");
         assert_eq!(RepeatMode::All.to_string(), "Repeat All");
     }
+
+    #[test]
+    fn test_progress_percent_zero_duration() {
+        let state = PlaybackState::new().with_position(60, 0);
+        assert_eq!(state.progress_percent(), 0.0);
+    }
+
+    #[test]
+    fn test_remaining_seconds_overflow_protection() {
+        // Position greater than duration should not underflow
+        let mut state = PlaybackState::new().with_position(100, 300);
+        state.position_seconds = 350; // Manually set position beyond duration
+        assert_eq!(state.remaining_seconds(), 0);
+    }
+
+    #[test]
+    fn test_remaining_seconds_equal_position() {
+        let state = PlaybackState::new().with_position(240, 240);
+        assert_eq!(state.remaining_seconds(), 0);
+    }
+
+    #[test]
+    fn test_format_position_hours() {
+        let state = PlaybackState::new().with_position(3725, 7200); // 1:02:05
+        assert_eq!(state.format_position(), "62:05");
+    }
+
+    #[test]
+    fn test_format_duration_hours() {
+        let state = PlaybackState::new().with_position(0, 3661); // 1:01:01
+        assert_eq!(state.format_duration(), "61:01");
+    }
+
+    #[test]
+    fn test_update_timestamp() {
+        let mut state = PlaybackState::new();
+        let original_timestamp = state.updated_at;
+
+        std::thread::sleep(std::time::Duration::from_millis(10));
+        state.update_timestamp();
+
+        assert!(state.updated_at >= original_timestamp);
+    }
+
+    #[test]
+    fn test_with_volume_zero() {
+        let state = PlaybackState::new().with_volume(0);
+        assert_eq!(state.volume, 0);
+    }
+
+    #[test]
+    fn test_is_buffering() {
+        let mut state = PlaybackState::new();
+        state.status = PlaybackStatus::Buffering;
+        assert!(!state.is_playing());
+        assert!(!state.is_paused());
+        assert!(!state.is_stopped());
+    }
+
+    #[test]
+    fn test_default_implementation() {
+        let state = PlaybackState::default();
+        assert_eq!(state.status, PlaybackStatus::Stopped);
+        assert!(state.current_song_id.is_none());
+        assert_eq!(state.volume, 100);
+    }
+
+    #[test]
+    fn test_progress_percent_at_end() {
+        let state = PlaybackState::new().with_position(240, 240);
+        assert_eq!(state.progress_percent(), 100.0);
+    }
+
+    #[test]
+    fn test_format_position_zero() {
+        let state = PlaybackState::new().with_position(0, 100);
+        assert_eq!(state.format_position(), "00:00");
+    }
+
+    #[test]
+    fn test_format_duration_zero() {
+        let state = PlaybackState::new().with_position(0, 0);
+        assert_eq!(state.format_duration(), "00:00");
+    }
 }
