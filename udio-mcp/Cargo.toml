@@ -1,0 +1,51 @@
+[package]
+name = "udio-mcp-server"
+version = "0.1.0"
+edition = "2021"
+authors = ["Claude Code <code@anthropic.com>"]
+license = "MIT"
+description = "MCP server for Udio music platform interaction"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Configuration
+config = "0.13"
+toml = "0.8"
+
+# Async trait
+async-trait = "0.1"
+
+# Browser automation (Stage 2)
+chromiumoxide = { version = "0.5", features = ["tokio-runtime"] }
+futures = "0.3"
+url = "2.5"
+
+# To be added in later stages
+# keyring = "2.0"
+# sled = "0.34"
+
+[dev-dependencies]
+mockito = "1.2"
+proptest = "1.4"
+criterion = "0.5"
+tempfile = "3.8"
+
+# Uncomment when benchmarks are ready
+# [[bench]]
+# name = "performance"
+# harness = false
