@@ -1,0 +1,68 @@
+[workspace]
+members = [
+    ".",
+    "tools/extract_iso",
+    "tools/track_viewer",
+    "tools/track_inspector",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0"
+authors = ["F1GP Port Team"]
+
+[workspace.dependencies]
+# Core dependencies
+anyhow = "1.0"
+thiserror = "1.0"
+log = "0.4"
+env_logger = "0.11"
+
+# Math
+glam = { version = "0.28", features = ["serde"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+bincode = "1.3"
+serde_json = "1.0"
+
+# Data structures
+bytemuck = { version = "1.14", features = ["derive"] }
+memmap2 = "0.9"
+
+# Development
+criterion = "0.5"
+
+[package]
+name = "f1gp-port"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "f1gp_port"
+path = "src/lib.rs"
+
+[[bin]]
+name = "f1gp"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+log.workspace = true
+env_logger.workspace = true
+glam.workspace = true
+serde.workspace = true
+bincode.workspace = true
+serde_json.workspace = true
+bytemuck.workspace = true
+memmap2.workspace = true
+
+# Graphics (SDL2) - will add later
+# sdl2 = "0.37"
+
+[dev-dependencies]
+criterion.workspace = true

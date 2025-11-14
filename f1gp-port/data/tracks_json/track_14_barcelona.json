@@ -1,0 +1,29 @@
+{
+  "name": "Barcelona",
+  "length": 0.0,
+  "object_shapes": [],
+  "sections": [],
+  "racing_line": {
+    "points": []
+  },
+  "ai_behavior": {
+    "aggression": 0.5,
+    "consistency": 0.5,
+    "car_setup": {
+      "front_wing": 10,
+      "rear_wing": 10,
+      "gear_ratios": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24
+      ],
+      "brake_balance": 50
+    }
+  },
+  "pit_lane": [],
+  "cameras": [],
+  "checksum": 2748272386
+}
