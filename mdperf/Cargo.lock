@@ -116,32 +116,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
-name = "benchctl"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "assert_fs",
- "chrono",
- "clap",
- "core_affinity",
- "crossbeam-channel",
- "crossterm",
- "hdrhistogram",
- "libc",
- "num_cpus",
- "ratatui",
- "schemars",
- "serde",
- "serde_json",
- "sysinfo",
- "tempfile",
- "thiserror",
- "tokio",
- "tokio-util",
- "toml",
-]
-
-[[package]]
 name = "bitflags"
 version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -644,6 +618,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "234cf4f4a04dc1f57e24b96cc0cd600cf2af460d4161ac5ecdd0af8e1f3b2a38"
 dependencies = [
  "hashbrown 0.15.5",
+]
+
+[[package]]
+name = "mdperf"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "assert_fs",
+ "chrono",
+ "clap",
+ "core_affinity",
+ "crossbeam-channel",
+ "crossterm",
+ "hdrhistogram",
+ "libc",
+ "num_cpus",
+ "ratatui",
+ "schemars",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "toml",
 ]
 
 [[package]]

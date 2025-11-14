@@ -121,7 +121,7 @@ impl UiController {
         let (tx, rx) = mpsc::channel();
         let use_terminal = io::stdout().is_terminal();
         let handle = thread::Builder::new()
-            .name("benchctl-ui".into())
+            .name("mdperf-ui".into())
             .spawn(move || {
                 if use_terminal {
                     if let Err(err) = run_terminal_ui(rx) {
@@ -140,6 +140,13 @@ impl UiController {
 
     pub fn sender(&self) -> Option<UiSender> {
         self.sender.as_ref().map(|tx| tx.clone())
+    }
+
+    pub fn wait(&mut self) {
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+        self.sender.take();
     }
 
     pub fn shutdown(&mut self) {
@@ -409,7 +416,7 @@ impl UiApp {
         };
         let header_line = Line::from(vec![
             Span::styled(
-                "benchctl",
+                "mdperf",
                 Style::default()
                     .fg(self.theme.header_title_fg)
                     .add_modifier(Modifier::BOLD),
@@ -586,10 +593,25 @@ impl UiApp {
             return;
         }
 
-        // Simple text-based chart for now (will enhance with graphics later)
+        // Find max bandwidth for scaling
+        let max_bandwidth = self.memory_bandwidth_data.iter()
+            .flat_map(|p| [p.copy_gbps, p.scale_gbps, p.triad_gbps])
+            .fold(0.0f64, |acc, v| acc.max(v));
+
+        // Bar chart width (leave space for labels)
+        let chart_width = area.width.saturating_sub(20) as usize;
+        let bar_width = chart_width.saturating_sub(10);
+
         let mut lines = vec![];
-        lines.push(Line::from("Buffer Size → Bandwidth (GB/s)"));
-        lines.push(Line::from("─".repeat(area.width as usize - 4)));
+        lines.push(Line::from(vec![
+            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled("█ Copy", Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled("█ Scale", Style::default().fg(Color::Green)),
+            Span::raw("  "),
+            Span::styled("█ Triad", Style::default().fg(Color::Magenta)),
+        ]));
+        lines.push(Line::from("─".repeat(area.width.saturating_sub(4) as usize)));
 
         for point in &self.memory_bandwidth_data {
             let size_str = if point.buffer_size_kb < 1024 {
@@ -598,23 +620,43 @@ impl UiApp {
                 format!("{:>6} MB", point.buffer_size_kb / 1024)
             };
 
+            // Copy operation bar
+            let copy_bar_len = if max_bandwidth > 0.0 {
+                ((point.copy_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
             lines.push(Line::from(vec![
-                Span::raw(format!("{:>8}: ", size_str)),
-                Span::styled(
-                    format!("copy {:.1}", point.copy_gbps),
-                    Style::default().fg(Color::Cyan),
-                ),
-                Span::raw(" | "),
-                Span::styled(
-                    format!("scale {:.1}", point.scale_gbps),
-                    Style::default().fg(Color::Green),
-                ),
-                Span::raw(" | "),
-                Span::styled(
-                    format!("triad {:.1}", point.triad_gbps),
-                    Style::default().fg(Color::Magenta),
-                ),
+                Span::raw(format!("{:>8} ", size_str)),
+                Span::styled("█".repeat(copy_bar_len), Style::default().fg(Color::Cyan)),
+                Span::raw(format!(" {:.1} GB/s", point.copy_gbps)),
             ]));
+
+            // Scale operation bar
+            let scale_bar_len = if max_bandwidth > 0.0 {
+                ((point.scale_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled("█".repeat(scale_bar_len), Style::default().fg(Color::Green)),
+                Span::raw(format!(" {:.1} GB/s", point.scale_gbps)),
+            ]));
+
+            // Triad operation bar
+            let triad_bar_len = if max_bandwidth > 0.0 {
+                ((point.triad_gbps / max_bandwidth) * bar_width as f64) as usize
+            } else {
+                0
+            };
+            lines.push(Line::from(vec![
+                Span::raw("         "),
+                Span::styled("█".repeat(triad_bar_len), Style::default().fg(Color::Magenta)),
+                Span::raw(format!(" {:.1} GB/s", point.triad_gbps)),
+            ]));
+
+            lines.push(Line::from("")); // Spacing between buffer sizes
         }
 
         let chart = Paragraph::new(lines)
@@ -638,10 +680,23 @@ impl UiApp {
             return;
         }
 
-        // Simple text-based chart for now
+        // Find max GOPS for scaling
+        let max_gops = self.cpu_per_core_data.iter()
+            .map(|p| p.gops)
+            .fold(0.0f64, |acc, v| acc.max(v));
+
+        // Bar chart width (leave space for labels)
+        let chart_width = area.width.saturating_sub(20) as usize;
+        let bar_width = chart_width.saturating_sub(10);
+
         let mut lines = vec![];
-        lines.push(Line::from("Core ID → Performance (GOPS)"));
-        lines.push(Line::from("─".repeat(area.width as usize - 4)));
+        lines.push(Line::from(vec![
+            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
+            Span::styled("█ P-core", Style::default().fg(Color::Cyan)),
+            Span::raw("  "),
+            Span::styled("█ E-core", Style::default().fg(Color::Green)),
+        ]));
+        lines.push(Line::from("─".repeat(area.width.saturating_sub(4) as usize)));
 
         for point in &self.cpu_per_core_data {
             let core_type_str = match point.core_type {
@@ -656,14 +711,19 @@ impl UiApp {
                 CoreType::Unknown => Color::Gray,
             };
 
+            // Calculate bar length
+            let bar_len = if max_gops > 0.0 {
+                ((point.gops / max_gops) * bar_width as f64) as usize
+            } else {
+                0
+            };
+
             lines.push(Line::from(vec![
                 Span::raw(format!("Core {:>2} ", point.core_id)),
-                Span::styled(format!("[{}]", core_type_str), Style::default().fg(color)),
-                Span::raw(": "),
-                Span::styled(
-                    format!("{:.2} GOPS", point.gops),
-                    Style::default().fg(color),
-                ),
+                Span::styled(format!("[{}]", core_type_str), Style::default().fg(color).add_modifier(Modifier::BOLD)),
+                Span::raw(" "),
+                Span::styled("█".repeat(bar_len), Style::default().fg(color)),
+                Span::raw(format!(" {:.2} GOPS", point.gops)),
             ]));
         }
 

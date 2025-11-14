@@ -85,7 +85,9 @@ fn main() -> Result<()> {
     let orchestrator = Orchestrator::new(config.clone(), runtime.strategy());
     let report = orchestrator.run(&runtime, host, cli.dry_run, ui_sender)?;
     reporter.write_report(&report)?;
-    ui.shutdown();
+
+    // Wait for user to examine results and exit (by pressing 'q')
+    ui.wait();
 
     println!(
         "Generated report at {} ({} tests).",
