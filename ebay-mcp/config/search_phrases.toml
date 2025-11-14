@@ -1,0 +1,38 @@
+# Saved Search Phrases for eBay MCP Server
+version = "1.0"
+
+# Example search phrases (can be modified via MCP tools)
+
+[[phrases]]
+id = "vintage-cameras"
+name = "Vintage Film Cameras"
+query = "vintage 35mm film camera"
+tags = ["photography", "vintage", "cameras"]
+created_at = "2025-11-13T12:00:00Z"
+
+[phrases.filters]
+category = "Cameras & Photo"
+condition = ["Used", "For parts or not working"]
+price_min = 50.0
+price_max = 500.0
+sort_by = "PricePlusShippingLowest"
+
+[phrases.filters.shipping]
+free_shipping = false
+local_pickup = true
+international = false
+
+[[phrases]]
+id = "gaming-laptops"
+name = "High-End Gaming Laptops"
+query = "gaming laptop RTX 4080"
+tags = ["electronics", "computers", "gaming"]
+created_at = "2025-11-13T12:00:00Z"
+
+[phrases.filters]
+category = "Computers/Tablets & Networking"
+condition = ["New", "Open box"]
+price_min = 1500.0
+price_max = 3000.0
+buying_format = ["BuyItNow"]
+sort_by = "PriceLowest"

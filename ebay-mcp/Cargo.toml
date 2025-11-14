@@ -1,6 +1,64 @@
 [package]
 name = "ebay-mcp-server"
-version = "0.1.0"
-edition = "2024"
+version = "1.0.0"
+edition = "2021"
+authors = ["eBay MCP Team"]
+license = "MIT"
+description = "MCP server for intelligent eBay search with headless browser automation"
 
 [dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+futures = "0.3"
+
+# Headless browser
+headless_chrome = "1.0"
+
+# HTTP client (using rustls instead of OpenSSL)
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Database
+rusqlite = { version = "0.30", features = ["bundled"] }
+tokio-rusqlite = "0.5"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Async channels
+async-channel = "2.1"
+
+# File watching (hot reload)
+notify = "6.1"
+
+# Cryptography (for cache keys)
+sha2 = "0.10"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Random (for anti-detection)
+rand = "0.8"
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# CLI parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# URL encoding
+urlencoding = "2.1"
+
+[dev-dependencies]
+# Testing
+tokio-test = "0.4"
+tempfile = "3.8"

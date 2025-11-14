@@ -64,6 +64,15 @@ fn main() -> Result<()> {
     if let Some(patterns) = cli.disk_patterns.as_ref() {
         config.disk.patterns = patterns.iter().cloned().map(Into::into).collect();
     }
+    if let Some(addr) = cli.net_server_addr.as_ref() {
+        config.network.server_addr = addr.clone();
+    }
+    if let Some(kb) = cli.net_payload_kb {
+        config.network.payload_kb = kb;
+    }
+    if let Some(secs) = cli.net_duration_secs {
+        config.network.duration_secs = secs;
+    }
 
     config.validate()?;
 

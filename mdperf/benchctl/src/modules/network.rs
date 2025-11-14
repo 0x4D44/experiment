@@ -4,7 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result};
-use crossbeam_channel::{bounded, Sender};
+use crossbeam_channel::{Sender, bounded};
 use schemars::JsonSchema;
 use serde::Serialize;
 
@@ -37,13 +37,13 @@ impl BenchModule for NetworkModule {
             });
         }
 
-        let addr: SocketAddr = net_cfg.server_addr.parse()?;
+        let target_addr: SocketAddr = net_cfg.server_addr.parse()?;
         let payload = vec![0x42u8; (net_cfg.payload_kb * 1024) as usize];
         let duration = Duration::from_secs(net_cfg.duration_secs.max(1));
         ctx.emit_progress(format!("loopback {} bytes", payload.len()));
-        let (tx, handle) = spawn_server(addr)?;
-        let (bytes_sent, elapsed, warnings) = run_client(addr, &payload, duration)?;
-        drop(tx);
+        let (tx, handle, server_addr) = spawn_server(target_addr)?;
+        let (bytes_sent, elapsed, warnings) = run_client(server_addr, &payload, duration)?;
+        let _ = tx.send(());
         let _ = handle.join();
 
         let mb_s = (bytes_sent as f64 / 1_048_576f64) / elapsed.as_secs_f64().max(1e-6);
@@ -52,7 +52,7 @@ impl BenchModule for NetworkModule {
             name: self.name().into(),
             status: TestStatus::Succeeded,
             metrics: serde_json::to_value(NetworkMetrics {
-                addr: net_cfg.server_addr.clone(),
+                addr: server_addr.to_string(),
                 payload_kb: net_cfg.payload_kb,
                 duration_secs: elapsed.as_secs_f64(),
                 mb_per_sec: mb_s,
@@ -69,6 +69,32 @@ impl BenchModule for NetworkModule {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::BenchConfig;
+    use crate::runtime::RuntimeStrategy;
+    use chrono::Utc;
+    use std::sync::Arc;
+
+    #[test]
+    fn skips_when_disabled() {
+        let mut cfg = BenchConfig::default();
+        cfg.network.enabled = false;
+        let ctx = ModuleContext::new(
+            Arc::new(cfg),
+            RuntimeStrategy::Blocking,
+            Utc::now(),
+            "network",
+            None,
+        );
+        let mut module = NetworkModule::new();
+        let report = module.execute(&ctx).unwrap();
+        assert!(matches!(report.status, TestStatus::Skipped));
+        assert_eq!(report.resources, vec![ResourceKind::Network]);
+    }
+}
+
 #[derive(Debug, Serialize, JsonSchema)]
 struct NetworkMetrics {
     addr: String,
@@ -77,10 +103,11 @@ struct NetworkMetrics {
     mb_per_sec: f64,
 }
 
-fn spawn_server(addr: SocketAddr) -> Result<(Sender<()>, thread::JoinHandle<()>)> {
+fn spawn_server(addr: SocketAddr) -> Result<(Sender<()>, thread::JoinHandle<()>, SocketAddr)> {
     let listener = TcpListener::bind(addr)
         .with_context(|| format!("failed to bind network listener at {addr}"))?;
     listener.set_nonblocking(true)?;
+    let actual_addr = listener.local_addr()?;
     let (tx, rx) = bounded(1);
     let handle = thread::spawn(move || {
         while rx.try_recv().is_err() {
@@ -90,7 +117,9 @@ fn spawn_server(addr: SocketAddr) -> Result<(Sender<()>, thread::JoinHandle<()>)
                     match stream.read(&mut buf) {
                         Ok(0) | Err(_) => break,
                         Ok(n) => {
-                            let _ = stream.write_all(&buf[..n]);
+                            if stream.write_all(&buf[..n]).is_err() {
+                                break;
+                            }
                         }
                     }
                 }
@@ -99,7 +128,7 @@ fn spawn_server(addr: SocketAddr) -> Result<(Sender<()>, thread::JoinHandle<()>)
             }
         }
     });
-    Ok((tx, handle))
+    Ok((tx, handle, actual_addr))
 }
 
 fn run_client(
@@ -120,11 +149,11 @@ fn run_client(
     };
     stream.set_nodelay(true)?;
     let mut bytes_sent = 0u64;
+    let mut ack = vec![0u8; payload.len()];
     while start.elapsed() < duration {
         stream.write_all(payload)?;
         bytes_sent += payload.len() as u64;
-        let mut ack = [0u8; 1];
-        if let Err(_) = stream.read(&mut ack) {
+        if let Err(_) = stream.read_exact(&mut ack) {
             warnings.push("server ack failed".into());
             break;
         }

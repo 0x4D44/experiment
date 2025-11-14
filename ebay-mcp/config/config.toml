@@ -1,0 +1,49 @@
+# eBay MCP Server Configuration
+
+[server]
+name = "ebay-search-mcp"
+version = "1.0.0"
+log_level = "info"
+
+[browser]
+pool_min_size = 2
+pool_max_size = 5
+# executable_path = "/usr/bin/chromium"  # Optional, auto-detect if not set
+headless = true
+page_load_timeout = 30  # seconds
+element_timeout = 10    # seconds
+
+# User agent rotation for anti-detection
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+]
+
+# Random delays between actions (milliseconds)
+randomize_delay = true
+delay_min_ms = 500
+delay_max_ms = 2000
+
+[database]
+path = "./data/ebay_mcp.db"
+auto_migrate = true
+
+[cache]
+enabled = true
+ttl_seconds = 3600  # 1 hour
+max_memory_entries = 100
+enable_disk_cache = true
+disk_cache_dir = "./data/cache"
+
+[logging]
+level = "info"
+file = "./logs/ebay-mcp.log"
+max_file_size = "10MB"
+max_backups = 5
+
+[scraper]
+base_url = "https://www.ebay.com"
+max_retries = 3
+screenshot_on_error = true
+screenshot_dir = "./screenshots"

@@ -58,6 +58,18 @@ pub struct Cli {
     #[arg(long, value_delimiter = ',')]
     pub disk_patterns: Option<Vec<DiskPatternArg>>,
 
+    /// Override network server address (host:port)
+    #[arg(long)]
+    pub net_server_addr: Option<String>,
+
+    /// Override network payload size (KB)
+    #[arg(long)]
+    pub net_payload_kb: Option<u64>,
+
+    /// Override network test duration (seconds)
+    #[arg(long)]
+    pub net_duration_secs: Option<u64>,
+
     /// Execution mode (sequential or parallel)
     #[arg(long, value_enum)]
     pub mode: Option<ExecutionMode>,

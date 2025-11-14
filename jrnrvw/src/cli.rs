@@ -122,6 +122,19 @@ pub struct Cli {
     #[arg(long)]
     pub stats: bool,
 
+    // AI Summarization
+    /// Generate AI-powered summary of journal entries
+    #[arg(long)]
+    pub summarize: bool,
+
+    /// LLM to use for summarization: claude, codex
+    #[arg(long, value_enum, default_value = "claude", requires = "summarize")]
+    pub llm: LlmArg,
+
+    /// Save AI summary to file
+    #[arg(long, value_name = "FILE", requires = "summarize")]
+    pub summary_output: Option<PathBuf>,
+
     // Config
     /// Load configuration from file
     #[arg(long, value_name = "FILE")]
@@ -151,6 +164,12 @@ pub enum FormatArg {
     Json,
     Html,
     Csv,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum LlmArg {
+    Claude,
+    Codex,
 }
 
 fn parse_date(s: &str) -> Result<NaiveDate, String> {

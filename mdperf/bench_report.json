@@ -1,0 +1,127 @@
+{
+  "version": "0.1.0",
+  "generated_at": "2025-11-13T22:00:00.727864504Z",
+  "host": {
+    "hostname": "Forge",
+    "os_version": "Linux 24.04 Ubuntu",
+    "kernel_version": "6.6.87.2-microsoft-standard-WSL2",
+    "total_memory_mb": 65562736,
+    "cpu_physical_cores": 24,
+    "cpu_threads": 24
+  },
+  "execution": {
+    "mode": "sequential",
+    "runtime": "tokiomultithread",
+    "parallelized": false
+  },
+  "tests": [
+    {
+      "name": "cpu",
+      "status": "succeeded",
+      "metrics": {
+        "duration_secs": 30.0,
+        "operations": [
+          {
+            "approx_gops": 1.682956,
+            "iterations_per_sec": 1682956000.0,
+            "iterations_total": 50488680000,
+            "name": "int"
+          },
+          {
+            "approx_gops": 1.682956,
+            "iterations_per_sec": 1682956000.0,
+            "iterations_total": 50488680000,
+            "name": "float"
+          }
+        ],
+        "threads": 24
+      },
+      "summary": "1.68 GOPS float across 24 threads",
+      "warnings": [],
+      "resources": [
+        "cpu"
+      ]
+    },
+    {
+      "name": "memory",
+      "status": "succeeded",
+      "metrics": {
+        "buffer_mb": 512,
+        "duration_secs": 30.0,
+        "kernels": [
+          {
+            "mean_gbps": 36.5176724611162,
+            "name": "copy",
+            "p95_gbps": 38.335,
+            "p99_gbps": 38.911,
+            "samples": 1093
+          },
+          {
+            "mean_gbps": 18.70991800356506,
+            "name": "scale",
+            "p95_gbps": 19.423,
+            "p99_gbps": 19.631,
+            "samples": 561
+          },
+          {
+            "mean_gbps": 8.149349693251533,
+            "name": "triad",
+            "p95_gbps": 8.367,
+            "p99_gbps": 8.487,
+            "samples": 163
+          }
+        ]
+      },
+      "summary": "36.52 GB/s copy (buffer 512 MB)",
+      "warnings": [],
+      "resources": [
+        "memory"
+      ]
+    },
+    {
+      "name": "disk",
+      "status": "succeeded",
+      "metrics": {
+        "file_size_mb": 1024,
+        "fsync": false,
+        "patterns": [
+          {
+            "mb_per_sec": 2433.3139673383725,
+            "pattern": "seq_write"
+          },
+          {
+            "mb_per_sec": 9513.741610289773,
+            "pattern": "seq_read"
+          }
+        ],
+        "temp_file": "/tmp/.tmpJ05C2F/benchctl-disk-0.dat"
+      },
+      "summary": "seq_write 2433.3 MB/s, seq_read 9513.7 MB/s",
+      "warnings": [
+        "fsync disabled; throughput results may be optimistic"
+      ],
+      "resources": [
+        "disk"
+      ]
+    },
+    {
+      "name": "network",
+      "status": "succeeded",
+      "metrics": {
+        "addr": "127.0.0.1:4000",
+        "duration_secs": 30.000011979,
+        "mb_per_sec": 1294.7348996790213,
+        "payload_kb": 64
+      },
+      "summary": "loopback 1294.73 MB/s",
+      "warnings": [],
+      "resources": [
+        "network"
+      ]
+    }
+  ],
+  "warnings": [
+    "Runtime strategy in use: TokioMultiThread",
+    "Sequential mode: no resource conflicts detected."
+  ]
+}
