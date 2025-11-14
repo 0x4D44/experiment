@@ -26,3 +26,61 @@ pub fn parse_log_level(level: &str) -> Level {
         _ => Level::INFO,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_log_level_trace() {
+        let level = parse_log_level("trace");
+        assert_eq!(level, Level::TRACE);
+    }
+
+    #[test]
+    fn test_parse_log_level_debug() {
+        let level = parse_log_level("debug");
+        assert_eq!(level, Level::DEBUG);
+    }
+
+    #[test]
+    fn test_parse_log_level_info() {
+        let level = parse_log_level("info");
+        assert_eq!(level, Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_warn() {
+        let level = parse_log_level("warn");
+        assert_eq!(level, Level::WARN);
+    }
+
+    #[test]
+    fn test_parse_log_level_error() {
+        let level = parse_log_level("error");
+        assert_eq!(level, Level::ERROR);
+    }
+
+    #[test]
+    fn test_parse_log_level_default() {
+        // Invalid level should default to INFO
+        let level = parse_log_level("invalid");
+        assert_eq!(level, Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_case_insensitive() {
+        assert_eq!(parse_log_level("TRACE"), Level::TRACE);
+        assert_eq!(parse_log_level("Debug"), Level::DEBUG);
+        assert_eq!(parse_log_level("INFO"), Level::INFO);
+        assert_eq!(parse_log_level("WaRn"), Level::WARN);
+        assert_eq!(parse_log_level("ERROR"), Level::ERROR);
+    }
+
+    #[test]
+    fn test_parse_log_level_empty_string() {
+        // Empty string should default to INFO
+        let level = parse_log_level("");
+        assert_eq!(level, Level::INFO);
+    }
+}
