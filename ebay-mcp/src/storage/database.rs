@@ -407,4 +407,146 @@ mod tests {
         let history = db.get_search_history(1, 0).unwrap();
         assert_eq!(history[0].result_count, 0);
     }
+
+    #[test]
+    fn test_get_phrase_usage_new_phrase() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // New phrase should return 0 usage count
+        let count = db.get_phrase_usage("nonexistent_phrase").unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_get_phrase_usage_after_updates() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Update phrase 3 times
+        db.update_phrase_usage("tracked_phrase").unwrap();
+        db.update_phrase_usage("tracked_phrase").unwrap();
+        db.update_phrase_usage("tracked_phrase").unwrap();
+
+        // Should return 3
+        let count = db.get_phrase_usage("tracked_phrase").unwrap();
+        assert_eq!(count, 3);
+    }
+
+    #[test]
+    fn test_get_phrase_usage_multiple_phrases() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Update different phrases
+        db.update_phrase_usage("phrase_a").unwrap();
+        db.update_phrase_usage("phrase_a").unwrap();
+        db.update_phrase_usage("phrase_b").unwrap();
+
+        // Verify separate counts
+        assert_eq!(db.get_phrase_usage("phrase_a").unwrap(), 2);
+        assert_eq!(db.get_phrase_usage("phrase_b").unwrap(), 1);
+        assert_eq!(db.get_phrase_usage("phrase_c").unwrap(), 0);
+    }
+
+    #[test]
+    fn test_cleanup_expired_cache_empty() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // No cache entries, should delete 0
+        let deleted = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted, 0);
+    }
+
+    #[test]
+    fn test_cleanup_expired_cache_with_entries() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Insert some expired cache entries
+        db.conn.execute(
+            "INSERT INTO cache_entries (cache_key, expires_at, hit_count)
+             VALUES ('key1', datetime('now', '-1 hour'), 0),
+                    ('key2', datetime('now', '-1 day'), 0),
+                    ('key3', datetime('now', '+1 hour'), 0)",
+            [],
+        ).unwrap();
+
+        // Should delete 2 expired entries
+        let deleted = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted, 2);
+
+        // Running again should delete 0
+        let deleted_again = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted_again, 0);
+    }
+
+    #[test]
+    fn test_cleanup_expired_cache_multiple_runs() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Insert expired entry
+        db.conn.execute(
+            "INSERT INTO cache_entries (cache_key, expires_at, hit_count)
+             VALUES ('old_key', datetime('now', '-2 hours'), 5)",
+            [],
+        ).unwrap();
+
+        // First cleanup should delete it
+        let deleted1 = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted1, 1);
+
+        // Second cleanup should find nothing
+        let deleted2 = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted2, 0);
+    }
+
+    #[test]
+    fn test_database_schema_tables_created() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Verify tables exist by querying sqlite_master
+        let table_count: i64 = db.conn.query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name IN ('search_history', 'phrase_metadata', 'cache_entries', 'metrics')",
+            [],
+            |row| row.get(0),
+        ).unwrap();
+
+        assert_eq!(table_count, 4);
+    }
+
+    #[test]
+    fn test_search_history_ordering() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Manually insert with different timestamps to test ordering
+        // SQLite's CURRENT_TIMESTAMP has only second precision, so we manually set timestamps
+        db.conn.execute(
+            "INSERT INTO search_history (query, result_count, searched_at, duration_ms, success)
+             VALUES ('first', 0, datetime('now', '-2 minutes'), 100, 1)",
+            [],
+        ).unwrap();
+
+        db.conn.execute(
+            "INSERT INTO search_history (query, result_count, searched_at, duration_ms, success)
+             VALUES ('second', 0, datetime('now', '-1 minute'), 100, 1)",
+            [],
+        ).unwrap();
+
+        db.conn.execute(
+            "INSERT INTO search_history (query, result_count, searched_at, duration_ms, success)
+             VALUES ('third', 0, datetime('now'), 100, 1)",
+            [],
+        ).unwrap();
+
+        // Get history - should be in reverse chronological order (most recent first)
+        let history = db.get_search_history(3, 0).unwrap();
+        assert_eq!(history[0].query, "third");
+        assert_eq!(history[1].query, "second");
+        assert_eq!(history[2].query, "first");
+    }
 }
