@@ -115,7 +115,7 @@ pub trait Renderer {
 /// SDL2-based renderer implementation
 pub struct SdlRenderer {
     canvas: Canvas<Window>,
-    event_pump: EventPump,
+    pub event_pump: EventPump,
 }
 
 impl SdlRenderer {
