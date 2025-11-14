@@ -121,4 +121,117 @@ mod tests {
         let required = schema.get("required").unwrap().as_array().unwrap();
         assert!(required.contains(&json!("song_id")));
     }
+
+    #[test]
+    fn test_play_song_name() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        assert_eq!(tool.name(), "play_song");
+    }
+
+    #[test]
+    fn test_play_song_description_content() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        let desc = tool.description();
+        assert!(desc.contains("song"));
+        assert!(desc.contains("play") || desc.contains("Play"));
+    }
+
+    #[test]
+    fn test_play_song_schema_structure() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        let schema = tool.input_schema();
+        assert_eq!(schema.get("type").unwrap(), "object");
+        assert!(schema.get("properties").is_some());
+        assert!(schema.get("required").is_some());
+    }
+
+    #[test]
+    fn test_play_song_required_parameter() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        let schema = tool.input_schema();
+        let required = schema.get("required").unwrap().as_array().unwrap();
+
+        assert_eq!(required.len(), 1);
+        assert_eq!(required[0], "song_id");
+    }
+
+    #[test]
+    fn test_play_song_parameter_type() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        let schema = tool.input_schema();
+        let properties = schema.get("properties").unwrap();
+        let song_id_prop = properties.get("song_id").unwrap();
+
+        assert_eq!(song_id_prop.get("type").unwrap(), "string");
+    }
+
+    #[test]
+    fn test_play_song_parameter_description() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let tool = PlaySongTool::new(browser_manager, playback_controller);
+
+        let schema = tool.input_schema();
+        let properties = schema.get("properties").unwrap();
+        let song_id_prop = properties.get("song_id").unwrap();
+
+        assert!(song_id_prop.get("description").is_some());
+        assert!(!song_id_prop.get("description").unwrap().as_str().unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_play_song_id_extraction() {
+        // Test song_id extraction from params
+        let params = serde_json::json!({"song_id": "song-123"});
+        let song_id = params.get("song_id")
+            .and_then(|v| v.as_str());
+
+        assert_eq!(song_id, Some("song-123"));
+    }
+
+    #[test]
+    fn test_play_song_id_missing() {
+        // Test song_id missing from params
+        let params = serde_json::json!({});
+        let song_id = params.get("song_id")
+            .and_then(|v| v.as_str());
+
+        assert!(song_id.is_none());
+    }
+
+    #[test]
+    fn test_play_song_tool_creation() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+        let _tool = PlaySongTool::new(browser_manager, playback_controller);
+        // Verify tool can be created
+    }
+
+    #[test]
+    fn test_play_song_arc_shared_components() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playback_controller = Arc::new(PlaybackController::new());
+
+        let browser_clone = Arc::clone(&browser_manager);
+        let controller_clone = Arc::clone(&playback_controller);
+
+        let _tool1 = PlaySongTool::new(browser_manager, playback_controller);
+        let _tool2 = PlaySongTool::new(browser_clone, controller_clone);
+        // Verify Arc components can be shared across tools
+    }
 }

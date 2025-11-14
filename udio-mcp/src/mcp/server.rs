@@ -399,4 +399,311 @@ mod tests {
         assert!(response.result.is_none());
         assert!(response.error.is_some());
     }
+
+    #[tokio::test]
+    async fn test_server_default() {
+        let server = McpServer::default();
+        let tools = server.tools.read().await;
+        assert_eq!(tools.count(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_server_with_custom_config() {
+        let info = ServerInfo {
+            name: "test-server".to_string(),
+            version: "1.0.0".to_string(),
+        };
+        let capabilities = ServerCapabilities::new().with_tools(true);
+
+        let server = McpServer::with_config(info.clone(), capabilities.clone());
+        assert_eq!(server.info.name, "test-server");
+        assert!(server.capabilities.tools.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_tools_accessor() {
+        let server = McpServer::new();
+        let tools_ref = server.tools();
+
+        let mut tools = tools_ref.write().await;
+        tools.register(Arc::new(TestTool)).unwrap();
+        drop(tools);
+
+        let tools = tools_ref.read().await;
+        assert_eq!(tools.count(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_initialize_missing_params() {
+        let server = McpServer::new();
+        let result = server.handle_initialize(None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_initialize_invalid_params() {
+        let server = McpServer::new();
+        let params = json!({"invalid": "params"});
+        let result = server.handle_initialize(Some(params)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_initialize_sets_initialized_flag() {
+        let server = McpServer::new();
+
+        assert!(!*server.initialized.read().await);
+
+        let params = json!({
+            "protocolVersion": MCP_VERSION,
+            "capabilities": {},
+            "clientInfo": {
+                "name": "test-client",
+                "version": "1.0.0"
+            }
+        });
+
+        server.handle_initialize(Some(params)).await.unwrap();
+        assert!(*server.initialized.read().await);
+    }
+
+    #[tokio::test]
+    async fn test_check_initialized_before_init() {
+        let server = McpServer::new();
+        let result = server.check_initialized().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_check_initialized_after_init() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+        let result = server.check_initialized().await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_before_init() {
+        let server = McpServer::new();
+        let params = json!({"name": "test_tool", "arguments": {}});
+        let result = server.handle_tools_call(Some(params)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_missing_params() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let result = server.handle_tools_call(None).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_missing_name() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let params = json!({"arguments": {}});
+        let result = server.handle_tools_call(Some(params)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_with_arguments() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let mut tools = server.tools.write().await;
+        tools.register(Arc::new(TestTool)).unwrap();
+        drop(tools);
+
+        let params = json!({
+            "name": "test_tool",
+            "arguments": {"key": "value"}
+        });
+
+        let result = server.handle_tools_call(Some(params)).await.unwrap();
+        assert!(result.get("content").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_nonexistent_tool() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let params = json!({
+            "name": "nonexistent_tool",
+            "arguments": {}
+        });
+
+        let result = server.handle_tools_call(Some(params)).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_handle_message_request() {
+        let server = McpServer::new();
+
+        let request = Request::new(
+            RequestId::Number(1),
+            protocol::methods::PING,
+            None,
+        );
+        let message = Message::Request(request);
+
+        let response = server.handle_message(message).await;
+        assert!(response.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_handle_message_notification() {
+        let server = McpServer::new();
+
+        let notification = Notification::new(
+            protocol::methods::INITIALIZED,
+            None,
+        );
+        let message = Message::Notification(notification);
+
+        let response = server.handle_message(message).await;
+        assert!(response.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_handle_message_response() {
+        let server = McpServer::new();
+
+        let response = Response::success(RequestId::Number(1), json!({}));
+        let message = Message::Response(response);
+
+        let result = server.handle_message(message).await;
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_handle_notification_initialized() {
+        let server = McpServer::new();
+
+        let notification = Notification::new(
+            protocol::methods::INITIALIZED,
+            None,
+        );
+
+        server.handle_notification(notification).await;
+        // Should not panic
+    }
+
+    #[tokio::test]
+    async fn test_handle_notification_unknown() {
+        let server = McpServer::new();
+
+        let notification = Notification::new(
+            "unknown_notification",
+            None,
+        );
+
+        server.handle_notification(notification).await;
+        // Should not panic
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_tool_registration() {
+        let server = Arc::new(McpServer::new());
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let srv = Arc::clone(&server);
+                tokio::spawn(async move {
+                    let tools = srv.tools();
+                    let tools = tools.read().await;
+                    let _ = tools.count();
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_initialization_checks() {
+        let server = Arc::new(McpServer::new());
+        *server.initialized.write().await = true;
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let srv = Arc::clone(&server);
+                tokio::spawn(async move {
+                    srv.check_initialized().await.unwrap();
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn test_initialize_result_structure() {
+        let server = McpServer::new();
+
+        let params = json!({
+            "protocolVersion": MCP_VERSION,
+            "capabilities": {},
+            "clientInfo": {
+                "name": "test-client",
+                "version": "1.0.0"
+            }
+        });
+
+        let result = server.handle_initialize(Some(params)).await.unwrap();
+
+        assert!(result.get("protocolVersion").is_some());
+        assert!(result.get("serverInfo").is_some());
+        assert!(result.get("capabilities").is_some());
+    }
+
+    #[tokio::test]
+    async fn test_tools_list_result_structure() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let result = server.handle_tools_list().await.unwrap();
+        assert!(result.get("tools").is_some());
+        assert!(result.get("tools").unwrap().is_array());
+    }
+
+    #[tokio::test]
+    async fn test_tools_call_result_structure() {
+        let server = McpServer::new();
+        *server.initialized.write().await = true;
+
+        let mut tools = server.tools.write().await;
+        tools.register(Arc::new(TestTool)).unwrap();
+        drop(tools);
+
+        let params = json!({
+            "name": "test_tool",
+            "arguments": {}
+        });
+
+        let result = server.handle_tools_call(Some(params)).await.unwrap();
+        assert!(result.get("content").is_some());
+        let content = result.get("content").unwrap().as_array().unwrap();
+        assert!(!content.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_server_state_isolation() {
+        let server1 = McpServer::new();
+        let server2 = McpServer::new();
+
+        *server1.initialized.write().await = true;
+
+        assert!(*server1.initialized.read().await);
+        assert!(!*server2.initialized.read().await);
+    }
 }

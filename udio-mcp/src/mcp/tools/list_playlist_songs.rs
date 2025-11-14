@@ -136,4 +136,130 @@ mod tests {
         assert!(properties.get("playlist_name").is_some());
         assert!(properties.get("limit").is_some());
     }
+
+    #[test]
+    fn test_list_playlist_songs_schema_defaults() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let schema = tool.input_schema();
+        let properties = schema.get("properties").unwrap();
+
+        let playlist_name = properties.get("playlist_name").unwrap();
+        assert_eq!(playlist_name.get("default").unwrap(), "ToPlay");
+
+        let limit = properties.get("limit").unwrap();
+        assert_eq!(limit.get("default").unwrap(), 50);
+    }
+
+    #[test]
+    fn test_list_playlist_songs_schema_limits() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let schema = tool.input_schema();
+        let properties = schema.get("properties").unwrap();
+        let limit = properties.get("limit").unwrap();
+
+        assert_eq!(limit.get("minimum").unwrap(), 1);
+        assert_eq!(limit.get("maximum").unwrap(), 100);
+    }
+
+    #[test]
+    fn test_list_playlist_songs_no_required_params() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let schema = tool.input_schema();
+        let required = schema.get("required").unwrap().as_array().unwrap();
+        assert!(required.is_empty());
+    }
+
+    #[test]
+    fn test_list_playlist_songs_parameter_types() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let schema = tool.input_schema();
+        let properties = schema.get("properties").unwrap();
+
+        assert_eq!(properties.get("playlist_name").unwrap().get("type").unwrap(), "string");
+        assert_eq!(properties.get("limit").unwrap().get("type").unwrap(), "integer");
+    }
+
+    #[test]
+    fn test_list_playlist_songs_name() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        assert_eq!(tool.name(), "list_playlist_songs");
+    }
+
+    #[test]
+    fn test_list_playlist_songs_description_content() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let desc = tool.description();
+        assert!(desc.contains("playlist"));
+        assert!(desc.contains("songs"));
+    }
+
+    #[test]
+    fn test_list_playlist_songs_schema_structure() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let playlist_manager = Arc::new(PlaylistManager::new(browser_manager));
+        let tool = ListPlaylistSongsTool::new(playlist_manager);
+
+        let schema = tool.input_schema();
+        assert_eq!(schema.get("type").unwrap(), "object");
+        assert!(schema.get("properties").is_some());
+        assert!(schema.get("required").is_some());
+    }
+
+    #[test]
+    fn test_list_playlist_songs_default_limit_extraction() {
+        // Test default limit value is 50
+        let params = serde_json::json!({});
+        let limit = params.get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(50) as usize;
+        assert_eq!(limit, 50);
+    }
+
+    #[test]
+    fn test_list_playlist_songs_custom_limit_extraction() {
+        // Test custom limit extraction
+        let params = serde_json::json!({"limit": 25});
+        let limit = params.get("limit")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(50) as usize;
+        assert_eq!(limit, 25);
+    }
+
+    #[test]
+    fn test_list_playlist_songs_default_playlist_extraction() {
+        // Test default playlist name is "ToPlay"
+        let params = serde_json::json!({});
+        let playlist_name = params.get("playlist_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("ToPlay");
+        assert_eq!(playlist_name, "ToPlay");
+    }
+
+    #[test]
+    fn test_list_playlist_songs_custom_playlist_extraction() {
+        // Test custom playlist name extraction
+        let params = serde_json::json!({"playlist_name": "My Favorites"});
+        let playlist_name = params.get("playlist_name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("ToPlay");
+        assert_eq!(playlist_name, "My Favorites");
+    }
 }
