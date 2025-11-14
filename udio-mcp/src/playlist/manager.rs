@@ -112,7 +112,7 @@ impl PlaylistManager {
 
         // Navigate to playlists page
         let playlists_url = format!("{}/playlists", self.base_url);
-        let page = self.browser_manager.new_page(&playlists_url).await
+        let _page = self.browser_manager.new_page(&playlists_url).await
             .context("Failed to create browser page")?;
 
         tracing::debug!("Navigated to playlists page: {}", playlists_url);
