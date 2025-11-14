@@ -30,7 +30,7 @@ impl BenchRuntime {
             RuntimeStrategy::TokioMultiThread => Some(
                 tokio::runtime::Builder::new_multi_thread()
                     .enable_all()
-                    .thread_name("benchctl")
+                    .thread_name("mdperf")
                     .build()
                     .context("failed to initialize tokio runtime")?,
             ),

@@ -10,6 +10,8 @@ use crate::modules::{BenchModule, ModuleContext, ResourceKind};
 use crate::reporter::{TestReport, TestStatus};
 use crate::ui::{ChartDataPoint, MemoryBandwidthPoint, UiMessage};
 
+type ProgressCallback = dyn Fn(&str, f64) + Send + Sync;
+
 pub struct MemoryModule;
 
 impl MemoryModule {
@@ -59,15 +61,14 @@ impl BenchModule for MemoryModule {
         let run_secs = general.run_secs.max(1);
         let duration = Duration::from_secs(run_secs);
         ctx.emit_progress("measuring STREAM kernels");
-        let progress_hook: Option<Box<dyn Fn(&str, f64) + Send + Sync>> =
-            ctx.progress_callback().map(|cb| {
-                Box::new(move |kernel: &str, gbps: f64| {
-                    cb(format!("{kernel} ~{gbps:.2} GB/s live"));
-                }) as Box<dyn Fn(&str, f64) + Send + Sync>
-            });
+        let progress_hook: Option<Box<ProgressCallback>> = ctx.progress_callback().map(|cb| {
+            Box::new(move |kernel: &str, gbps: f64| {
+                cb(format!("{kernel} ~{gbps:.2} GB/s live"));
+            }) as Box<ProgressCallback>
+        });
         let progress_ref = progress_hook
             .as_ref()
-            .map(|cb| cb.as_ref() as &(dyn Fn(&str, f64) + Send + Sync));
+            .map(|cb| cb.as_ref() as &ProgressCallback);
 
         let kernel_metrics = run_kernels(&mut a, &mut b, &mut c, duration, false, progress_ref)?;
 
@@ -113,12 +114,12 @@ fn run_kernels(
     c: &mut [f64],
     duration: Duration,
     warmup_only: bool,
-    progress: Option<&(dyn Fn(&str, f64) + Send + Sync)>,
+    progress: Option<&ProgressCallback>,
 ) -> Result<Vec<MemoryKernelMetrics>> {
     let mut results = Vec::new();
     let mut histogram = Histogram::<u64>::new_with_max(HIST_MAX_VALUE, HIST_SIGFIG)?;
 
-    let buffer_bytes = a.len() * std::mem::size_of::<f64>();
+    let buffer_bytes = std::mem::size_of_val(a);
     let kernels = [MemoryKernel::Copy, MemoryKernel::Scale, MemoryKernel::Triad];
 
     for kernel in kernels {
@@ -142,6 +143,7 @@ fn run_kernels(
     Ok(results)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn execute_kernel(
     kernel: MemoryKernel,
     a: &mut [f64],
@@ -150,7 +152,7 @@ fn execute_kernel(
     duration: Duration,
     buffer_bytes: usize,
     histogram: &mut Histogram<u64>,
-    progress: Option<&(dyn Fn(&str, f64) + Send + Sync)>,
+    progress: Option<&ProgressCallback>,
 ) {
     let mut samples = 0u64;
     let start = Instant::now();
@@ -165,17 +167,15 @@ fn execute_kernel(
         }
         let iter_duration = iter_start.elapsed();
         let gbps = record_throughput(histogram, kernel, buffer_bytes, iter_duration);
-        if let Some(cb) = progress {
-            if samples % MEMORY_PROGRESS_EVERY == 0 {
-                cb(kernel.label(), gbps);
-            }
+        if let Some(cb) = progress
+            && samples.is_multiple_of(MEMORY_PROGRESS_EVERY)
+        {
+            cb(kernel.label(), gbps);
         }
         samples += 1;
 
-        if duration.is_zero() || Instant::now() >= deadline {
-            if samples > 0 {
-                break;
-            }
+        if (duration.is_zero() || Instant::now() >= deadline) && samples > 0 {
+            break;
         }
     }
 }
@@ -256,7 +256,7 @@ struct MemoryKernelMetrics {
 
 impl MemoryKernelMetrics {
     fn from_hist(kernel: MemoryKernel, hist: &Histogram<u64>) -> Self {
-        let samples = hist.len() as u64;
+        let samples = hist.len();
         let scale = 1000.0;
         let (mean, p95, p99) = if samples == 0 {
             (0.0, 0.0, 0.0)
@@ -328,19 +328,23 @@ fn run_cache_hierarchy_test(ctx: &ModuleContext) {
         let mut c = vec![0.0f64; len];
 
         // Run kernels and collect metrics
-        if let Ok(kernel_metrics) = run_kernels(&mut a, &mut b, &mut c, test_duration, false, None) {
+        if let Ok(kernel_metrics) = run_kernels(&mut a, &mut b, &mut c, test_duration, false, None)
+        {
             // Extract bandwidth values
-            let copy_gbps = kernel_metrics.iter()
+            let copy_gbps = kernel_metrics
+                .iter()
                 .find(|k| k.name == "copy")
                 .map(|k| k.mean_gbps)
                 .unwrap_or(0.0);
 
-            let scale_gbps = kernel_metrics.iter()
+            let scale_gbps = kernel_metrics
+                .iter()
                 .find(|k| k.name == "scale")
                 .map(|k| k.mean_gbps)
                 .unwrap_or(0.0);
 
-            let triad_gbps = kernel_metrics.iter()
+            let triad_gbps = kernel_metrics
+                .iter()
                 .find(|k| k.name == "triad")
                 .map(|k| k.mean_gbps)
                 .unwrap_or(0.0);
@@ -354,7 +358,8 @@ fn run_cache_hierarchy_test(ctx: &ModuleContext) {
             };
 
             // Send progress message
-            let message = format!("cache test: {} → copy {:.1} GB/s",
+            let message = format!(
+                "cache test: {} → copy {:.1} GB/s",
                 if buffer_kb < 1024 {
                     format!("{} KB", buffer_kb)
                 } else {

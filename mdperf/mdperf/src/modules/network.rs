@@ -153,7 +153,7 @@ fn run_client(
     while start.elapsed() < duration {
         stream.write_all(payload)?;
         bytes_sent += payload.len() as u64;
-        if let Err(_) = stream.read_exact(&mut ack) {
+        if stream.read_exact(&mut ack).is_err() {
             warnings.push("server ack failed".into());
             break;
         }

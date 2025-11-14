@@ -8,7 +8,7 @@ use crate::{
 };
 
 #[derive(Debug, Parser)]
-#[command(name = "benchctl", about = "Rust benchmarking orchestrator")]
+#[command(name = "mdperf", about = "Rust benchmarking orchestrator")]
 pub struct Cli {
     /// Optional path to a TOML configuration file
     #[arg(short, long)]

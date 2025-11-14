@@ -190,10 +190,10 @@ mod tests {
     fn seq_write_and_read_report_positive_throughput() {
         let dir = tempdir().unwrap();
         let file = dir.path().join("disk-test.bin");
-        let mb_s = run_seq_write(&file, 1 * 1024 * 1024, false).unwrap();
+        let mb_s = run_seq_write(&file, 1024 * 1024, false).unwrap();
         assert!(mb_s > 0.0);
         let mut warnings = Vec::new();
-        let read_mb_s = run_seq_read(&file, 1 * 1024 * 1024, &mut warnings).unwrap();
+        let read_mb_s = run_seq_read(&file, 1024 * 1024, &mut warnings).unwrap();
         assert!(read_mb_s > 0.0);
         assert!(warnings.is_empty());
     }
