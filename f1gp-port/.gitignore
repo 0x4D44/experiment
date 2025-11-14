@@ -1,0 +1,32 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Game assets (don't commit original game files)
+assets/original/
+*.iso
+*.ISO
+
+# Logs
+*.log
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build artifacts
+/dist/
+/build/
+
+# Benchmarks
+/benches/results/
