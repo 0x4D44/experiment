@@ -18,4 +18,4 @@ pub mod utils;
 
 // Re-exports for convenience
 pub use data::*;
-pub use physics::*;
+// pub use physics::*;  // Commented out until physics module is implemented
