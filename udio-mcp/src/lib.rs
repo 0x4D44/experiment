@@ -14,6 +14,10 @@ pub mod playback;  // Stage 5: Playback control
 // pub mod config;    // To be implemented
 // pub mod utils;     // To be implemented
 
+/// Testing utilities and mocks (available in all builds for testing)
+#[cfg(test)]
+pub mod testing;
+
 /// Re-export commonly used types
 pub mod prelude {
     pub use crate::mcp::capabilities::{ServerCapabilities, ServerInfo};
