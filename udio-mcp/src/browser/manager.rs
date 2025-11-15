@@ -94,20 +94,6 @@ impl BrowserManager {
         Ok(())
     }
 
-    /// Get a reference to the browser if it's running
-    /// Returns None if the browser hasn't been launched yet
-    pub async fn get_browser(&self) -> Option<Browser> {
-        let browser_lock = self.browser.read().await;
-        // Browser doesn't implement Clone, so we can't return a clone
-        // We need to work with references or return a new handle
-        // For now, we'll just check if it exists
-        browser_lock.as_ref().map(|_| {
-            // TODO: This is a limitation - Browser doesn't implement Clone
-            // We'll need to redesign this to work with Pages directly
-            todo!("Browser handle access needs redesign")
-        })
-    }
-
     /// Check if browser is launched
     pub async fn is_launched(&self) -> bool {
         let browser_lock = self.browser.read().await;
