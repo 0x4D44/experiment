@@ -1,11 +1,22 @@
 // Udio MCP Server - Main entry point
 // This server implements the Model Context Protocol for Udio music control
 
+use std::sync::Arc;
 use tracing::info;
-use udio_mcp_server::mcp::{
-    capabilities::ServerCapabilities,
-    server::McpServer,
-    transport::stdio::StdioTransport,
+use udio_mcp_server::{
+    browser::BrowserManager,
+    playback::PlaybackController,
+    playlist::PlaylistManager,
+    mcp::{
+        capabilities::ServerCapabilities,
+        server::McpServer,
+        transport::stdio::StdioTransport,
+        tools::{
+            ControlPlaybackTool,
+            ListPlaylistSongsTool,
+            PlaySongTool,
+        },
+    },
 };
 
 #[tokio::main]
@@ -21,6 +32,16 @@ async fn main() -> anyhow::Result<()> {
     info!("Udio MCP Server v{}", env!("CARGO_PKG_VERSION"));
     info!("Starting server...");
 
+    // Create core components
+    info!("Initializing browser manager...");
+    let browser_manager = Arc::new(BrowserManager::default());
+
+    info!("Initializing playback controller...");
+    let playback_controller = Arc::new(PlaybackController::new());
+
+    info!("Initializing playlist manager...");
+    let playlist_manager = Arc::new(PlaylistManager::new(browser_manager.clone()));
+
     // Create server with capabilities
     let capabilities = ServerCapabilities::new()
         .with_tools(false) // Tools can change dynamically
@@ -31,9 +52,37 @@ async fn main() -> anyhow::Result<()> {
         capabilities,
     );
 
-    // Get tool registry and register example tools
-    // TODO: Register actual Udio tools when implemented
-    info!("Tool registry ready (0 tools registered)");
+    // Get tool registry and register Udio tools
+    let tools = server.tools();
+    let mut tools_lock = tools.write().await;
+
+    info!("Registering MCP tools...");
+
+    // Register list_playlist_songs tool
+    let list_playlist_tool = Arc::new(ListPlaylistSongsTool::new(playlist_manager.clone()));
+    tools_lock.register(list_playlist_tool)?;
+    info!("  ✓ list_playlist_songs");
+
+    // Register play_song tool
+    let play_song_tool = Arc::new(PlaySongTool::new(
+        browser_manager.clone(),
+        playback_controller.clone(),
+    ));
+    tools_lock.register(play_song_tool)?;
+    info!("  ✓ play_song");
+
+    // Register control_playback tool
+    let control_playback_tool = Arc::new(ControlPlaybackTool::new(
+        browser_manager.clone(),
+        playback_controller.clone(),
+    ));
+    tools_lock.register(control_playback_tool)?;
+    info!("  ✓ control_playback");
+
+    // Release the write lock
+    drop(tools_lock);
+
+    info!("Tool registry ready (3 tools registered)");
 
     // Create stdio transport
     let transport = StdioTransport::new();
