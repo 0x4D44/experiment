@@ -34,23 +34,28 @@ impl Vertex {
     }
 }
 
-/// Uniforms for camera transformation
+/// Uniforms for camera transformation (Stage 6.5: added camera position)
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 struct CameraUniforms {
     view_proj: [[f32; 4]; 4],
+    camera_pos: [f32; 3],
+    _padding: f32,
 }
 
 impl CameraUniforms {
     fn new() -> Self {
         Self {
             view_proj: Mat4::IDENTITY.to_cols_array_2d(),
+            camera_pos: [0.0, 0.0, 0.0],
+            _padding: 0.0,
         }
     }
 
     fn update(&mut self, camera: &Camera3D) {
         let view_proj = camera.projection_matrix() * camera.view_matrix();
         self.view_proj = view_proj.to_cols_array_2d();
+        self.camera_pos = camera.position().to_array();
     }
 }
 
@@ -129,6 +134,11 @@ pub struct Renderer3D {
     car_index_count: u32,
     model_buffer: wgpu::Buffer,
     model_bind_group_layout: wgpu::BindGroupLayout,
+
+    // Skybox rendering (Stage 6.5)
+    skybox_pipeline: wgpu::RenderPipeline,
+    skybox_vertex_buffer: wgpu::Buffer,
+    skybox_vertex_count: u32,
 }
 
 impl Renderer3D {
@@ -463,6 +473,119 @@ impl Renderer3D {
 
         let car_index_count = car_model.indices.len() as u32;
 
+        // Create skybox (Stage 6.5)
+        let skybox_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Skybox Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/skybox.wgsl").into()),
+        });
+
+        let skybox_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Skybox Pipeline"),
+            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Skybox Pipeline Layout"),
+                bind_group_layouts: &[&camera_bind_group_layout],
+                push_constant_ranges: &[],
+            })),
+            vertex: wgpu::VertexState {
+                module: &skybox_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: (std::mem::size_of::<f32>() * 3) as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float32x3],
+                }],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &skybox_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: false, // Don't write to depth buffer
+                depth_compare: wgpu::CompareFunction::LessEqual, // Draw at far plane
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        // Create skybox cube vertices (large cube)
+        let sky_size = 500.0;
+        let skybox_vertices: Vec<[f32; 3]> = vec![
+            // Front face
+            [-sky_size, -sky_size, -sky_size],
+            [sky_size, -sky_size, -sky_size],
+            [sky_size, sky_size, -sky_size],
+            [-sky_size, -sky_size, -sky_size],
+            [sky_size, sky_size, -sky_size],
+            [-sky_size, sky_size, -sky_size],
+            // Back face
+            [sky_size, -sky_size, sky_size],
+            [-sky_size, -sky_size, sky_size],
+            [-sky_size, sky_size, sky_size],
+            [sky_size, -sky_size, sky_size],
+            [-sky_size, sky_size, sky_size],
+            [sky_size, sky_size, sky_size],
+            // Left face
+            [-sky_size, -sky_size, sky_size],
+            [-sky_size, -sky_size, -sky_size],
+            [-sky_size, sky_size, -sky_size],
+            [-sky_size, -sky_size, sky_size],
+            [-sky_size, sky_size, -sky_size],
+            [-sky_size, sky_size, sky_size],
+            // Right face
+            [sky_size, -sky_size, -sky_size],
+            [sky_size, -sky_size, sky_size],
+            [sky_size, sky_size, sky_size],
+            [sky_size, -sky_size, -sky_size],
+            [sky_size, sky_size, sky_size],
+            [sky_size, sky_size, -sky_size],
+            // Top face
+            [-sky_size, sky_size, -sky_size],
+            [sky_size, sky_size, -sky_size],
+            [sky_size, sky_size, sky_size],
+            [-sky_size, sky_size, -sky_size],
+            [sky_size, sky_size, sky_size],
+            [-sky_size, sky_size, sky_size],
+            // Bottom face
+            [-sky_size, -sky_size, sky_size],
+            [sky_size, -sky_size, sky_size],
+            [sky_size, -sky_size, -sky_size],
+            [-sky_size, -sky_size, sky_size],
+            [sky_size, -sky_size, -sky_size],
+            [-sky_size, -sky_size, -sky_size],
+        ];
+
+        let skybox_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Skybox Vertex Buffer"),
+            contents: bytemuck::cast_slice(&skybox_vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let skybox_vertex_count = skybox_vertices.len() as u32;
+
         Ok(Self {
             camera,
             camera_uniforms,
@@ -487,6 +610,9 @@ impl Renderer3D {
             car_index_count,
             model_buffer,
             model_bind_group_layout,
+            skybox_pipeline,
+            skybox_vertex_buffer,
+            skybox_vertex_count,
         })
     }
 
@@ -557,6 +683,12 @@ impl Renderer3D {
             timestamp_writes: None,
             occlusion_query_set: None,
         });
+
+        // Render skybox first (Stage 6.5)
+        render_pass.set_pipeline(&self.skybox_pipeline);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.skybox_vertex_buffer.slice(..));
+        render_pass.draw(0..self.skybox_vertex_count, 0..1);
 
         // Render track if loaded
         if let (Some(vertex_buffer), Some(index_buffer)) =
