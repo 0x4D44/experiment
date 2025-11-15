@@ -734,4 +734,79 @@ mod tests {
         assert_eq!(result.is_error, Some(true));
         assert_eq!(result.content.len(), 1);
     }
+
+    #[test]
+    fn test_resource_capability_serde_default() {
+        // Test that default serde attribute works for subscribe field
+        let json = r#"{}"#;
+        let cap: ResourceCapability = serde_json::from_str(json).unwrap();
+        // Default should have subscribe: false (default bool value)
+        assert_eq!(cap.subscribe, false);
+    }
+
+    #[test]
+    fn test_call_tool_params_default_arguments() {
+        // Test that default arguments creates empty Value
+        let json = r#"{"name":"test_tool"}"#;
+        let params: CallToolParams = serde_json::from_str(json).unwrap();
+        assert_eq!(params.name, "test_tool");
+        assert!(params.arguments.is_null());
+    }
+
+    #[test]
+    fn test_client_capabilities_all_none_deserialization() {
+        // Test minimal JSON with no capabilities
+        let json = r#"{}"#;
+        let caps: ClientCapabilities = serde_json::from_str(json).unwrap();
+        assert!(caps.tools.is_none());
+        assert!(caps.resources.is_none());
+        assert!(caps.prompts.is_none());
+    }
+
+    #[test]
+    fn test_initialize_result_without_instructions() {
+        let result = InitializeResult {
+            protocol_version: "2024-11-05".to_string(),
+            capabilities: ServerCapabilities {
+                tools: ToolCapability {},
+                resources: ResourceCapability { subscribe: false },
+                prompts: PromptCapability {},
+            },
+            server_info: ServerInfo {
+                name: "test-server".to_string(),
+                version: "1.0.0".to_string(),
+            },
+            instructions: None,
+        };
+
+        let json = serde_json::to_string(&result).unwrap();
+        // instructions should not be in JSON when None
+        assert!(!json.contains("instructions"));
+    }
+
+    #[test]
+    fn test_request_id_clone() {
+        let id1 = RequestId::String("test".to_string());
+        let id2 = id1.clone();
+
+        match (id1, id2) {
+            (RequestId::String(s1), RequestId::String(s2)) => assert_eq!(s1, s2),
+            _ => panic!("Clone should preserve variant"),
+        }
+    }
+
+    #[test]
+    fn test_prompt_without_arguments() {
+        let prompt = Prompt {
+            name: "simple_prompt".to_string(),
+            description: "No arguments".to_string(),
+            arguments: None,
+        };
+
+        let json = serde_json::to_string(&prompt).unwrap();
+        let deserialized: Prompt = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.name, "simple_prompt");
+        assert!(deserialized.arguments.is_none());
+    }
 }
