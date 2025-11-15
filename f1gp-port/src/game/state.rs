@@ -6,6 +6,7 @@ use crate::ai::{AIDriver, DriverPersonality, NearbyCarInfo, RacingLineFollower};
 use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
+use crate::game::session::RaceSession;
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
@@ -81,6 +82,12 @@ pub struct GameState {
 
     /// Previous track section (for lap counting)
     prev_section: usize,
+
+    /// Previous sections for AI cars (for lap counting)
+    ai_prev_sections: Vec<usize>,
+
+    /// Race session manager
+    race_session: Option<RaceSession>,
 }
 
 impl GameState {
@@ -118,6 +125,8 @@ impl GameState {
             best_lap: None,
             current_lap: 1,
             prev_section: 0,
+            ai_prev_sections: Vec::new(),
+            race_session: None,
         }
     }
 
@@ -142,6 +151,7 @@ impl GameState {
         // Clear existing AI
         self.ai_cars.clear();
         self.ai_drivers.clear();
+        self.ai_prev_sections.clear();
 
         // Get available cars from database
         let available_cars: Vec<_> = self.car_database.cars().cloned().collect();
@@ -188,10 +198,28 @@ impl GameState {
 
             self.ai_cars.push(ai_car);
             self.ai_drivers.push(ai_driver);
+            self.ai_prev_sections.push(0);
         }
 
         log::info!("Spawned {} AI opponents", num_opponents.min(5));
         self.mode = GameMode::Race;
+
+        // Create race session (player + AI opponents, 5 laps)
+        let num_drivers = 1 + self.ai_drivers.len();
+        self.race_session = Some(RaceSession::new(num_drivers, 5));
+    }
+
+    /// Start the race countdown sequence
+    pub fn start_race(&mut self) {
+        if let Some(ref mut session) = self.race_session {
+            session.start_countdown();
+            log::info!("Race countdown started");
+        }
+    }
+
+    /// Get race session (if active)
+    pub fn race_session(&self) -> Option<&RaceSession> {
+        self.race_session.as_ref()
     }
 
     /// Update game state
@@ -217,6 +245,16 @@ impl GameState {
 
         // Update camera
         self.update_camera(delta_time);
+
+        // Update race session
+        if let Some(ref mut session) = self.race_session {
+            // Build driver names (player + AI)
+            let mut driver_names = vec!["Player".to_string()];
+            for ai_driver in &self.ai_drivers {
+                driver_names.push(ai_driver.name.clone());
+            }
+            session.update(delta_time, &driver_names);
+        }
 
         // Update timers
         self.total_time += delta_time;
@@ -306,6 +344,16 @@ impl GameState {
                 let collision_result = collision_detector.check_collision(self.ai_cars[i].body.position);
                 self.ai_cars[i].apply_surface_grip(collision_result.grip_multiplier);
                 self.ai_cars[i].on_track = collision_result.on_track;
+
+                // Check for lap crossing (AI driver index = i + 1, since player is 0)
+                if collision_detector.check_lap_crossing(self.ai_prev_sections[i], collision_result.nearest_section) {
+                    // Notify race session
+                    if let Some(ref mut session) = self.race_session {
+                        session.complete_lap(i + 1);
+                    }
+                }
+
+                self.ai_prev_sections[i] = collision_result.nearest_section;
             }
         }
     }
@@ -328,6 +376,11 @@ impl GameState {
                     log::info!("Lap {} completed: {:.2}s", self.current_lap, self.lap_time);
                     self.lap_time = 0.0;
                     self.current_lap += 1;
+
+                    // Notify race session (player is driver index 0)
+                    if let Some(ref mut session) = self.race_session {
+                        session.complete_lap(0);
+                    }
                 }
             }
 
