@@ -3,9 +3,8 @@
 //! Provides AI control for opponent cars.
 
 use crate::ai::racing_line::RacingLineFollower;
-use crate::data::car::CarSpec;
 use crate::game::input::CarInput;
-use crate::physics::{BodyId, CarPhysics};
+use crate::physics::CarPhysics;
 use glam::Vec2;
 
 /// AI driver personality/skill parameters
