@@ -403,4 +403,109 @@ mod tests {
         assert_eq!(deserialized.price_max, Some(500.0));
         assert!(deserialized.shipping.unwrap().free_shipping);
     }
+
+    #[test]
+    fn test_search_results_serialization() {
+        let results = SearchResults {
+            query: "vintage camera".to_string(),
+            filters: SearchFilters::default(),
+            items: vec![],
+            total_count: 42,
+            page: 1,
+            total_pages: 3,
+            searched_at: Utc::now(),
+            duration: Duration::from_millis(1500),
+        };
+
+        let json = serde_json::to_string(&results).unwrap();
+        let deserialized: SearchResults = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.query, "vintage camera");
+        assert_eq!(deserialized.total_count, 42);
+        assert_eq!(deserialized.page, 1);
+        assert_eq!(deserialized.total_pages, 3);
+        assert_eq!(deserialized.duration.as_millis(), 1500);
+    }
+
+    #[test]
+    fn test_search_results_with_items() {
+        use super::super::listing::{BuyingFormat, EbayListing, Price, SellerInfo};
+
+        let listing = EbayListing {
+            item_id: "123456".to_string(),
+            title: "Test Item".to_string(),
+            price: Price::usd(99.99),
+            shipping: Some(Price::usd(5.00)),
+            condition: "New".to_string(),
+            format: BuyingFormat::BuyItNow,
+            seller: SellerInfo {
+                username: "testseller".to_string(),
+                feedback_score: 1000,
+                positive_percentage: 99.5,
+            },
+            location: "US".to_string(),
+            thumbnail_url: Some("https://example.com/thumb.jpg".to_string()),
+            listing_url: "https://ebay.com/itm/123456".to_string(),
+            bids: None,
+            time_left: None,
+            free_shipping: false,
+            returns_accepted: true,
+        };
+
+        let results = SearchResults {
+            query: "test".to_string(),
+            filters: SearchFilters::default(),
+            items: vec![listing],
+            total_count: 1,
+            page: 1,
+            total_pages: 1,
+            searched_at: Utc::now(),
+            duration: Duration::from_millis(500),
+        };
+
+        let json = serde_json::to_string(&results).unwrap();
+        let deserialized: SearchResults = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(deserialized.items.len(), 1);
+        assert_eq!(deserialized.items[0].item_id, "123456");
+    }
+
+    #[test]
+    fn test_duration_serialization() {
+        let results = SearchResults {
+            query: "test".to_string(),
+            filters: SearchFilters::default(),
+            items: vec![],
+            total_count: 0,
+            page: 1,
+            total_pages: 0,
+            searched_at: Utc::now(),
+            duration: Duration::from_millis(2500),
+        };
+
+        let json = serde_json::to_string(&results).unwrap();
+        assert!(json.contains("2500")); // Duration should be serialized as milliseconds
+
+        let deserialized: SearchResults = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.duration.as_millis(), 2500);
+    }
+
+    #[test]
+    fn test_sort_order_clone() {
+        let order = SortOrder::PriceLowest;
+        let cloned = order;
+        assert_eq!(cloned.to_ebay_param(), "1");
+    }
+
+    #[test]
+    fn test_shipping_options_clone() {
+        let shipping = ShippingOptions {
+            free_shipping: true,
+            local_pickup: false,
+            international: true,
+        };
+        let cloned = shipping.clone();
+        assert_eq!(cloned.free_shipping, true);
+        assert_eq!(cloned.international, true);
+    }
 }
