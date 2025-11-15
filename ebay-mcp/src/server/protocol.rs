@@ -654,4 +654,47 @@ mod tests {
         let json = serde_json::to_string(&error).unwrap();
         assert!(!json.contains("\"data\""));
     }
+
+    #[test]
+    fn test_content_text_serialization() {
+        let content = Content::Text {
+            text: "Hello, world!".to_string(),
+        };
+
+        let json = serde_json::to_string(&content).unwrap();
+        let deserialized: Content = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            Content::Text { text } => assert_eq!(text, "Hello, world!"),
+            _ => panic!("Expected Text content"),
+        }
+    }
+
+    #[test]
+    fn test_content_image_serialization() {
+        let content = Content::Image {
+            data: "base64data".to_string(),
+            mime_type: "image/png".to_string(),
+        };
+
+        let json = serde_json::to_string(&content).unwrap();
+        let deserialized: Content = serde_json::from_str(&json).unwrap();
+
+        match deserialized {
+            Content::Image { data, mime_type } => {
+                assert_eq!(data, "base64data");
+                assert_eq!(mime_type, "image/png");
+            }
+            _ => panic!("Expected Image content"),
+        }
+    }
+
+    #[test]
+    fn test_resource_capability_with_subscribe() {
+        let capability = ResourceCapability { subscribe: true };
+        assert_eq!(capability.subscribe, true);
+
+        let capability2 = ResourceCapability { subscribe: false };
+        assert_eq!(capability2.subscribe, false);
+    }
 }
