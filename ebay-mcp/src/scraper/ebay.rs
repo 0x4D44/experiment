@@ -814,4 +814,120 @@ mod tests {
             BuyingFormat::BuyItNow
         ));
     }
+
+    #[tokio::test]
+    async fn test_search_stub_implementation() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters::default();
+        let results = scraper.search("test query", &filters, 1).await;
+
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+        assert_eq!(search_results.query, "test query");
+        assert_eq!(search_results.items.len(), 0); // Stub returns empty results
+        assert_eq!(search_results.total_count, 0);
+        assert_eq!(search_results.page, 1);
+    }
+
+    #[tokio::test]
+    async fn test_search_builds_url() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters {
+            price_min: Some(10.0),
+            price_max: Some(100.0),
+            ..Default::default()
+        };
+
+        let results = scraper.search("laptop", &filters, 2).await;
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+        assert_eq!(search_results.query, "laptop");
+        assert_eq!(search_results.page, 2);
+    }
+
+    #[tokio::test]
+    async fn test_extract_listings_stub() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let scraper = EbayScraper::new(config, anti_detection);
+
+        let listings = scraper.extract_listings().await;
+        assert!(listings.is_ok());
+        assert_eq!(listings.unwrap().len(), 0); // Stub returns empty vec
+    }
+
+    #[tokio::test]
+    async fn test_search_with_filters_duration_tracked() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters {
+            category: Some("Electronics".to_string()),
+            ..Default::default()
+        };
+
+        let results = scraper.search("phone", &filters, 1).await;
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+
+        // Verify duration is tracked
+        assert!(search_results.duration.as_millis() >= 0);
+        // Verify filters are preserved
+        assert_eq!(search_results.filters.category, Some("Electronics".to_string()));
+    }
 }

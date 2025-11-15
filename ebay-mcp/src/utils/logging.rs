@@ -83,4 +83,33 @@ mod tests {
         let level = parse_log_level("");
         assert_eq!(level, Level::INFO);
     }
+
+    #[test]
+    fn test_init_logging_valid_level() {
+        // Test that init_logging succeeds with a valid log level
+        // Note: This test can only run once per test binary because
+        // the global subscriber can only be initialized once
+        let result = init_logging("info");
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_init_logging_with_trace() {
+        // Test initialization with trace level
+        // Skip this test by default since init can only be called once
+        // This is here to document the expected behavior
+        if std::env::var("RUN_INIT_TEST").is_ok() {
+            let result = init_logging("trace");
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_init_logging_with_debug() {
+        // Test initialization with debug level
+        if std::env::var("RUN_INIT_TEST").is_ok() {
+            let result = init_logging("debug");
+            assert!(result.is_ok());
+        }
+    }
 }
