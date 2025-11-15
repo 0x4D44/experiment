@@ -2,6 +2,7 @@
 //!
 //! Manages the overall game state, integrating physics, rendering, and input.
 
+use crate::ai::{AIDriver, DriverPersonality, RacingLineFollower};
 use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
@@ -29,6 +30,12 @@ pub struct GameState {
 
     /// Player car physics
     player_car: CarPhysics,
+
+    /// AI opponent cars
+    ai_cars: Vec<CarPhysics>,
+
+    /// AI drivers controlling opponent cars
+    ai_drivers: Vec<AIDriver>,
 
     /// Car database
     car_database: CarDatabase,
@@ -94,6 +101,8 @@ impl GameState {
         Self {
             physics_world,
             player_car,
+            ai_cars: Vec::new(),
+            ai_drivers: Vec::new(),
             car_database,
             track: None,
             track_renderer: None,
@@ -128,6 +137,63 @@ impl GameState {
         self.track = Some(track);
     }
 
+    /// Spawn AI opponents for race mode
+    pub fn spawn_ai_opponents(&mut self, num_opponents: usize) {
+        // Clear existing AI
+        self.ai_cars.clear();
+        self.ai_drivers.clear();
+
+        // Get available cars from database
+        let available_cars: Vec<_> = self.car_database.cars().cloned().collect();
+
+        // Get track for racing line
+        let track = match &self.track {
+            Some(t) => t,
+            None => {
+                log::warn!("Cannot spawn AI without loaded track");
+                return;
+            }
+        };
+
+        // Pre-defined AI personalities (rotate through famous drivers)
+        let personalities = [
+            ("Ayrton Senna", DriverPersonality::senna()),
+            ("Nigel Mansell", DriverPersonality::mansell()),
+            ("Alain Prost", DriverPersonality::prost()),
+            ("Michael Schumacher", DriverPersonality::average()),
+            ("Gerhard Berger", DriverPersonality::average()),
+        ];
+
+        // Spawn AI cars at staggered positions
+        for i in 0..num_opponents.min(5) {
+            let car_idx = (i + 1) % available_cars.len();
+            let car_spec = available_cars[car_idx].clone();
+
+            // Position AI cars behind player with spacing
+            let z_offset = -20.0 * (i as f32 + 1.0);
+            let x_offset = if i % 2 == 0 { -3.0 } else { 3.0 }; // Alternate left/right
+            let position = Vec3::new(x_offset, 1.0, z_offset);
+
+            // Create AI car
+            let car_id = BodyId(i + 1);
+            let ai_car = CarPhysics::new(car_id, car_spec, position);
+
+            // Create AI driver
+            let (name, personality) = personalities[i % personalities.len()];
+            let mut ai_driver = AIDriver::new(name.to_string(), personality);
+
+            // Set up racing line for AI
+            let racing_line = RacingLineFollower::new(track, 20.0);
+            ai_driver.set_racing_line(racing_line);
+
+            self.ai_cars.push(ai_car);
+            self.ai_drivers.push(ai_driver);
+        }
+
+        log::info!("Spawned {} AI opponents", num_opponents.min(5));
+        self.mode = GameMode::Race;
+    }
+
     /// Update game state
     pub fn update(&mut self, delta_time: f32) {
         if self.paused {
@@ -142,6 +208,9 @@ impl GameState {
 
         // Apply input to player car
         self.apply_input(&input);
+
+        // Update AI drivers
+        self.update_ai(delta_time);
 
         // Update physics
         self.update_physics(delta_time);
@@ -165,6 +234,37 @@ impl GameState {
         }
         if input.shift_down {
             self.player_car.shift_down();
+        }
+    }
+
+    /// Update AI drivers
+    fn update_ai(&mut self, delta_time: f32) {
+        // Update each AI driver and apply their inputs to their cars
+        for (ai_driver, ai_car) in self.ai_drivers.iter_mut().zip(self.ai_cars.iter_mut()) {
+            // Get AI input
+            let ai_input = ai_driver.update(ai_car, delta_time);
+
+            // Apply AI input to car
+            ai_car.set_throttle(ai_input.throttle);
+            ai_car.set_brake(ai_input.brake);
+            ai_car.set_steering(ai_input.steering);
+
+            if ai_input.shift_up {
+                ai_car.shift_up();
+            }
+            if ai_input.shift_down {
+                ai_car.shift_down();
+            }
+
+            // Update AI car physics
+            ai_car.update(delta_time);
+
+            // Apply collision detection for AI cars
+            if let Some(collision_detector) = &self.track_collision {
+                let collision_result = collision_detector.check_collision(ai_car.body.position);
+                ai_car.apply_surface_grip(collision_result.grip_multiplier);
+                ai_car.on_track = collision_result.on_track;
+            }
         }
     }
 
@@ -222,13 +322,26 @@ impl GameState {
         // Render player car
         let car_state = CarState {
             position: self.player_car.body.position,
-            rotation: self.get_car_rotation(),
+            rotation: self.get_car_rotation(self.player_car.body.orientation),
             velocity: self.player_car.body.velocity.truncate(),
             spec: self.player_car.spec.clone(),
             driver_name: "Player".to_string(),
         };
 
         self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
+
+        // Render AI opponent cars
+        for (ai_car, ai_driver) in self.ai_cars.iter().zip(self.ai_drivers.iter()) {
+            let ai_car_state = CarState {
+                position: ai_car.body.position,
+                rotation: self.get_car_rotation(ai_car.body.orientation),
+                velocity: ai_car.body.velocity.truncate(),
+                spec: ai_car.spec.clone(),
+                driver_name: ai_driver.name.clone(),
+            };
+
+            self.car_renderer.render_car(renderer, &ai_car_state, &self.camera)?;
+        }
 
         // Render HUD
         let telemetry = Telemetry {
@@ -248,9 +361,9 @@ impl GameState {
     }
 
     /// Get car rotation angle from quaternion
-    fn get_car_rotation(&self) -> f32 {
+    fn get_car_rotation(&self, orientation: glam::Quat) -> f32 {
         // Extract yaw from quaternion
-        let q = self.player_car.body.orientation;
+        let q = orientation;
         let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
         yaw
     }
