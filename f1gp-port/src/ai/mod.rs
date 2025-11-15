@@ -5,5 +5,5 @@
 pub mod driver;
 pub mod racing_line;
 
-pub use driver::{AIDriver, AIState, DriverPersonality};
+pub use driver::{AIDriver, AIState, DriverPersonality, NearbyCarInfo};
 pub use racing_line::RacingLineFollower;
