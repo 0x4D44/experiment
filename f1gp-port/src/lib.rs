@@ -14,6 +14,7 @@ pub mod game;
 pub mod render;
 pub mod audio;
 pub mod platform;
+pub mod ui;
 pub mod utils;
 
 // Re-exports for convenience

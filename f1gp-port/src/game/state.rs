@@ -10,8 +10,28 @@ use crate::game::session::RaceSession;
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
+use crate::ui::{Menu, MenuAction};
 use anyhow::Result;
-use glam::Vec3;
+use glam::{Vec2, Vec3};
+
+/// Game screen state
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameScreen {
+    /// Main menu
+    MainMenu,
+
+    /// Race setup screen
+    RaceSetup,
+
+    /// In-game (racing)
+    InGame,
+
+    /// Pause menu
+    Paused,
+
+    /// Race results
+    Results,
+}
 
 /// Game mode
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +108,19 @@ pub struct GameState {
 
     /// Race session manager
     race_session: Option<RaceSession>,
+
+    /// Current screen
+    screen: GameScreen,
+
+    /// Current menu
+    menu: Option<Menu>,
+
+    /// Number of AI opponents for race setup
+    num_opponents: usize,
+
+    /// Viewport dimensions
+    viewport_width: u32,
+    viewport_height: u32,
 }
 
 impl GameState {
@@ -104,6 +137,9 @@ impl GameState {
         let car_renderer = CarRenderer::new();
         let hud = Hud::new(viewport_width, viewport_height);
         let input_manager = InputManager::new();
+
+        // Create main menu
+        let menu = Menu::main_menu(viewport_width, viewport_height);
 
         Self {
             physics_world,
@@ -127,6 +163,11 @@ impl GameState {
             prev_section: 0,
             ai_prev_sections: Vec::new(),
             race_session: None,
+            screen: GameScreen::MainMenu,
+            menu: Some(menu),
+            num_opponents: 5,
+            viewport_width,
+            viewport_height,
         }
     }
 
@@ -222,9 +263,126 @@ impl GameState {
         self.race_session.as_ref()
     }
 
+    /// Handle menu action
+    fn handle_menu_action(&mut self, action: MenuAction) {
+        match action {
+            MenuAction::StartRace => {
+                // Transition from menu to in-game
+                if self.screen == GameScreen::RaceSetup {
+                    // Spawn AI opponents and start race
+                    self.spawn_ai_opponents(self.num_opponents);
+                    self.start_race();
+                    self.screen = GameScreen::InGame;
+                    self.menu = None;
+                    log::info!("Starting race with {} opponents", self.num_opponents);
+                } else {
+                    // Go to race setup
+                    self.screen = GameScreen::RaceSetup;
+                    self.menu = Some(Menu::race_setup_menu(
+                        self.viewport_width,
+                        self.viewport_height,
+                        self.num_opponents,
+                    ));
+                }
+            }
+
+            MenuAction::Resume => {
+                // Resume from pause
+                self.screen = GameScreen::InGame;
+                self.menu = None;
+                self.paused = false;
+            }
+
+            MenuAction::Restart => {
+                // Restart race
+                self.reset();
+                if !self.ai_drivers.is_empty() {
+                    self.spawn_ai_opponents(self.num_opponents);
+                    self.start_race();
+                }
+                self.screen = GameScreen::InGame;
+                self.menu = None;
+            }
+
+            MenuAction::MainMenu => {
+                // Return to main menu
+                self.reset();
+                self.screen = GameScreen::MainMenu;
+                self.menu = Some(Menu::main_menu(self.viewport_width, self.viewport_height));
+            }
+
+            MenuAction::Exit => {
+                log::info!("Exit requested");
+                // TODO: Signal to main loop to exit
+            }
+
+            _ => {}
+        }
+    }
+
+    /// Handle menu navigation key press
+    pub fn handle_menu_key(&mut self, key: sdl2::keyboard::Keycode) {
+        if let Some(ref mut menu) = self.menu {
+            match key {
+                sdl2::keyboard::Keycode::Up => menu.move_up(),
+                sdl2::keyboard::Keycode::Down => menu.move_down(),
+                sdl2::keyboard::Keycode::Return => {
+                    let action = menu.get_selected_action();
+                    self.handle_menu_action(action);
+                }
+                sdl2::keyboard::Keycode::Escape => {
+                    // Back/Pause behavior
+                    match self.screen {
+                        GameScreen::MainMenu => {
+                            self.handle_menu_action(MenuAction::Exit);
+                        }
+                        GameScreen::RaceSetup => {
+                            self.handle_menu_action(MenuAction::MainMenu);
+                        }
+                        GameScreen::InGame => {
+                            // Pause game
+                            self.screen = GameScreen::Paused;
+                            self.paused = true;
+                            self.menu = Some(Menu::pause_menu(
+                                self.viewport_width,
+                                self.viewport_height,
+                            ));
+                        }
+                        GameScreen::Paused => {
+                            self.handle_menu_action(MenuAction::Resume);
+                        }
+                        GameScreen::Results => {
+                            self.handle_menu_action(MenuAction::MainMenu);
+                        }
+                    }
+                }
+                sdl2::keyboard::Keycode::Left => {
+                    // Adjust number of opponents in race setup
+                    if self.screen == GameScreen::RaceSetup && self.num_opponents > 0 {
+                        self.num_opponents -= 1;
+                        if let Some(ref mut menu) = self.menu {
+                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                        }
+                    }
+                }
+                sdl2::keyboard::Keycode::Right => {
+                    // Adjust number of opponents in race setup
+                    if self.screen == GameScreen::RaceSetup && self.num_opponents < 5 {
+                        self.num_opponents += 1;
+                        if let Some(ref mut menu) = self.menu {
+                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
     /// Update game state
     pub fn update(&mut self, delta_time: f32) {
-        if self.paused {
+        // Only update game logic when in-game and not paused
+        if self.screen != GameScreen::InGame || self.paused {
             return;
         }
 
@@ -254,6 +412,13 @@ impl GameState {
                 driver_names.push(ai_driver.name.clone());
             }
             session.update(delta_time, &driver_names);
+
+            // Check if race is finished
+            if session.state == crate::game::session::RaceState::Finished {
+                self.screen = GameScreen::Results;
+                self.menu = Some(Menu::results_menu(self.viewport_width, self.viewport_height));
+                log::info!("Race finished!");
+            }
         }
 
         // Update timers
@@ -409,48 +574,131 @@ impl GameState {
         // Clear screen
         renderer.clear(Color::rgb(20, 80, 20)); // Green background (grass)
 
-        // Render track if loaded
-        if let Some(track_renderer) = &self.track_renderer {
-            track_renderer.render(renderer, &self.camera)?;
+        // Render based on current screen
+        match self.screen {
+            GameScreen::MainMenu | GameScreen::RaceSetup => {
+                // Render menu only
+                if let Some(ref menu) = self.menu {
+                    menu.render(renderer)?;
+                }
+            }
+
+            GameScreen::InGame | GameScreen::Paused => {
+                // Render game world
+                // Render track if loaded
+                if let Some(track_renderer) = &self.track_renderer {
+                    track_renderer.render(renderer, &self.camera)?;
+                }
+
+                // Render player car
+                let car_state = CarState {
+                    position: self.player_car.body.position,
+                    rotation: self.get_car_rotation(self.player_car.body.orientation),
+                    velocity: self.player_car.body.velocity.truncate(),
+                    spec: self.player_car.spec.clone(),
+                    driver_name: "Player".to_string(),
+                };
+
+                self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
+
+                // Render AI opponent cars
+                for (ai_car, ai_driver) in self.ai_cars.iter().zip(self.ai_drivers.iter()) {
+                    let ai_car_state = CarState {
+                        position: ai_car.body.position,
+                        rotation: self.get_car_rotation(ai_car.body.orientation),
+                        velocity: ai_car.body.velocity.truncate(),
+                        spec: ai_car.spec.clone(),
+                        driver_name: ai_driver.name.clone(),
+                    };
+
+                    self.car_renderer.render_car(renderer, &ai_car_state, &self.camera)?;
+                }
+
+                // Render HUD
+                let telemetry = Telemetry {
+                    speed: self.player_car.speed * 3.6, // Convert m/s to km/h
+                    gear: self.player_car.gear,
+                    rpm: self.player_car.engine_rpm,
+                    current_lap: self.current_lap,
+                    current_lap_time: self.lap_time,
+                    best_lap_time: self.best_lap,
+                    delta_time: None, // TODO: Calculate delta vs best lap
+                    on_track: self.player_car.on_track,
+                };
+
+                self.hud.render(renderer, &telemetry)?;
+
+                // Render pause menu overlay
+                if self.screen == GameScreen::Paused {
+                    if let Some(ref menu) = self.menu {
+                        menu.render(renderer)?;
+                    }
+                }
+            }
+
+            GameScreen::Results => {
+                // Render race results
+                self.render_results(renderer)?;
+
+                // Render results menu
+                if let Some(ref menu) = self.menu {
+                    menu.render(renderer)?;
+                }
+            }
         }
 
-        // Render player car
-        let car_state = CarState {
-            position: self.player_car.body.position,
-            rotation: self.get_car_rotation(self.player_car.body.orientation),
-            velocity: self.player_car.body.velocity.truncate(),
-            spec: self.player_car.spec.clone(),
-            driver_name: "Player".to_string(),
-        };
+        Ok(())
+    }
 
-        self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
+    /// Render race results screen
+    fn render_results(&self, renderer: &mut impl Renderer) -> Result<()> {
+        if let Some(ref session) = self.race_session {
+            let center_x = self.viewport_width as f32 / 2.0;
+            let mut y = 100.0;
 
-        // Render AI opponent cars
-        for (ai_car, ai_driver) in self.ai_cars.iter().zip(self.ai_drivers.iter()) {
-            let ai_car_state = CarState {
-                position: ai_car.body.position,
-                rotation: self.get_car_rotation(ai_car.body.orientation),
-                velocity: ai_car.body.velocity.truncate(),
-                spec: ai_car.spec.clone(),
-                driver_name: ai_driver.name.clone(),
-            };
+            // Draw title
+            renderer.draw_text(
+                "RACE RESULTS",
+                Vec2::new(center_x - 120.0, y),
+                32.0,
+                Color::WHITE,
+            )?;
+            y += 80.0;
 
-            self.car_renderer.render_car(renderer, &ai_car_state, &self.camera)?;
+            // Draw results
+            for result in &session.results {
+                let position_text = format!("{}. {}", result.position, result.name);
+                let time_text = if result.finished {
+                    format!("{:.2}s", result.race_time)
+                } else {
+                    "DNF".to_string()
+                };
+                let best_lap_text = result.best_lap
+                    .map(|t| format!("Best: {:.2}s", t))
+                    .unwrap_or_else(|| "".to_string());
+
+                renderer.draw_text(
+                    &position_text,
+                    Vec2::new(center_x - 200.0, y),
+                    20.0,
+                    Color::WHITE,
+                )?;
+                renderer.draw_text(
+                    &time_text,
+                    Vec2::new(center_x + 50.0, y),
+                    20.0,
+                    Color::WHITE,
+                )?;
+                renderer.draw_text(
+                    &best_lap_text,
+                    Vec2::new(center_x + 150.0, y),
+                    16.0,
+                    Color::rgba(200, 200, 200, 255),
+                )?;
+
+                y += 35.0;
+            }
         }
-
-        // Render HUD
-        let telemetry = Telemetry {
-            speed: self.player_car.speed * 3.6, // Convert m/s to km/h
-            gear: self.player_car.gear,
-            rpm: self.player_car.engine_rpm,
-            current_lap: self.current_lap,
-            current_lap_time: self.lap_time,
-            best_lap_time: self.best_lap,
-            delta_time: None, // TODO: Calculate delta vs best lap
-            on_track: self.player_car.on_track,
-        };
-
-        self.hud.render(renderer, &telemetry)?;
 
         Ok(())
     }
@@ -467,8 +715,15 @@ impl GameState {
     pub fn handle_key_down(&mut self, keycode: sdl2::keyboard::Keycode) {
         use sdl2::keyboard::Keycode;
 
+        // Route to menu if menu is active
+        if self.menu.is_some() {
+            self.handle_menu_key(keycode);
+            return;
+        }
+
+        // In-game controls
         match keycode {
-            Keycode::P => self.toggle_pause(),
+            Keycode::P | Keycode::Escape => self.toggle_pause(),
             Keycode::R => self.reset(),
             _ => self.input_manager.key_down(keycode),
         }
