@@ -1,15 +1,18 @@
 // Renderer3D - wgpu-based 3D renderer
 // Stage 6.1: Basic 3D Setup
+// Stage 6.2: Track Rendering Integration
 
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
-use glam::Mat4;
+use glam::{Mat4, Vec3};
 
 use crate::game::GameState;
+use crate::data::Track;
 use super::camera3d::Camera3D;
+use super::track_mesh::{TrackMesh, TrackVertex};
 
-/// Vertex for 3D rendering
+/// Vertex for basic 3D rendering (test triangle)
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Vertex {
@@ -50,21 +53,57 @@ impl CameraUniforms {
     }
 }
 
+/// Uniforms for lighting
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct LightUniforms {
+    direction: [f32; 3],
+    _padding: f32,
+    color: [f32; 3],
+    ambient: f32,
+}
+
+impl LightUniforms {
+    fn new() -> Self {
+        Self {
+            direction: [0.5, -1.0, 0.3],  // Sun from top-right
+            _padding: 0.0,
+            color: [1.0, 1.0, 0.95],      // Slightly warm white
+            ambient: 0.3,                  // 30% ambient light
+        }
+    }
+}
+
 /// 3D Renderer using wgpu
 pub struct Renderer3D {
     pub camera: Camera3D,
     camera_uniforms: CameraUniforms,
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
-    render_pipeline: wgpu::RenderPipeline,
 
-    // Test triangle (will be removed in Stage 6.2)
-    vertex_buffer: wgpu::Buffer,
-    num_vertices: u32,
+    // Lighting
+    light_uniforms: LightUniforms,
+    light_buffer: wgpu::Buffer,
+    light_bind_group: wgpu::BindGroup,
+
+    // Depth buffer
+    depth_texture: wgpu::Texture,
+    depth_view: wgpu::TextureView,
+
+    // Track rendering
+    track_pipeline: wgpu::RenderPipeline,
+    track_vertex_buffer: Option<wgpu::Buffer>,
+    track_index_buffer: Option<wgpu::Buffer>,
+    track_index_count: u32,
+
+    // Test triangle (for basic testing)
+    basic_pipeline: wgpu::RenderPipeline,
+    test_vertex_buffer: wgpu::Buffer,
+    test_vertex_count: u32,
 }
 
 impl Renderer3D {
-    /// Create new 3D renderer (basic setup for Stage 6.1)
+    /// Create new 3D renderer with track rendering support
     pub fn new(
         device: &wgpu::Device,
         config: &wgpu::SurfaceConfiguration,
@@ -82,7 +121,7 @@ impl Renderer3D {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        // Create bind group layout and bind group
+        // Create camera bind group layout
         let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 label: Some("Camera Bind Group Layout"),
@@ -107,31 +146,82 @@ impl Renderer3D {
             }],
         });
 
-        // Load shader
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("Basic Shader"),
-            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic.wgsl").into()),
+        // Create light uniforms
+        let light_uniforms = LightUniforms::new();
+        let light_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Light Buffer"),
+            contents: bytemuck::cast_slice(&[light_uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        // Create render pipeline
-        let render_pipeline_layout =
+        // Create light bind group layout
+        let light_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Light Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        let light_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Light Bind Group"),
+            layout: &light_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: light_buffer.as_entire_binding(),
+            }],
+        });
+
+        // Create depth texture
+        let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Depth Texture"),
+            size: wgpu::Extent3d {
+                width: config.width,
+                height: config.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Depth32Float,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+
+        let depth_view = depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+
+        // Load track shader
+        let track_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Track Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/track.wgsl").into()),
+        });
+
+        // Create track render pipeline
+        let track_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout],
+                label: Some("Track Pipeline Layout"),
+                bind_group_layouts: &[&camera_bind_group_layout, &light_bind_group_layout],
                 push_constant_ranges: &[],
             });
 
-        let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("Render Pipeline"),
-            layout: Some(&render_pipeline_layout),
+        let track_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Track Pipeline"),
+            layout: Some(&track_pipeline_layout),
             vertex: wgpu::VertexState {
-                module: &shader,
+                module: &track_shader,
                 entry_point: Some("vs_main"),
-                buffers: &[Vertex::desc()],
+                buffers: &[TrackVertex::desc()],
                 compilation_options: Default::default(),
             },
             fragment: Some(wgpu::FragmentState {
-                module: &shader,
+                module: &track_shader,
                 entry_point: Some("fs_main"),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: config.format,
@@ -149,7 +239,65 @@ impl Renderer3D {
                 unclipped_depth: false,
                 conservative: false,
             },
-            depth_stencil: None, // Will add in Stage 6.2
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        // Load basic shader for test triangle
+        let basic_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Basic Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/basic.wgsl").into()),
+        });
+
+        // Create basic render pipeline (no depth test)
+        let basic_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Basic Pipeline Layout"),
+                bind_group_layouts: &[&camera_bind_group_layout],
+                push_constant_ranges: &[],
+            });
+
+        let basic_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Basic Pipeline"),
+            layout: Some(&basic_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &basic_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[Vertex::desc()],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &basic_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
             multisample: wgpu::MultisampleState {
                 count: 1,
                 mask: !0,
@@ -160,7 +308,7 @@ impl Renderer3D {
         });
 
         // Create test triangle
-        let vertices = vec![
+        let test_vertices = vec![
             Vertex {
                 position: [0.0, 0.5, 0.0],
                 color: [1.0, 0.0, 0.0, 1.0],
@@ -175,9 +323,9 @@ impl Renderer3D {
             },
         ];
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(&vertices),
+        let test_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Test Vertex Buffer"),
+            contents: bytemuck::cast_slice(&test_vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
 
@@ -186,10 +334,42 @@ impl Renderer3D {
             camera_uniforms,
             camera_buffer,
             camera_bind_group,
-            render_pipeline,
-            vertex_buffer,
-            num_vertices: vertices.len() as u32,
+            light_uniforms,
+            light_buffer,
+            light_bind_group,
+            depth_texture,
+            depth_view,
+            track_pipeline,
+            track_vertex_buffer: None,
+            track_index_buffer: None,
+            track_index_count: 0,
+            basic_pipeline,
+            test_vertex_buffer,
+            test_vertex_count: test_vertices.len() as u32,
         })
+    }
+
+    /// Load track mesh into GPU buffers
+    pub fn load_track(&mut self, device: &wgpu::Device, track: &Track) {
+        let mesh = TrackMesh::from_track(track);
+
+        // Create vertex buffer
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Track Vertex Buffer"),
+            contents: bytemuck::cast_slice(&mesh.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        // Create index buffer
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Track Index Buffer"),
+            contents: bytemuck::cast_slice(&mesh.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        self.track_vertex_buffer = Some(vertex_buffer);
+        self.track_index_buffer = Some(index_buffer);
+        self.track_index_count = mesh.indices.len() as u32;
     }
 
     /// Update camera from game state
@@ -216,33 +396,65 @@ impl Renderer3D {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
+                        r: 0.53,
+                        g: 0.81,
+                        b: 0.92,
                         a: 1.0,
                     }),
                     store: wgpu::StoreOp::Store,
                 },
                 depth_slice: None,
             })],
-            depth_stencil_attachment: None,
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(1.0),
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
             timestamp_writes: None,
             occlusion_query_set: None,
         });
 
-        render_pass.set_pipeline(&self.render_pipeline);
-        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.draw(0..self.num_vertices, 0..1);
+        // Render track if loaded
+        if let (Some(vertex_buffer), Some(index_buffer)) =
+            (&self.track_vertex_buffer, &self.track_index_buffer)
+        {
+            render_pass.set_pipeline(&self.track_pipeline);
+            render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.light_bind_group, &[]);
+            render_pass.set_vertex_buffer(0, vertex_buffer.slice(..));
+            render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw_indexed(0..self.track_index_count, 0, 0..1);
+        }
 
         Ok(())
     }
 
     /// Handle window resize
-    pub fn resize(&mut self, width: u32, height: u32) {
+    pub fn resize(&mut self, device: &wgpu::Device, width: u32, height: u32) {
         if width > 0 && height > 0 {
             let aspect_ratio = width as f32 / height as f32;
             self.camera.set_aspect_ratio(aspect_ratio);
+
+            // Recreate depth texture
+            self.depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+                label: Some("Depth Texture"),
+                size: wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Depth32Float,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            });
+
+            self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
         }
     }
 }
