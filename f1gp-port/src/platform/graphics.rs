@@ -31,6 +31,10 @@ impl Color {
         Self::new(r, g, b, 255)
     }
 
+    pub const fn rgba(r: u8, g: u8, b: u8, a: u8) -> Self {
+        Self::new(r, g, b, a)
+    }
+
     pub const BLACK: Self = Self::rgb(0, 0, 0);
     pub const WHITE: Self = Self::rgb(255, 255, 255);
     pub const RED: Self = Self::rgb(255, 0, 0);
@@ -107,6 +111,9 @@ pub trait Renderer {
 
     /// Draw a filled circle
     fn draw_filled_circle(&mut self, center: Vec2, radius: f32, color: Color) -> Result<()>;
+
+    /// Draw text (simple pixel-based rendering)
+    fn draw_text(&mut self, text: &str, position: Vec2, size: f32, color: Color) -> Result<()>;
 
     /// Get viewport size
     fn viewport_size(&self) -> (u32, u32);
@@ -218,6 +225,21 @@ impl Renderer for SdlRenderer {
         Ok(())
     }
 
+    fn draw_text(&mut self, text: &str, position: Vec2, size: f32, color: Color) -> Result<()> {
+        // Simple pixel-based text rendering
+        // Each character is drawn using rectangles in a 5x7 pixel grid
+        let char_width = size * 0.6;
+        let char_spacing = size * 0.2;
+        let mut x_offset = 0.0;
+
+        for ch in text.chars() {
+            draw_char(&mut self.canvas, ch, Vec2::new(position.x + x_offset, position.y), size, color)?;
+            x_offset += char_width + char_spacing;
+        }
+
+        Ok(())
+    }
+
     fn viewport_size(&self) -> (u32, u32) {
         self.canvas.output_size().unwrap_or((800, 600))
     }
@@ -283,6 +305,412 @@ fn draw_circle_filled(canvas: &mut Canvas<Window>, center: Vec2, radius: f32) ->
     }
 
     Ok(())
+}
+
+/// Draw a single character using simple pixel-based rendering
+/// Characters are rendered on a 5x7 pixel grid
+fn draw_char(canvas: &mut Canvas<Window>, ch: char, position: Vec2, size: f32, color: Color) -> Result<()> {
+    canvas.set_draw_color(SdlColor::from(color));
+
+    let pixel_size = size / 7.0;
+
+    // Get bitmap pattern for character
+    let pattern = get_char_pattern(ch);
+
+    // Draw pixels based on pattern
+    for (y, row) in pattern.iter().enumerate() {
+        for (x, &pixel) in row.iter().enumerate() {
+            if pixel {
+                let rect = SdlRect::new(
+                    (position.x + x as f32 * pixel_size) as i32,
+                    (position.y + y as f32 * pixel_size) as i32,
+                    pixel_size.ceil() as u32,
+                    pixel_size.ceil() as u32,
+                );
+                canvas.fill_rect(rect).map_err(|e| anyhow::anyhow!("{}", e))?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Get 5x7 bitmap pattern for a character
+/// Returns a 7-row array, each row has 5 pixels
+fn get_char_pattern(ch: char) -> [[bool; 5]; 7] {
+    match ch {
+        '0' => [
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, true, false],
+        ],
+        '1' => [
+            [false, false, true, false, false],
+            [false, true, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, true, true, true, false],
+        ],
+        '2' => [
+            [false, true, true, true, false],
+            [true, false, false, true, false],
+            [false, false, false, true, false],
+            [false, false, true, false, false],
+            [false, true, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, true, false],
+        ],
+        '3' => [
+            [true, true, true, true, false],
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [false, true, true, true, false],
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [true, true, true, true, false],
+        ],
+        '4' => [
+            [false, false, true, false, false],
+            [false, true, true, false, false],
+            [true, false, true, false, false],
+            [true, true, true, true, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+        ],
+        '5' => [
+            [true, true, true, true, false],
+            [true, false, false, false, false],
+            [true, true, true, false, false],
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, false, false],
+        ],
+        '6' => [
+            [false, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+        ],
+        '7' => [
+            [true, true, true, true, false],
+            [false, false, false, true, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, true, false, false, false],
+            [false, true, false, false, false],
+            [false, true, false, false, false],
+        ],
+        '8' => [
+            [false, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+        ],
+        '9' => [
+            [false, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [false, true, true, false, false],
+        ],
+        ':' => [
+            [false, false, false, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, false, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, false, false, false],
+        ],
+        '.' => [
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+        ],
+        '+' => [
+            [false, false, false, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [true, true, true, true, true],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, false, false, false],
+        ],
+        '-' => [
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [true, true, true, true, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+            [false, false, false, false, false],
+        ],
+        '/' => [
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, true, false, false, false],
+            [false, true, false, false, false],
+            [true, false, false, false, false],
+        ],
+        ' ' => [
+            [false; 5],
+            [false; 5],
+            [false; 5],
+            [false; 5],
+            [false; 5],
+            [false; 5],
+            [false; 5],
+        ],
+        // Letters A-Z (abbreviated set - add more as needed)
+        'A' => [
+            [false, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'B' => [
+            [true, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, false, false],
+        ],
+        'C' => [
+            [false, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [false, true, true, true, false],
+        ],
+        'D' => [
+            [true, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, false, false],
+        ],
+        'E' => [
+            [true, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, true, false],
+        ],
+        'F' => [
+            [true, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+        ],
+        'G' => [
+            [false, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+        ],
+        'H' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'I' => [
+            [false, true, true, true, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, true, true, true, false],
+        ],
+        'K' => [
+            [true, false, false, true, false],
+            [true, false, true, false, false],
+            [true, true, false, false, false],
+            [true, false, false, false, false],
+            [true, true, false, false, false],
+            [true, false, true, false, false],
+            [true, false, false, true, false],
+        ],
+        'L' => [
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, true, true, true, false],
+        ],
+        'M' => [
+            [true, false, false, true, false],
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'N' => [
+            [true, false, false, true, false],
+            [true, true, false, true, false],
+            [true, true, false, true, false],
+            [true, false, true, true, false],
+            [true, false, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'O' => [
+            [false, true, true, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+        ],
+        'P' => [
+            [true, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+        ],
+        'R' => [
+            [true, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, false, false],
+            [true, false, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'S' => [
+            [false, true, true, true, false],
+            [true, false, false, false, false],
+            [true, false, false, false, false],
+            [false, true, true, false, false],
+            [false, false, false, true, false],
+            [false, false, false, true, false],
+            [true, true, true, false, false],
+        ],
+        'T' => [
+            [true, true, true, true, true],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+        ],
+        'U' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, true, false],
+        ],
+        'V' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, false, false],
+            [false, false, false, false, false],
+        ],
+        'W' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [true, true, true, true, false],
+            [true, false, false, true, false],
+        ],
+        'X' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, false, false],
+            [false, false, false, false, false],
+            [false, true, true, false, false],
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+        ],
+        'Y' => [
+            [true, false, false, true, false],
+            [true, false, false, true, false],
+            [false, true, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+        ],
+        '!' => [
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, true, false, false],
+            [false, false, false, false, false],
+            [false, false, true, false, false],
+        ],
+        // Default for unknown characters
+        _ => [
+            [true, true, true, true, true],
+            [true, false, false, false, true],
+            [true, false, false, false, true],
+            [true, false, false, false, true],
+            [true, false, false, false, true],
+            [true, false, false, false, true],
+            [true, true, true, true, true],
+        ],
+    }
 }
 
 #[cfg(test)]

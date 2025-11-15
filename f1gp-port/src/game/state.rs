@@ -7,7 +7,7 @@ use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
-use crate::render::{Camera, CarRenderer, CarState, TrackRenderer};
+use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
 use anyhow::Result;
 use glam::Vec3;
 
@@ -45,6 +45,9 @@ pub struct GameState {
     /// Car renderer
     car_renderer: CarRenderer,
 
+    /// HUD renderer
+    hud: Hud,
+
     /// Camera
     camera: Camera,
 
@@ -66,6 +69,9 @@ pub struct GameState {
     /// Best lap time
     best_lap: Option<f32>,
 
+    /// Current lap number
+    current_lap: u32,
+
     /// Previous track section (for lap counting)
     prev_section: usize,
 }
@@ -82,6 +88,7 @@ impl GameState {
 
         let camera = Camera::new(viewport_width, viewport_height);
         let car_renderer = CarRenderer::new();
+        let hud = Hud::new(viewport_width, viewport_height);
         let input_manager = InputManager::new();
 
         Self {
@@ -92,6 +99,7 @@ impl GameState {
             track_renderer: None,
             track_collision: None,
             car_renderer,
+            hud,
             camera,
             input_manager,
             mode: GameMode::Practice,
@@ -99,6 +107,7 @@ impl GameState {
             total_time: 0.0,
             lap_time: 0.0,
             best_lap: None,
+            current_lap: 1,
             prev_section: 0,
         }
     }
@@ -174,8 +183,9 @@ impl GameState {
                 // Record lap time
                 if self.lap_time > 1.0 {
                     self.set_best_lap(self.lap_time);
-                    log::info!("Lap completed: {:.2}s", self.lap_time);
+                    log::info!("Lap {} completed: {:.2}s", self.current_lap, self.lap_time);
                     self.lap_time = 0.0;
+                    self.current_lap += 1;
                 }
             }
 
@@ -220,7 +230,19 @@ impl GameState {
 
         self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
 
-        // TODO: Render UI (speed, gear, lap time, etc.)
+        // Render HUD
+        let telemetry = Telemetry {
+            speed: self.player_car.speed * 3.6, // Convert m/s to km/h
+            gear: self.player_car.gear,
+            rpm: self.player_car.engine_rpm,
+            current_lap: self.current_lap,
+            current_lap_time: self.lap_time,
+            best_lap_time: self.best_lap,
+            delta_time: None, // TODO: Calculate delta vs best lap
+            on_track: self.player_car.on_track,
+        };
+
+        self.hud.render(renderer, &telemetry)?;
 
         Ok(())
     }
