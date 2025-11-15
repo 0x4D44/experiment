@@ -123,9 +123,15 @@ mod tests {
 
     #[test]
     fn test_with_arg() {
-        let config = BrowserConfig::new()
-            .with_arg("--no-sandbox");
+        let config = BrowserConfig::new().with_arg("--no-sandbox");
 
         assert!(config.chrome_args.contains(&"--no-sandbox".to_string()));
+    }
+
+    #[test]
+    fn test_with_chrome_path() {
+        let config = BrowserConfig::new().with_chrome_path("/usr/bin/chromium");
+
+        assert_eq!(config.chrome_path, Some("/usr/bin/chromium".to_string()));
     }
 }

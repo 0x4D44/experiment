@@ -9,6 +9,18 @@ use std::sync::Arc;
 
 use crate::mcp::error::{McpError, McpResult};
 
+// Concrete tool implementations
+/// Control playback tool implementation
+pub mod control_playback;
+/// List playlist songs tool implementation
+pub mod list_playlist_songs;
+/// Play song tool implementation
+pub mod play_song;
+
+pub use control_playback::ControlPlaybackTool;
+pub use list_playlist_songs::ListPlaylistSongsTool;
+pub use play_song::PlaySongTool;
+
 /// Tool trait that all tools must implement
 #[async_trait]
 pub trait Tool: Send + Sync {
@@ -29,13 +41,17 @@ pub trait Tool: Send + Sync {
 /// Tool metadata for listing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolInfo {
+    /// Tool name
     pub name: String,
+    /// Tool description
     pub description: String,
+    /// JSON schema for tool input
     #[serde(rename = "inputSchema")]
     pub input_schema: Value,
 }
 
 impl ToolInfo {
+    /// Create ToolInfo from a Tool trait object
     pub fn from_tool(tool: &dyn Tool) -> Self {
         Self {
             name: tool.name().to_string(),
@@ -63,7 +79,10 @@ impl ToolRegistry {
         let name = tool.name().to_string();
 
         if self.tools.contains_key(&name) {
-            return Err(McpError::internal(format!("Tool '{}' already registered", name)));
+            return Err(McpError::internal(format!(
+                "Tool '{}' already registered",
+                name
+            )));
         }
 
         self.tools.insert(name, tool);
@@ -243,5 +262,240 @@ mod tests {
         assert_eq!(info.name, "test");
         assert_eq!(info.description, "Test tool");
         assert!(info.input_schema.is_object());
+    }
+
+    #[test]
+    fn test_tool_registry_default() {
+        let registry = ToolRegistry::default();
+        assert_eq!(registry.count(), 0);
+    }
+
+    #[test]
+    fn test_tool_registry_register_multiple() {
+        let mut registry = ToolRegistry::new();
+
+        for i in 1..=5 {
+            let tool = Arc::new(MockTool {
+                name: format!("tool{}", i),
+                description: format!("Tool {}", i),
+            });
+            registry.register(tool).unwrap();
+        }
+
+        assert_eq!(registry.count(), 5);
+    }
+
+    #[test]
+    fn test_tool_registry_duplicate_registration_error() {
+        let mut registry = ToolRegistry::new();
+        let tool_name = "duplicate_tool";
+
+        let tool1 = Arc::new(MockTool {
+            name: tool_name.to_string(),
+            description: "First".to_string(),
+        });
+        let tool2 = Arc::new(MockTool {
+            name: tool_name.to_string(),
+            description: "Second".to_string(),
+        });
+
+        assert!(registry.register(tool1).is_ok());
+        let result = registry.register(tool2);
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            McpError::InternalError(msg) => {
+                assert!(msg.contains("already registered"));
+            }
+            _ => panic!("Expected InternalError"),
+        }
+    }
+
+    #[test]
+    fn test_tool_registry_get_nonexistent() {
+        let registry = ToolRegistry::new();
+        assert!(registry.get("nonexistent_tool").is_none());
+    }
+
+    #[test]
+    fn test_tool_registry_empty_list() {
+        let registry = ToolRegistry::new();
+        let list = registry.list();
+        assert!(list.is_empty());
+    }
+
+    #[test]
+    fn test_tool_info_serialization() {
+        let info = ToolInfo {
+            name: "test_tool".to_string(),
+            description: "A test tool".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {}
+            }),
+        };
+
+        let json_str = serde_json::to_string(&info).unwrap();
+        assert!(json_str.contains("test_tool"));
+        assert!(json_str.contains("inputSchema")); // Check camelCase rename
+    }
+
+    #[test]
+    fn test_tool_info_deserialization() {
+        let json_str = r#"{
+            "name": "test_tool",
+            "description": "A test tool",
+            "inputSchema": {
+                "type": "object"
+            }
+        }"#;
+
+        let info: ToolInfo = serde_json::from_str(json_str).unwrap();
+        assert_eq!(info.name, "test_tool");
+        assert_eq!(info.description, "A test tool");
+        assert!(info.input_schema.is_object());
+    }
+
+    #[tokio::test]
+    async fn test_mock_tool_execute() {
+        let tool = MockTool {
+            name: "test".to_string(),
+            description: "Test tool".to_string(),
+        };
+
+        let result = tool.execute(json!({"param": "test_value"})).await.unwrap();
+        assert_eq!(result["result"], "success");
+        assert_eq!(result["params"]["param"], "test_value");
+    }
+
+    #[test]
+    fn test_mock_tool_input_schema_structure() {
+        let tool = MockTool {
+            name: "test".to_string(),
+            description: "Test tool".to_string(),
+        };
+
+        let schema = tool.input_schema();
+        assert_eq!(schema["type"], "object");
+        assert!(schema["properties"].is_object());
+        assert!(schema["properties"]["param"].is_object());
+        assert_eq!(schema["properties"]["param"]["type"], "string");
+    }
+
+    #[test]
+    fn test_tool_registry_list_ordering() {
+        let mut registry = ToolRegistry::new();
+
+        let names = vec!["alpha", "beta", "gamma"];
+        for name in &names {
+            let tool = Arc::new(MockTool {
+                name: name.to_string(),
+                description: format!("{} tool", name),
+            });
+            registry.register(tool).unwrap();
+        }
+
+        let list = registry.list();
+        assert_eq!(list.len(), 3);
+
+        // Verify all tools are present (order may vary due to HashMap)
+        for name in names {
+            assert!(list.iter().any(|t| t.name == name));
+        }
+    }
+
+    #[tokio::test]
+    async fn test_tool_registry_execute_with_params() {
+        let mut registry = ToolRegistry::new();
+        let tool = Arc::new(MockTool {
+            name: "test_tool".to_string(),
+            description: "Test".to_string(),
+        });
+
+        registry.register(tool).unwrap();
+
+        let params = json!({
+            "param": "test_value",
+            "extra": 123
+        });
+
+        let result = registry.execute("test_tool", params.clone()).await.unwrap();
+        assert_eq!(result["result"], "success");
+        assert_eq!(result["params"], params);
+    }
+
+    #[tokio::test]
+    async fn test_tool_registry_execute_empty_params() {
+        let mut registry = ToolRegistry::new();
+        let tool = Arc::new(MockTool {
+            name: "test_tool".to_string(),
+            description: "Test".to_string(),
+        });
+
+        registry.register(tool).unwrap();
+
+        let result = registry.execute("test_tool", json!({})).await.unwrap();
+        assert_eq!(result["result"], "success");
+        assert!(result["params"].is_object());
+    }
+
+    #[test]
+    fn test_tool_info_clone() {
+        let info1 = ToolInfo {
+            name: "test".to_string(),
+            description: "Test tool".to_string(),
+            input_schema: json!({"type": "object"}),
+        };
+
+        let info2 = info1.clone();
+        assert_eq!(info1.name, info2.name);
+        assert_eq!(info1.description, info2.description);
+    }
+
+    #[test]
+    fn test_tool_registry_count_after_operations() {
+        let mut registry = ToolRegistry::new();
+        assert_eq!(registry.count(), 0);
+
+        let tool1 = Arc::new(MockTool {
+            name: "tool1".to_string(),
+            description: "First".to_string(),
+        });
+        registry.register(tool1).unwrap();
+        assert_eq!(registry.count(), 1);
+
+        let tool2 = Arc::new(MockTool {
+            name: "tool2".to_string(),
+            description: "Second".to_string(),
+        });
+        registry.register(tool2).unwrap();
+        assert_eq!(registry.count(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_tool_registry_concurrent_reads() {
+        let mut registry = ToolRegistry::new();
+        let tool = Arc::new(MockTool {
+            name: "shared_tool".to_string(),
+            description: "Shared".to_string(),
+        });
+        registry.register(tool).unwrap();
+
+        let registry = Arc::new(registry);
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let reg = Arc::clone(&registry);
+                tokio::spawn(async move {
+                    let _ = reg.get("shared_tool");
+                    let _ = reg.list();
+                    let _ = reg.count();
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
     }
 }

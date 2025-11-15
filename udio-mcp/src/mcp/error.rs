@@ -1,42 +1,53 @@
 // MCP-specific error types
 // Provides structured error handling for the MCP server
 
-use thiserror::Error;
 use crate::mcp::types::ErrorObject;
+use thiserror::Error;
 
 /// Main error type for MCP operations
 #[derive(Error, Debug)]
 pub enum McpError {
+    /// Protocol-level error
     #[error("Protocol error: {0}")]
     ProtocolError(String),
 
+    /// Invalid request error
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
 
+    /// Method not found error
     #[error("Method not found: {0}")]
     MethodNotFound(String),
 
+    /// Invalid parameters error
     #[error("Invalid parameters: {0}")]
     InvalidParams(String),
 
+    /// Internal server error
     #[error("Internal server error: {0}")]
     InternalError(String),
 
+    /// Transport layer error
     #[error("Transport error: {0}")]
     TransportError(String),
 
+    /// JSON serialization/deserialization error
     #[error("Serialization error: {0}")]
     SerializationError(#[from] serde_json::Error),
 
+    /// I/O operation error
     #[error("IO error: {0}")]
     IoError(#[from] std::io::Error),
 
+    /// Tool execution error
     #[error("Tool execution error: {0}")]
     ToolError(String),
 
+    /// Resource access error
     #[error("Resource error: {0}")]
     ResourceError(String),
 
+    /// Unsupported capability error
     #[error("Capability not supported: {0}")]
     CapabilityNotSupported(String),
 }
@@ -56,14 +67,10 @@ impl McpError {
             McpError::SerializationError(e) => {
                 ErrorObject::new(PARSE_ERROR, format!("Serialization error: {}", e))
             }
-            McpError::IoError(e) => {
-                ErrorObject::new(INTERNAL_ERROR, format!("IO error: {}", e))
-            }
+            McpError::IoError(e) => ErrorObject::new(INTERNAL_ERROR, format!("IO error: {}", e)),
             McpError::ToolError(msg) => ErrorObject::new(SERVER_ERROR_START - 2, msg),
             McpError::ResourceError(msg) => ErrorObject::new(SERVER_ERROR_START - 3, msg),
-            McpError::CapabilityNotSupported(msg) => {
-                ErrorObject::new(SERVER_ERROR_START - 4, msg)
-            }
+            McpError::CapabilityNotSupported(msg) => ErrorObject::new(SERVER_ERROR_START - 4, msg),
         }
     }
 

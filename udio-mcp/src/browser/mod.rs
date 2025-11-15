@@ -1,12 +1,17 @@
 // Browser automation module
 // Handles browser lifecycle and page automation for Udio interaction
 
-pub mod manager;
+/// Browser automation utilities
+pub mod automation;
+/// Browser configuration
 pub mod config;
+/// Data extraction from web pages
+pub mod extractor;
+/// Browser lifecycle management
+pub mod manager;
+/// CSS selector configuration
 pub mod selectors;
-// pub mod automation;  // To be implemented
-// pub mod extractor;   // To be implemented
 
-pub use manager::BrowserManager;
 pub use config::BrowserConfig;
-pub use selectors::{Selectors, SelectorConfig};
+pub use manager::BrowserManager;
+pub use selectors::{SelectorConfig, Selectors};
