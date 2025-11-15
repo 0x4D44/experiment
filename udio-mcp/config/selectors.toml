@@ -1,0 +1,146 @@
+# Udio CSS Selector Configuration
+#
+# This file contains CSS selectors for interacting with Udio's web interface.
+# Multiple selectors can be provided for each element to handle UI changes.
+# Selectors are tried in order until one matches.
+#
+# Format: Each selector is an array of strings, allowing fallback options
+
+[playlist]
+# Container holding all playlists
+container = [
+    ".playlist-container",
+    "[data-testid='playlist-container']",
+    ".library-content",
+]
+
+# Individual playlist item
+item = [
+    ".playlist-item",
+    "[data-playlist]",
+]
+
+# Playlist title/name
+title = [
+    ".playlist-title",
+    ".playlist-name",
+    "h2",
+]
+
+# Song count indicator
+song_count = [
+    ".song-count",
+    ".track-count",
+]
+
+[song]
+# Individual song item in a list
+item = [
+    ".song-item",
+    "[data-song]",
+    ".track-row",
+]
+
+# Song title
+title = [
+    ".song-title",
+    ".track-name",
+    "h3",
+]
+
+# Song artist/creator
+artist = [
+    ".song-artist",
+    ".artist-name",
+]
+
+# Song duration
+duration = [
+    ".song-duration",
+    ".duration",
+    ".track-length",
+]
+
+# Play button for song
+play_button = [
+    "[data-action='play']",
+    ".play-button",
+    ".btn-play",
+]
+
+# Song tags
+tags = [
+    ".song-tags .tag",
+    ".tags .tag",
+    ".genre-tag",
+]
+
+[player]
+# Player controls container
+controls = [
+    ".player-controls",
+    "[data-testid='player-controls']",
+    ".playback-controls",
+]
+
+# Play/Pause button
+play_pause = [
+    "[data-action='play-pause']",
+    ".play-pause-button",
+    ".btn-play-pause",
+]
+
+# Next track button
+next = [
+    "[data-action='next']",
+    ".next-button",
+    ".btn-next",
+]
+
+# Previous track button
+previous = [
+    "[data-action='previous']",
+    ".previous-button",
+    ".btn-previous",
+]
+
+# Progress bar / seek bar
+progress_bar = [
+    ".progress-bar",
+    "[data-testid='progress-bar']",
+    ".seek-bar",
+]
+
+# Current time display
+current_time = [
+    ".current-time",
+    ".playback-time",
+]
+
+# Total duration display
+total_time = [
+    ".total-time",
+    ".track-duration",
+]
+
+[auth]
+# Email input field
+email_input = [
+    "input[type='email']",
+    "input[name='email']",
+    "#email",
+]
+
+# Password input field
+password_input = [
+    "input[type='password']",
+    "input[name='password']",
+    "#password",
+]
+
+# Submit button
+submit_button = [
+    "button[type='submit']",
+    ".login-button",
+    ".btn-submit",
+]

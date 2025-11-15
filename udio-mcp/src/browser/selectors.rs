@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Complete selector configuration for Udio pages
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Selectors {
     /// Playlist-related selectors
     pub playlist: PlaylistSelectors,
@@ -31,19 +31,7 @@ impl Selectors {
     /// Load selectors from default location
     pub fn load_default() -> Self {
         // Try to load from config file, fall back to defaults
-        Self::from_file("config/selectors.toml")
-            .unwrap_or_else(|_| Self::default())
-    }
-}
-
-impl Default for Selectors {
-    fn default() -> Self {
-        Self {
-            playlist: PlaylistSelectors::default(),
-            song: SongSelectors::default(),
-            player: PlayerSelectors::default(),
-            auth: AuthSelectors::default(),
-        }
+        Self::from_file("config/selectors.toml").unwrap_or_else(|_| Self::default())
     }
 }
 
@@ -71,19 +59,13 @@ impl Default for PlaylistSelectors {
                 "[data-testid='playlist-container']".to_string(),
                 ".library-content".to_string(),
             ],
-            item: vec![
-                ".playlist-item".to_string(),
-                "[data-playlist]".to_string(),
-            ],
+            item: vec![".playlist-item".to_string(), "[data-playlist]".to_string()],
             title: vec![
                 ".playlist-title".to_string(),
                 ".playlist-name".to_string(),
                 "h2".to_string(),
             ],
-            song_count: vec![
-                ".song-count".to_string(),
-                ".track-count".to_string(),
-            ],
+            song_count: vec![".song-count".to_string(), ".track-count".to_string()],
         }
     }
 }
@@ -123,10 +105,7 @@ impl Default for SongSelectors {
                 ".track-name".to_string(),
                 "h3".to_string(),
             ],
-            artist: vec![
-                ".song-artist".to_string(),
-                ".artist-name".to_string(),
-            ],
+            artist: vec![".song-artist".to_string(), ".artist-name".to_string()],
             duration: vec![
                 ".song-duration".to_string(),
                 ".duration".to_string(),
@@ -183,22 +162,13 @@ impl Default for PlayerSelectors {
                 ".btn-play-pause".to_string(),
                 "[data-action='play-pause']".to_string(),
             ],
-            next_button: vec![
-                ".btn-next".to_string(),
-                "[data-action='next']".to_string(),
-            ],
+            next_button: vec![".btn-next".to_string(), "[data-action='next']".to_string()],
             previous_button: vec![
                 ".btn-previous".to_string(),
                 "[data-action='previous']".to_string(),
             ],
-            progress_bar: vec![
-                ".progress-bar".to_string(),
-                ".seek-bar".to_string(),
-            ],
-            current_time: vec![
-                ".current-time".to_string(),
-                ".time-current".to_string(),
-            ],
+            progress_bar: vec![".progress-bar".to_string(), ".seek-bar".to_string()],
+            current_time: vec![".current-time".to_string(), ".time-current".to_string()],
             total_time: vec![
                 ".total-time".to_string(),
                 ".time-total".to_string(),
@@ -299,5 +269,51 @@ mod tests {
         assert!(song_sel.item.primary().is_some());
         assert!(song_sel.title.primary().is_some());
         assert!(song_sel.play_button.primary().is_some());
+    }
+
+    #[test]
+    fn test_load_default() {
+        let selectors = Selectors::load_default();
+
+        // Verify all selector groups are populated
+        assert!(!selectors.playlist.container.is_empty());
+        assert!(!selectors.song.item.is_empty());
+        assert!(!selectors.player.play_pause_button.is_empty());
+        assert!(!selectors.auth.email_input.is_empty());
+    }
+
+    #[test]
+    fn test_player_selectors() {
+        let player_sel = PlayerSelectors::default();
+
+        assert!(player_sel.play_pause_button.primary().is_some());
+        assert!(player_sel.next_button.primary().is_some());
+        assert!(player_sel.previous_button.primary().is_some());
+        assert!(player_sel.progress_bar.primary().is_some());
+    }
+
+    #[test]
+    fn test_auth_selectors() {
+        let auth_sel = AuthSelectors::default();
+
+        assert!(auth_sel.email_input.primary().is_some());
+        assert!(auth_sel.password_input.primary().is_some());
+        assert!(auth_sel.submit_button.primary().is_some());
+    }
+
+    #[test]
+    fn test_selector_fallback_chain() {
+        let song_sel = SongSelectors::default();
+
+        // Verify fallback chain has multiple options
+        assert!(song_sel.title.len() >= 2);
+        assert!(song_sel.duration.len() >= 2);
+    }
+
+    #[test]
+    fn test_empty_selector_vec() {
+        let empty_selectors: Vec<String> = vec![];
+        assert!(empty_selectors.primary().is_none());
+        assert_eq!(empty_selectors.fallbacks().len(), 0);
     }
 }
