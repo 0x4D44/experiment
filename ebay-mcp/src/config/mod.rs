@@ -576,4 +576,324 @@ usage_count = 5
         let phrase = manager2.get_phrase("phrase_persist").await.unwrap();
         assert_eq!(phrase.name, "Persist Test");
     }
+
+    #[tokio::test]
+    async fn test_load_invalid_config_toml() {
+        let config_file = NamedTempFile::new().unwrap();
+        let phrases_file = NamedTempFile::new().unwrap();
+
+        // Write invalid TOML
+        tokio::fs::write(config_file.path(), "invalid toml syntax [[[")
+            .await
+            .unwrap();
+
+        let result = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_phrases_config_default() {
+        let config = SavedPhrasesConfig::default();
+        assert_eq!(config.version, "1.0");
+        assert_eq!(config.phrases.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_save_multiple_phrases() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrase1 = SavedSearchPhrase {
+            id: "multi1".to_string(),
+            name: "First".to_string(),
+            query: "query1".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        let phrase2 = SavedSearchPhrase {
+            id: "multi2".to_string(),
+            name: "Second".to_string(),
+            query: "query2".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        manager.save_phrase(phrase1).await.unwrap();
+        manager.save_phrase(phrase2).await.unwrap();
+
+        let phrases = manager.get_phrases().await;
+        assert_eq!(phrases.len(), 3); // 1 original + 2 new
+    }
+
+    #[tokio::test]
+    async fn test_load_invalid_phrases_toml() {
+        let config_file = NamedTempFile::new().unwrap();
+        let phrases_file = NamedTempFile::new().unwrap();
+
+        tokio::fs::write(config_file.path(), create_test_config_toml())
+            .await
+            .unwrap();
+
+        // Write invalid TOML to phrases file
+        tokio::fs::write(phrases_file.path(), "invalid [[[ toml")
+            .await
+            .unwrap();
+
+        let result = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await;
+
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_phrase_updates_existing() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Get original phrase
+        let original = manager.get_phrase("phrase1").await.unwrap();
+        assert_eq!(original.usage_count, 5);
+
+        // Update it
+        let mut updated = original.clone();
+        updated.usage_count = 10;
+        updated.name = "Updated Name".to_string();
+
+        manager.update_phrase("phrase1", updated).await.unwrap();
+
+        // Verify update
+        let phrase = manager.get_phrase("phrase1").await.unwrap();
+        assert_eq!(phrase.name, "Updated Name");
+        assert_eq!(phrase.usage_count, 10);
+    }
+
+    #[tokio::test]
+    async fn test_reload_preserves_in_memory_changes() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Add a phrase to memory but don't persist
+        let new_phrase = SavedSearchPhrase {
+            id: "memory_only".to_string(),
+            name: "Memory Only".to_string(),
+            query: "test".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        manager.save_phrase(new_phrase).await.unwrap();
+        assert_eq!(manager.get_phrases().await.len(), 2);
+
+        // Reload should reload from disk, keeping persisted changes
+        manager.reload().await.unwrap();
+
+        // Should still have the phrase (it was persisted by save_phrase)
+        let phrases = manager.get_phrases().await;
+        assert!(phrases.iter().any(|p| p.id == "memory_only"));
+    }
+
+    #[tokio::test]
+    async fn test_phrases_empty_after_delete_all() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Delete all phrases
+        let phrases = manager.get_phrases().await;
+        for phrase in phrases {
+            manager.delete_phrase(&phrase.id).await.unwrap();
+        }
+
+        assert_eq!(manager.get_phrases().await.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_config_reload_error_handling() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Corrupt the config file
+        tokio::fs::write(config_file.path(), "invalid [[[")
+            .await
+            .unwrap();
+
+        // Reload should fail
+        let result = manager.reload().await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_update_nonexistent_phrase_error() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let phrase = SavedSearchPhrase {
+            id: "nonexistent".to_string(),
+            name: "Test".to_string(),
+            query: "test".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec![],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        let result = manager.update_phrase("nonexistent", phrase).await;
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_phrase_with_filters_and_tags() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        let mut filters = SearchFilters::default();
+        filters.price_min = Some(10.0);
+        filters.price_max = Some(100.0);
+
+        let phrase = SavedSearchPhrase {
+            id: "filtered".to_string(),
+            name: "Filtered Search".to_string(),
+            query: "camera".to_string(),
+            filters,
+            tags: vec!["electronics".to_string(), "photography".to_string()],
+            created_at: Utc::now(),
+            last_used: Some(Utc::now()),
+            usage_count: 3,
+        };
+
+        manager.save_phrase(phrase.clone()).await.unwrap();
+
+        let retrieved = manager.get_phrase("filtered").await.unwrap();
+        assert_eq!(retrieved.tags.len(), 2);
+        assert_eq!(retrieved.filters.price_min, Some(10.0));
+        assert!(retrieved.last_used.is_some());
+    }
+
+    #[tokio::test]
+    async fn test_persist_error_handling() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Add phrase with special characters that should be handled correctly
+        let phrase = SavedSearchPhrase {
+            id: "special\nchars".to_string(),
+            name: "Test \"quotes\"".to_string(),
+            query: "test's query".to_string(),
+            filters: SearchFilters::default(),
+            tags: vec!["tag:with:colons".to_string()],
+            created_at: Utc::now(),
+            last_used: None,
+            usage_count: 0,
+        };
+
+        manager.save_phrase(phrase).await.unwrap();
+
+        // Verify it persisted
+        let retrieved = manager.get_phrase("special\nchars").await.unwrap();
+        assert_eq!(retrieved.name, "Test \"quotes\"");
+    }
+
+    #[tokio::test]
+    async fn test_config_manager_clone_config() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Get config twice - should get independent clones
+        let config1 = manager.get_config().await;
+        let config2 = manager.get_config().await;
+
+        assert_eq!(config1.server.name, config2.server.name);
+        assert_eq!(config1.browser.pool_min_size, config2.browser.pool_min_size);
+    }
+
+    #[tokio::test]
+    async fn test_get_phrases_clone() {
+        let (config_file, phrases_file) = create_temp_config_files().await;
+
+        let manager = ConfigManager::load(
+            config_file.path().to_path_buf(),
+            phrases_file.path().to_path_buf(),
+        )
+        .await
+        .unwrap();
+
+        // Get phrases twice - should get independent clones
+        let phrases1 = manager.get_phrases().await;
+        let phrases2 = manager.get_phrases().await;
+
+        assert_eq!(phrases1.len(), phrases2.len());
+        assert_eq!(phrases1[0].id, phrases2[0].id);
+    }
 }
