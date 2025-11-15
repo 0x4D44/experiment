@@ -180,4 +180,38 @@ mod tests {
 
         assert_eq!(song.metadata, Some(metadata));
     }
+
+    #[test]
+    fn test_song_metadata_default() {
+        let metadata = SongMetadata::default();
+        assert!(metadata.album.is_none());
+        assert!(metadata.thumbnail_url.is_none());
+        assert!(metadata.play_count.is_none());
+        assert!(metadata.rating.is_none());
+        assert!(!metadata.is_favorite);
+    }
+
+    #[test]
+    fn test_format_duration_zero() {
+        let song = Song::new("song123", "Test Song", 0, "https://udio.com/songs/song123");
+        assert_eq!(song.format_duration(), "00:00");
+    }
+
+    #[test]
+    fn test_format_duration_exactly_one_minute() {
+        let song = Song::new("song123", "Test Song", 60, "https://udio.com/songs/song123");
+        assert_eq!(song.format_duration(), "01:00");
+    }
+
+    #[test]
+    fn test_has_tag_empty() {
+        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123");
+        assert!(!song.has_tag("any"));
+    }
+
+    #[test]
+    fn test_song_created_at_timestamp() {
+        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123");
+        assert!(song.created_at > 0);
+    }
 }

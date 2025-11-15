@@ -213,4 +213,118 @@ mod tests {
         let stats = manager.cache_stats().await;
         assert_eq!(stats.cached_playlists, 0);
     }
+
+    #[test]
+    fn test_with_custom_extractor() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let extractor = PlaylistExtractor::new();
+        let manager = PlaylistManager::with_extractor(browser_manager, extractor);
+
+        assert_eq!(manager.base_url, "https://www.udio.com");
+    }
+
+    #[test]
+    fn test_construct_url_with_special_chars() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = PlaylistManager::new(browser_manager);
+
+        let url = manager.construct_playlist_url("My Playlist");
+        assert!(url.contains("My Playlist"));
+        assert!(url.starts_with("https://www.udio.com/playlists/"));
+    }
+
+    #[tokio::test]
+    async fn test_invalidate_cache_nonexistent() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = PlaylistManager::new(browser_manager);
+
+        // Should not panic on nonexistent key
+        manager.invalidate_cache("nonexistent").await;
+
+        let stats = manager.cache_stats().await;
+        assert_eq!(stats.cached_playlists, 0);
+    }
+
+    #[tokio::test]
+    async fn test_cache_stats_structure() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = PlaylistManager::new(browser_manager);
+
+        let stats = manager.cache_stats().await;
+        assert_eq!(stats.cached_playlists, 0);
+        assert_eq!(stats.total_songs, 0);
+    }
+
+    #[test]
+    fn test_cache_stats_clone() {
+        let stats1 = CacheStats {
+            cached_playlists: 5,
+            total_songs: 100,
+        };
+
+        let stats2 = stats1.clone();
+        assert_eq!(stats1.cached_playlists, stats2.cached_playlists);
+        assert_eq!(stats1.total_songs, stats2.total_songs);
+    }
+
+    #[test]
+    fn test_cache_stats_debug() {
+        let stats = CacheStats {
+            cached_playlists: 3,
+            total_songs: 42,
+        };
+
+        let debug_str = format!("{:?}", stats);
+        assert!(debug_str.contains("3"));
+        assert!(debug_str.contains("42"));
+    }
+
+    #[test]
+    fn test_base_url_https() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = PlaylistManager::new(browser_manager);
+
+        assert!(manager.base_url.starts_with("https://"));
+        assert!(manager.base_url.contains("udio.com"));
+    }
+
+    #[test]
+    fn test_manager_arc_components() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let browser_clone = Arc::clone(&browser_manager);
+
+        let manager1 = PlaylistManager::new(browser_manager);
+        let manager2 = PlaylistManager::new(browser_clone);
+
+        assert_eq!(manager1.base_url, manager2.base_url);
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_cache_access() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = Arc::new(PlaylistManager::new(browser_manager));
+
+        let handles: Vec<_> = (0..5)
+            .map(|_| {
+                let mgr = Arc::clone(&manager);
+                tokio::spawn(async move {
+                    let _ = mgr.cache_stats().await;
+                    mgr.clear_cache().await;
+                })
+            })
+            .collect();
+
+        for handle in handles {
+            handle.await.unwrap();
+        }
+    }
+
+    #[test]
+    fn test_playlist_url_format() {
+        let browser_manager = Arc::new(BrowserManager::new(BrowserConfig::default()));
+        let manager = PlaylistManager::new(browser_manager);
+
+        let url = manager.construct_playlist_url("TestPlaylist");
+        assert_eq!(url, "https://www.udio.com/playlists/TestPlaylist");
+    }
 }
