@@ -508,4 +508,43 @@ mod tests {
         assert_eq!(cloned.free_shipping, true);
         assert_eq!(cloned.international, true);
     }
+
+    #[test]
+    fn test_search_filters_debug() {
+        let filters = SearchFilters {
+            category: Some("Electronics".to_string()),
+            price_min: Some(10.0),
+            price_max: Some(100.0),
+            condition: Some(vec!["New".to_string()]),
+            buying_format: Some(vec!["BuyItNow".to_string()]),
+            location: Some("US".to_string()),
+            shipping: Some(ShippingOptions::default()),
+            sort_by: Some(SortOrder::PriceLowest),
+            item_specifics: None,
+        };
+
+        let debug_str = format!("{:?}", filters);
+        assert!(debug_str.contains("Electronics"));
+        assert!(debug_str.contains("price_min"));
+    }
+
+    #[test]
+    fn test_sort_order_all_variants() {
+        // Test all SortOrder variants to ensure complete coverage
+        let variants = vec![
+            SortOrder::BestMatch,
+            SortOrder::PricePlusShippingLowest,
+            SortOrder::PricePlusShippingHighest,
+            SortOrder::PriceLowest,
+            SortOrder::PriceHighest,
+            SortOrder::DistanceNearest,
+            SortOrder::TimeEndingSoonest,
+            SortOrder::TimeNewlyListed,
+        ];
+
+        for variant in variants {
+            let _param = variant.to_ebay_param();
+            let _debug = format!("{:?}", variant);
+        }
+    }
 }
