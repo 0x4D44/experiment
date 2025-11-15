@@ -1,8 +1,8 @@
 // Credential types and management
 // Handles credential validation and storage coordination
 
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use anyhow::{Result, bail};
 
 use super::keychain::KeychainManager;
 
@@ -66,7 +66,8 @@ impl CredentialsStore {
     /// Store credentials securely
     pub fn store(&self, credentials: &Credentials) -> Result<()> {
         credentials.validate()?;
-        self.keychain.store_password(&credentials.email, &credentials.password)?;
+        self.keychain
+            .store_password(&credentials.email, &credentials.password)?;
         tracing::info!("Credentials stored for: {}", credentials.email);
         Ok(())
     }
@@ -143,8 +144,7 @@ mod tests {
     #[test]
     fn test_credentials_store_creation() {
         let _store = CredentialsStore::default();
-        // Just verify it can be created
-        assert!(true);
+        // Just verify it can be created without panicking
     }
 
     #[test]

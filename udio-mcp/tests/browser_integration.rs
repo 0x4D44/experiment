@@ -1,10 +1,10 @@
 // Integration tests for browser automation
 // These tests use a real headless Chrome instance to test browser operations
 
-use udio_mcp_server::browser::automation;
 use chromiumoxide::{Browser, BrowserConfig};
 use futures::StreamExt;
 use std::time::Duration;
+use udio_mcp_server::browser::automation;
 
 // Helper to create a test HTML page
 async fn create_test_page(browser: &Browser) -> chromiumoxide::Page {
@@ -35,10 +35,7 @@ async fn create_test_page(browser: &Browser) -> chromiumoxide::Page {
 
 #[tokio::test]
 async fn test_find_element_with_fallback() {
-    let config = BrowserConfig::builder()
-        .no_sandbox()
-        .build()
-        .unwrap();
+    let config = BrowserConfig::builder().no_sandbox().build().unwrap();
 
     let (_browser, mut handler) = Browser::launch(config)
         .await
@@ -54,19 +51,13 @@ async fn test_find_element_with_fallback() {
     let page = create_test_page(&_browser).await;
 
     // Test finding element with primary selector
-    let selectors = vec![
-        "#main-heading".to_string(),
-        "h1".to_string(),
-    ];
+    let selectors = vec!["#main-heading".to_string(), "h1".to_string()];
 
     let result = automation::find_element_with_fallback(&page, &selectors).await;
     assert!(result.is_ok());
 
     // Test fallback when primary fails
-    let selectors = vec![
-        "#nonexistent".to_string(),
-        ".primary-button".to_string(),
-    ];
+    let selectors = vec!["#nonexistent".to_string(), ".primary-button".to_string()];
 
     let result = automation::find_element_with_fallback(&page, &selectors).await;
     assert!(result.is_ok());
@@ -88,19 +79,16 @@ async fn test_find_element_with_fallback() {
 #[tokio::test]
 async fn test_find_elements_with_fallback() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 
     // Test finding multiple elements
-    let selectors = vec![
-        ".item".to_string(),
-    ];
+    let selectors = vec![".item".to_string()];
 
     let result = automation::find_elements_with_fallback(&page, &selectors).await;
     assert!(result.is_ok());
@@ -115,18 +103,15 @@ async fn test_find_elements_with_fallback() {
 #[tokio::test]
 async fn test_click_element() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 
-    let selectors = vec![
-        ".primary-button".to_string(),
-    ];
+    let selectors = vec![".primary-button".to_string()];
 
     let result = automation::click_element(&page, &selectors).await;
     assert!(result.is_ok());
@@ -139,18 +124,15 @@ async fn test_click_element() {
 #[tokio::test]
 async fn test_type_into_element() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 
-    let selectors = vec![
-        "#text-input".to_string(),
-    ];
+    let selectors = vec!["#text-input".to_string()];
 
     let result = automation::type_into_element(&page, &selectors, "Hello World").await;
     assert!(result.is_ok());
@@ -163,25 +145,20 @@ async fn test_type_into_element() {
 #[tokio::test]
 async fn test_is_element_visible() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 
-    let selectors = vec![
-        "#main-heading".to_string(),
-    ];
+    let selectors = vec!["#main-heading".to_string()];
 
     let visible = automation::is_element_visible(&page, &selectors).await;
     assert!(visible);
 
-    let selectors = vec![
-        "#nonexistent".to_string(),
-    ];
+    let selectors = vec!["#nonexistent".to_string()];
 
     let visible = automation::is_element_visible(&page, &selectors).await;
     assert!(!visible);
@@ -194,25 +171,23 @@ async fn test_is_element_visible() {
 #[tokio::test]
 async fn test_wait_for_element() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 
-    let selectors = vec![
-        "#main-heading".to_string(),
-    ];
+    let selectors = vec!["#main-heading".to_string()];
 
     let result = automation::wait_for_element(
         &page,
         &selectors,
         Duration::from_secs(5),
-        Duration::from_millis(100)
-    ).await;
+        Duration::from_millis(100),
+    )
+    .await;
     assert!(result.is_ok());
 
     drop(page);
@@ -223,12 +198,11 @@ async fn test_wait_for_element() {
 #[tokio::test]
 async fn test_wait_for_navigation() {
     let config = BrowserConfig::builder().no_sandbox().build().unwrap();
-    let (_browser, mut handler) = Browser::launch(config).await.expect("Failed to launch browser");
+    let (_browser, mut handler) = Browser::launch(config)
+        .await
+        .expect("Failed to launch browser");
 
-    let handle = tokio::spawn(async move {
-        while let Some(_event) = handler.next().await {
-        }
-    });
+    let handle = tokio::spawn(async move { while let Some(_event) = handler.next().await {} });
 
     let page = create_test_page(&_browser).await;
 

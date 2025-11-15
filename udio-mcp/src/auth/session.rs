@@ -1,9 +1,9 @@
 // Session management for authenticated users
 // Handles session lifecycle, validation, and persistence
 
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-use std::time::{SystemTime, Duration, UNIX_EPOCH};
-use anyhow::{Result, bail};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Authentication session with cookies and expiration
 #[derive(Debug, Clone, Serialize, Deserialize)]

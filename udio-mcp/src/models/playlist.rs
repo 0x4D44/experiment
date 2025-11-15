@@ -177,7 +177,12 @@ mod tests {
     use super::*;
 
     fn create_test_song(id: &str, title: &str, duration: u64) -> Song {
-        Song::new(id, title, duration, format!("https://udio.com/songs/{}", id))
+        Song::new(
+            id,
+            title,
+            duration,
+            format!("https://udio.com/songs/{}", id),
+        )
     }
 
     #[test]
@@ -293,10 +298,8 @@ mod tests {
         let playlist = Playlist::new("pl123", "My Playlist");
         assert!(playlist.is_empty());
 
-        let playlist_with_songs =
-            Playlist::new("pl456", "Full Playlist").with_songs(vec![create_test_song(
-                "song1", "Song 1", 180,
-            )]);
+        let playlist_with_songs = Playlist::new("pl456", "Full Playlist")
+            .with_songs(vec![create_test_song("song1", "Song 1", 180)]);
         assert!(!playlist_with_songs.is_empty());
     }
 

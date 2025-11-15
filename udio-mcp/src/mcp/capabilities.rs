@@ -6,15 +6,19 @@ use serde::{Deserialize, Serialize};
 /// Server capabilities advertised during initialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerCapabilities {
+    /// Tool-related capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<ToolCapabilities>,
 
+    /// Resource-related capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resources: Option<ResourceCapabilities>,
 
+    /// Prompt-related capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompts: Option<PromptCapabilities>,
 
+    /// Logging-related capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logging: Option<LoggingCapabilities>,
 }
@@ -32,7 +36,9 @@ impl ServerCapabilities {
 
     /// Builder method to enable tools capability
     pub fn with_tools(mut self, list_changed: bool) -> Self {
-        self.tools = Some(ToolCapabilities { list_changed: Some(list_changed) });
+        self.tools = Some(ToolCapabilities {
+            list_changed: Some(list_changed),
+        });
         self
     }
 
@@ -47,7 +53,9 @@ impl ServerCapabilities {
 
     /// Builder method to enable prompts capability
     pub fn with_prompts(mut self, list_changed: bool) -> Self {
-        self.prompts = Some(PromptCapabilities { list_changed: Some(list_changed) });
+        self.prompts = Some(PromptCapabilities {
+            list_changed: Some(list_changed),
+        });
         self
     }
 
@@ -99,9 +107,11 @@ pub struct LoggingCapabilities {}
 /// Client capabilities received during initialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientCapabilities {
+    /// Experimental features supported by the client
     #[serde(skip_serializing_if = "Option::is_none")]
     pub experimental: Option<serde_json::Value>,
 
+    /// Sampling-related capabilities
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sampling: Option<SamplingCapabilities>,
 }
@@ -113,11 +123,14 @@ pub struct SamplingCapabilities {}
 /// Server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerInfo {
+    /// Server name
     pub name: String,
+    /// Server version
     pub version: String,
 }
 
 impl ServerInfo {
+    /// Create a new ServerInfo
     pub fn new(name: impl Into<String>, version: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -138,7 +151,9 @@ impl Default for ServerInfo {
 /// Client information received during initialization
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ClientInfo {
+    /// Client name
     pub name: String,
+    /// Client version
     pub version: String,
 }
 
@@ -146,8 +161,11 @@ pub struct ClientInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitializeParams {
+    /// MCP protocol version
     pub protocol_version: String,
+    /// Client capabilities
     pub capabilities: ClientCapabilities,
+    /// Client information
     pub client_info: ClientInfo,
 }
 
@@ -155,12 +173,16 @@ pub struct InitializeParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InitializeResult {
+    /// MCP protocol version
     pub protocol_version: String,
+    /// Server capabilities
     pub capabilities: ServerCapabilities,
+    /// Server information
     pub server_info: ServerInfo,
 }
 
 impl InitializeResult {
+    /// Create a new InitializeResult
     pub fn new(
         protocol_version: impl Into<String>,
         capabilities: ServerCapabilities,

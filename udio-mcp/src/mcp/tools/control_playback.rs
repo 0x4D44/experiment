@@ -6,9 +6,9 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::Tool;
+use crate::browser::BrowserManager;
 use crate::mcp::error::McpResult;
 use crate::playback::PlaybackController;
-use crate::browser::BrowserManager;
 
 /// Tool to control playback
 pub struct ControlPlaybackTool {
@@ -18,7 +18,10 @@ pub struct ControlPlaybackTool {
 
 impl ControlPlaybackTool {
     /// Create a new control playback tool
-    pub fn new(browser_manager: Arc<BrowserManager>, playback_controller: Arc<PlaybackController>) -> Self {
+    pub fn new(
+        browser_manager: Arc<BrowserManager>,
+        playback_controller: Arc<PlaybackController>,
+    ) -> Self {
         Self {
             browser_manager,
             playback_controller,
@@ -52,46 +55,56 @@ impl Tool for ControlPlaybackTool {
 
     async fn execute(&self, params: Value) -> McpResult<Value> {
         // Extract action
-        let action = params.get("action")
+        let action = params
+            .get("action")
             .and_then(|v| v.as_str())
             .ok_or_else(|| crate::mcp::error::McpError::invalid_params("action is required"))?;
 
         tracing::info!("Playback control action: {}", action);
 
         // Ensure browser is launched
-        self.browser_manager.launch().await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to launch browser: {}", e)))?;
+        self.browser_manager.launch().await.map_err(|e| {
+            crate::mcp::error::McpError::internal(format!("Failed to launch browser: {}", e))
+        })?;
 
         // Get a page
-        let page = self.browser_manager.new_page("https://www.udio.com").await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to create page: {}", e)))?;
+        let page = self
+            .browser_manager
+            .new_page("https://www.udio.com")
+            .await
+            .map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to create page: {}", e))
+            })?;
 
         // Perform action
         let state = match action {
-            "pause" => {
-                self.playback_controller.pause(&page).await
-                    .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to pause: {}", e)))?
-            }
-            "resume" => {
-                self.playback_controller.resume(&page).await
-                    .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to resume: {}", e)))?
-            }
-            "next" => {
-                self.playback_controller.next(&page).await
-                    .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to skip to next: {}", e)))?
-            }
-            "previous" => {
-                self.playback_controller.previous(&page).await
-                    .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to go to previous: {}", e)))?
-            }
-            "stop" => {
-                self.playback_controller.stop(&page).await
-                    .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to stop: {}", e)))?
-            }
+            "pause" => self.playback_controller.pause(&page).await.map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to pause: {}", e))
+            })?,
+            "resume" => self.playback_controller.resume(&page).await.map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to resume: {}", e))
+            })?,
+            "next" => self.playback_controller.next(&page).await.map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to skip to next: {}", e))
+            })?,
+            "previous" => self
+                .playback_controller
+                .previous(&page)
+                .await
+                .map_err(|e| {
+                    crate::mcp::error::McpError::internal(format!(
+                        "Failed to go to previous: {}",
+                        e
+                    ))
+                })?,
+            "stop" => self.playback_controller.stop(&page).await.map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to stop: {}", e))
+            })?,
             _ => {
-                return Err(crate::mcp::error::McpError::invalid_params(
-                    format!("Invalid action: {}. Must be one of: pause, resume, next, previous, stop", action)
-                ));
+                return Err(crate::mcp::error::McpError::invalid_params(format!(
+                    "Invalid action: {}. Must be one of: pause, resume, next, previous, stop",
+                    action
+                )));
             }
         };
 
@@ -235,14 +248,18 @@ mod tests {
         let action_prop = properties.get("action").unwrap();
 
         assert!(action_prop.get("description").is_some());
-        assert!(!action_prop.get("description").unwrap().as_str().unwrap().is_empty());
+        assert!(!action_prop
+            .get("description")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
     fn test_control_playback_action_extraction_pause() {
         let params = serde_json::json!({"action": "pause"});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert_eq!(action, Some("pause"));
     }
@@ -250,8 +267,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_extraction_resume() {
         let params = serde_json::json!({"action": "resume"});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert_eq!(action, Some("resume"));
     }
@@ -259,8 +275,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_extraction_next() {
         let params = serde_json::json!({"action": "next"});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert_eq!(action, Some("next"));
     }
@@ -268,8 +283,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_extraction_previous() {
         let params = serde_json::json!({"action": "previous"});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert_eq!(action, Some("previous"));
     }
@@ -277,8 +291,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_extraction_stop() {
         let params = serde_json::json!({"action": "stop"});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert_eq!(action, Some("stop"));
     }
@@ -286,8 +299,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_missing() {
         let params = serde_json::json!({});
-        let action = params.get("action")
-            .and_then(|v| v.as_str());
+        let action = params.get("action").and_then(|v| v.as_str());
 
         assert!(action.is_none());
     }
@@ -316,7 +328,7 @@ mod tests {
     #[test]
     fn test_control_playback_action_validation_logic() {
         // Test that we can validate actions using enum values
-        let valid_actions = vec!["pause", "resume", "next", "previous", "stop"];
+        let valid_actions = ["pause", "resume", "next", "previous", "stop"];
 
         assert!(valid_actions.contains(&"pause"));
         assert!(valid_actions.contains(&"resume"));

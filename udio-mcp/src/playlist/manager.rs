@@ -1,14 +1,14 @@
 // Playlist management and coordination
 // High-level interface for playlist operations
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
+use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::collections::HashMap;
 
+use super::extractor::PlaylistExtractor;
 use crate::browser::BrowserManager;
 use crate::models::Playlist;
-use super::extractor::PlaylistExtractor;
 
 /// Manages playlist operations
 pub struct PlaylistManager {
@@ -76,12 +76,17 @@ impl PlaylistManager {
     /// Fetch playlist from Udio (no cache)
     async fn fetch_playlist(&self, playlist_name: &str) -> Result<Playlist> {
         // Launch browser if needed
-        self.browser_manager.launch().await
+        self.browser_manager
+            .launch()
+            .await
             .context("Failed to launch browser")?;
 
         // Navigate to playlist page
         let playlist_url = self.construct_playlist_url(playlist_name);
-        let page = self.browser_manager.new_page(&playlist_url).await
+        let page = self
+            .browser_manager
+            .new_page(&playlist_url)
+            .await
             .context("Failed to create browser page")?;
 
         tracing::debug!("Navigated to playlist page: {}", playlist_url);
@@ -90,7 +95,10 @@ impl PlaylistManager {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
         // Extract playlist data
-        let playlist = self.extractor.extract_playlist(&page, playlist_name).await
+        let playlist = self
+            .extractor
+            .extract_playlist(&page, playlist_name)
+            .await
             .context("Failed to extract playlist data")?;
 
         tracing::info!(
@@ -107,12 +115,17 @@ impl PlaylistManager {
         tracing::info!("Listing playlists");
 
         // Launch browser if needed
-        self.browser_manager.launch().await
+        self.browser_manager
+            .launch()
+            .await
             .context("Failed to launch browser")?;
 
         // Navigate to playlists page
         let playlists_url = format!("{}/playlists", self.base_url);
-        let _page = self.browser_manager.new_page(&playlists_url).await
+        let _page = self
+            .browser_manager
+            .new_page(&playlists_url)
+            .await
             .context("Failed to create browser page")?;
 
         tracing::debug!("Navigated to playlists page: {}", playlists_url);

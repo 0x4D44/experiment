@@ -1,9 +1,9 @@
 // MCP Server Core
 // Main server implementation that ties together all MCP components
 
+use serde_json::{json, Value};
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use serde_json::{json, Value};
 
 use crate::mcp::{
     capabilities::{InitializeParams, InitializeResult, ServerCapabilities, ServerInfo},
@@ -83,8 +83,7 @@ impl McpServer {
                             // Send parse error response
                             let error_response = Response::error(
                                 RequestId::Number(0),
-                                McpError::protocol(format!("Parse error: {}", e))
-                                    .to_error_object(),
+                                McpError::protocol(format!("Parse error: {}", e)).to_error_object(),
                             );
                             let response_str = serde_json::to_string(&error_response)?;
                             transport.send(&response_str).await?;
@@ -162,8 +161,9 @@ impl McpServer {
     /// Handle initialize request
     async fn handle_initialize(&self, params: Option<Value>) -> McpResult<Value> {
         let params: InitializeParams = match params {
-            Some(p) => serde_json::from_value(p)
-                .map_err(|e| McpError::invalid_params(format!("Invalid initialize params: {}", e)))?,
+            Some(p) => serde_json::from_value(p).map_err(|e| {
+                McpError::invalid_params(format!("Invalid initialize params: {}", e))
+            })?,
             None => return Err(McpError::invalid_params("Missing initialize params")),
         };
 
@@ -187,11 +187,8 @@ impl McpServer {
         *initialized = true;
 
         // Create initialize result
-        let result = InitializeResult::new(
-            MCP_VERSION,
-            self.capabilities.clone(),
-            self.info.clone(),
-        );
+        let result =
+            InitializeResult::new(MCP_VERSION, self.capabilities.clone(), self.info.clone());
 
         Ok(serde_json::to_value(result)?)
     }
@@ -374,11 +371,7 @@ mod tests {
     async fn test_handle_request() {
         let server = McpServer::new();
 
-        let request = Request::new(
-            RequestId::Number(1),
-            protocol::methods::PING,
-            None,
-        );
+        let request = Request::new(RequestId::Number(1), protocol::methods::PING, None);
 
         let response = server.handle_request(request).await;
         assert!(response.result.is_some());
@@ -389,11 +382,7 @@ mod tests {
     async fn test_handle_unknown_method() {
         let server = McpServer::new();
 
-        let request = Request::new(
-            RequestId::Number(1),
-            "unknown_method",
-            None,
-        );
+        let request = Request::new(RequestId::Number(1), "unknown_method", None);
 
         let response = server.handle_request(request).await;
         assert!(response.result.is_none());
@@ -545,11 +534,7 @@ mod tests {
     async fn test_handle_message_request() {
         let server = McpServer::new();
 
-        let request = Request::new(
-            RequestId::Number(1),
-            protocol::methods::PING,
-            None,
-        );
+        let request = Request::new(RequestId::Number(1), protocol::methods::PING, None);
         let message = Message::Request(request);
 
         let response = server.handle_message(message).await;
@@ -560,10 +545,7 @@ mod tests {
     async fn test_handle_message_notification() {
         let server = McpServer::new();
 
-        let notification = Notification::new(
-            protocol::methods::INITIALIZED,
-            None,
-        );
+        let notification = Notification::new(protocol::methods::INITIALIZED, None);
         let message = Message::Notification(notification);
 
         let response = server.handle_message(message).await;
@@ -585,10 +567,7 @@ mod tests {
     async fn test_handle_notification_initialized() {
         let server = McpServer::new();
 
-        let notification = Notification::new(
-            protocol::methods::INITIALIZED,
-            None,
-        );
+        let notification = Notification::new(protocol::methods::INITIALIZED, None);
 
         server.handle_notification(notification).await;
         // Should not panic
@@ -598,10 +577,7 @@ mod tests {
     async fn test_handle_notification_unknown() {
         let server = McpServer::new();
 
-        let notification = Notification::new(
-            "unknown_notification",
-            None,
-        );
+        let notification = Notification::new("unknown_notification", None);
 
         server.handle_notification(notification).await;
         // Should not panic

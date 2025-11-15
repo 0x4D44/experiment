@@ -1,15 +1,15 @@
 // Authentication manager
 // High-level interface for authentication operations
 
-use anyhow::{Result, Context, bail};
+use anyhow::{bail, Context, Result};
 use chromiumoxide::Page;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use super::{
     credentials::{Credentials, CredentialsStore},
-    session::{Session, SessionStore},
     login::LoginAutomation,
+    session::{Session, SessionStore},
 };
 
 /// Manages authentication lifecycle
@@ -54,20 +54,23 @@ impl AuthManager {
 
     /// Store user credentials securely
     pub fn store_credentials(&self, credentials: &Credentials) -> Result<()> {
-        self.credentials_store.store(credentials)
+        self.credentials_store
+            .store(credentials)
             .context("Failed to store credentials")?;
         Ok(())
     }
 
     /// Retrieve stored credentials
     pub fn get_credentials(&self, email: &str) -> Result<Credentials> {
-        self.credentials_store.retrieve(email)
+        self.credentials_store
+            .retrieve(email)
             .context("Failed to retrieve credentials")
     }
 
     /// Delete stored credentials
     pub fn delete_credentials(&self, email: &str) -> Result<()> {
-        self.credentials_store.delete(email)
+        self.credentials_store
+            .delete(email)
             .context("Failed to delete credentials")?;
         Ok(())
     }
@@ -80,25 +83,33 @@ impl AuthManager {
     /// Authenticate user and create session
     pub async fn login(&self, page: &Page, credentials: &Credentials) -> Result<Session> {
         // Perform login automation
-        let session = self.login_automation.login(page, credentials).await
+        let session = self
+            .login_automation
+            .login(page, credentials)
+            .await
             .context("Login automation failed")?;
 
         // Store session
-        self.session_store.store(session.clone())
+        self.session_store
+            .store(session.clone())
             .context("Failed to store session")?;
 
         // Set current user
         let mut current_user = self.current_user.write().await;
         *current_user = Some(credentials.email.clone());
 
-        tracing::info!("User authenticated and session created: {}", credentials.email);
+        tracing::info!(
+            "User authenticated and session created: {}",
+            credentials.email
+        );
 
         Ok(session)
     }
 
     /// Login with stored credentials
     pub async fn login_with_stored_credentials(&self, page: &Page, email: &str) -> Result<Session> {
-        let credentials = self.get_credentials(email)
+        let credentials = self
+            .get_credentials(email)
             .context("No stored credentials found")?;
 
         self.login(page, &credentials).await
@@ -106,7 +117,8 @@ impl AuthManager {
 
     /// Get current session for user
     pub fn get_session(&self, email: &str) -> Result<Session> {
-        self.session_store.retrieve(email)
+        self.session_store
+            .retrieve(email)
             .context("No valid session found")
     }
 
@@ -118,11 +130,14 @@ impl AuthManager {
     /// Logout user and clear session
     pub async fn logout(&self, page: &Page, email: &str) -> Result<()> {
         // Perform logout automation
-        self.login_automation.logout(page).await
+        self.login_automation
+            .logout(page)
+            .await
             .context("Logout automation failed")?;
 
         // Delete session
-        self.session_store.delete(email)
+        self.session_store
+            .delete(email)
             .context("Failed to delete session")?;
 
         // Clear current user if it matches
@@ -190,15 +205,13 @@ mod tests {
     #[test]
     fn test_auth_manager_creation() {
         let _manager = AuthManager::new();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 
     #[test]
     fn test_auth_manager_default() {
         let _manager = AuthManager::default();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 
     #[test]
@@ -393,7 +406,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_rwlock_some_initialization() {
-        let user: Arc<RwLock<Option<String>>> = Arc::new(RwLock::new(Some("user@example.com".to_string())));
+        let user: Arc<RwLock<Option<String>>> =
+            Arc::new(RwLock::new(Some("user@example.com".to_string())));
         let read = user.read().await;
         assert!(read.is_some());
         assert_eq!(read.as_ref().unwrap(), "user@example.com");

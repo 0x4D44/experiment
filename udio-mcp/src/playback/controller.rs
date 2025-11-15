@@ -1,11 +1,11 @@
 // Playback controller
 // Manages music playback operations via browser automation
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use chromiumoxide::Page;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::time::Duration;
+use tokio::sync::RwLock;
 
 use crate::browser::{automation, selectors::Selectors};
 use crate::models::{PlaybackState, PlaybackStatus, RepeatMode};
@@ -47,19 +47,23 @@ impl PlaybackController {
         // Wait for song element
         match automation::wait_for_element(
             page,
-            &[song_selector.clone()],
+            std::slice::from_ref(&song_selector),
             Duration::from_secs(5),
             Duration::from_millis(500),
-        ).await {
+        )
+        .await
+        {
             Ok(_) => {
                 // Click play button within song element
                 let play_selector = format!("{} .play-button", song_selector);
-                automation::click_element(page, &[play_selector]).await
+                automation::click_element(page, &[play_selector])
+                    .await
                     .context("Failed to click play button")?;
             }
             Err(_) => {
                 // Fallback: try clicking general play button
-                automation::click_element(page, &self.selectors.player.play_pause_button).await
+                automation::click_element(page, &self.selectors.player.play_pause_button)
+                    .await
                     .context("Failed to click play/pause button")?;
             }
         }
@@ -75,7 +79,8 @@ impl PlaybackController {
     pub async fn pause(&self, page: &Page) -> Result<PlaybackState> {
         tracing::info!("Pausing playback");
 
-        automation::click_element(page, &self.selectors.player.play_pause_button).await
+        automation::click_element(page, &self.selectors.player.play_pause_button)
+            .await
             .context("Failed to click pause button")?;
 
         // Update state
@@ -92,7 +97,8 @@ impl PlaybackController {
     pub async fn resume(&self, page: &Page) -> Result<PlaybackState> {
         tracing::info!("Resuming playback");
 
-        automation::click_element(page, &self.selectors.player.play_pause_button).await
+        automation::click_element(page, &self.selectors.player.play_pause_button)
+            .await
             .context("Failed to click play button")?;
 
         // Update state
@@ -109,7 +115,8 @@ impl PlaybackController {
     pub async fn next(&self, page: &Page) -> Result<PlaybackState> {
         tracing::info!("Skipping to next song");
 
-        automation::click_element(page, &self.selectors.player.next_button).await
+        automation::click_element(page, &self.selectors.player.next_button)
+            .await
             .context("Failed to click next button")?;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -121,7 +128,8 @@ impl PlaybackController {
     pub async fn previous(&self, page: &Page) -> Result<PlaybackState> {
         tracing::info!("Going to previous song");
 
-        automation::click_element(page, &self.selectors.player.previous_button).await
+        automation::click_element(page, &self.selectors.player.previous_button)
+            .await
             .context("Failed to click previous button")?;
 
         tokio::time::sleep(Duration::from_millis(500)).await;
@@ -246,15 +254,13 @@ mod tests {
     #[test]
     fn test_playback_controller_creation() {
         let _controller = PlaybackController::new();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 
     #[test]
     fn test_playback_controller_default() {
         let _controller = PlaybackController::default();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 
     #[tokio::test]

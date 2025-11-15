@@ -1,7 +1,7 @@
 // OS keychain integration for secure credential storage
 // Uses platform-specific secure storage (macOS Keychain, Windows Credential Vault, Linux Secret Service)
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use keyring::Entry;
 
 /// Manages secure storage of credentials in OS keychain
@@ -20,22 +20,27 @@ impl KeychainManager {
 
     /// Store a password securely in the OS keychain
     pub fn store_password(&self, username: &str, password: &str) -> Result<()> {
-        let entry = Entry::new(&self.service_name, username)
-            .context("Failed to create keychain entry")?;
+        let entry =
+            Entry::new(&self.service_name, username).context("Failed to create keychain entry")?;
 
-        entry.set_password(password)
+        entry
+            .set_password(password)
             .context("Failed to store password in keychain")?;
 
-        tracing::info!("Password stored securely in keychain for user: {}", username);
+        tracing::info!(
+            "Password stored securely in keychain for user: {}",
+            username
+        );
         Ok(())
     }
 
     /// Retrieve a password from the OS keychain
     pub fn get_password(&self, username: &str) -> Result<String> {
-        let entry = Entry::new(&self.service_name, username)
-            .context("Failed to create keychain entry")?;
+        let entry =
+            Entry::new(&self.service_name, username).context("Failed to create keychain entry")?;
 
-        let password = entry.get_password()
+        let password = entry
+            .get_password()
             .context("Failed to retrieve password from keychain")?;
 
         tracing::debug!("Password retrieved from keychain for user: {}", username);
@@ -44,10 +49,11 @@ impl KeychainManager {
 
     /// Delete a password from the OS keychain
     pub fn delete_password(&self, username: &str) -> Result<()> {
-        let entry = Entry::new(&self.service_name, username)
-            .context("Failed to create keychain entry")?;
+        let entry =
+            Entry::new(&self.service_name, username).context("Failed to create keychain entry")?;
 
-        entry.delete_password()
+        entry
+            .delete_password()
             .context("Failed to delete password from keychain")?;
 
         tracing::info!("Password deleted from keychain for user: {}", username);

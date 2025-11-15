@@ -5,18 +5,14 @@ use std::sync::Arc;
 use tracing::info;
 use udio_mcp_server::{
     browser::BrowserManager,
-    playback::PlaybackController,
-    playlist::PlaylistManager,
     mcp::{
         capabilities::ServerCapabilities,
         server::McpServer,
+        tools::{ControlPlaybackTool, ListPlaylistSongsTool, PlaySongTool},
         transport::stdio::StdioTransport,
-        tools::{
-            ControlPlaybackTool,
-            ListPlaylistSongsTool,
-            PlaySongTool,
-        },
     },
+    playback::PlaybackController,
+    playlist::PlaylistManager,
 };
 
 #[tokio::main]
@@ -25,7 +21,7 @@ async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"))
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
         .init();
 
@@ -47,10 +43,7 @@ async fn main() -> anyhow::Result<()> {
         .with_tools(false) // Tools can change dynamically
         .with_logging();
 
-    let server = McpServer::with_config(
-        Default::default(),
-        capabilities,
-    );
+    let server = McpServer::with_config(Default::default(), capabilities);
 
     // Get tool registry and register Udio tools
     let tools = server.tools();

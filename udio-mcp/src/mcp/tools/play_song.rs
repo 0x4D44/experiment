@@ -6,9 +6,9 @@ use serde_json::{json, Value};
 use std::sync::Arc;
 
 use super::Tool;
+use crate::browser::BrowserManager;
 use crate::mcp::error::McpResult;
 use crate::playback::PlaybackController;
-use crate::browser::BrowserManager;
 
 /// Tool to play a specific song
 pub struct PlaySongTool {
@@ -18,7 +18,10 @@ pub struct PlaySongTool {
 
 impl PlaySongTool {
     /// Create a new play song tool
-    pub fn new(browser_manager: Arc<BrowserManager>, playback_controller: Arc<PlaybackController>) -> Self {
+    pub fn new(
+        browser_manager: Arc<BrowserManager>,
+        playback_controller: Arc<PlaybackController>,
+    ) -> Self {
         Self {
             browser_manager,
             playback_controller,
@@ -51,23 +54,35 @@ impl Tool for PlaySongTool {
 
     async fn execute(&self, params: Value) -> McpResult<Value> {
         // Extract song ID
-        let song_id = params.get("song_id")
+        let song_id = params
+            .get("song_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| crate::mcp::error::McpError::invalid_params("song_id is required"))?;
 
         tracing::info!("Playing song: {}", song_id);
 
         // Ensure browser is launched
-        self.browser_manager.launch().await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to launch browser: {}", e)))?;
+        self.browser_manager.launch().await.map_err(|e| {
+            crate::mcp::error::McpError::internal(format!("Failed to launch browser: {}", e))
+        })?;
 
         // Get a page (simplified - in real implementation would navigate to song)
-        let page = self.browser_manager.new_page("https://www.udio.com").await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to create page: {}", e)))?;
+        let page = self
+            .browser_manager
+            .new_page("https://www.udio.com")
+            .await
+            .map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to create page: {}", e))
+            })?;
 
         // Play the song
-        let state = self.playback_controller.play_song(&page, song_id).await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to play song: {}", e)))?;
+        let state = self
+            .playback_controller
+            .play_song(&page, song_id)
+            .await
+            .map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to play song: {}", e))
+            })?;
 
         // Format response
         let response = json!({
@@ -191,15 +206,19 @@ mod tests {
         let song_id_prop = properties.get("song_id").unwrap();
 
         assert!(song_id_prop.get("description").is_some());
-        assert!(!song_id_prop.get("description").unwrap().as_str().unwrap().is_empty());
+        assert!(!song_id_prop
+            .get("description")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .is_empty());
     }
 
     #[test]
     fn test_play_song_id_extraction() {
         // Test song_id extraction from params
         let params = serde_json::json!({"song_id": "song-123"});
-        let song_id = params.get("song_id")
-            .and_then(|v| v.as_str());
+        let song_id = params.get("song_id").and_then(|v| v.as_str());
 
         assert_eq!(song_id, Some("song-123"));
     }
@@ -208,8 +227,7 @@ mod tests {
     fn test_play_song_id_missing() {
         // Test song_id missing from params
         let params = serde_json::json!({});
-        let song_id = params.get("song_id")
-            .and_then(|v| v.as_str());
+        let song_id = params.get("song_id").and_then(|v| v.as_str());
 
         assert!(song_id.is_none());
     }

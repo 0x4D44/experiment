@@ -54,19 +54,27 @@ impl Tool for ListPlaylistSongsTool {
 
     async fn execute(&self, params: Value) -> McpResult<Value> {
         // Extract parameters
-        let playlist_name = params.get("playlist_name")
+        let playlist_name = params
+            .get("playlist_name")
             .and_then(|v| v.as_str())
             .unwrap_or("ToPlay");
 
-        let limit = params.get("limit")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(50) as usize;
+        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
 
-        tracing::info!("Listing songs from playlist: {} (limit: {})", playlist_name, limit);
+        tracing::info!(
+            "Listing songs from playlist: {} (limit: {})",
+            playlist_name,
+            limit
+        );
 
         // Get playlist
-        let playlist = self.playlist_manager.get_playlist(playlist_name).await
-            .map_err(|e| crate::mcp::error::McpError::internal(format!("Failed to get playlist: {}", e)))?;
+        let playlist = self
+            .playlist_manager
+            .get_playlist(playlist_name)
+            .await
+            .map_err(|e| {
+                crate::mcp::error::McpError::internal(format!("Failed to get playlist: {}", e))
+            })?;
 
         // Extract metadata before moving songs
         let playlist_name = playlist.name.clone();
@@ -108,7 +116,7 @@ impl Tool for ListPlaylistSongsTool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::browser::{BrowserManager, BrowserConfig};
+    use crate::browser::{BrowserConfig, BrowserManager};
 
     #[test]
     fn test_list_playlist_songs_tool_metadata() {
@@ -187,8 +195,18 @@ mod tests {
         let schema = tool.input_schema();
         let properties = schema.get("properties").unwrap();
 
-        assert_eq!(properties.get("playlist_name").unwrap().get("type").unwrap(), "string");
-        assert_eq!(properties.get("limit").unwrap().get("type").unwrap(), "integer");
+        assert_eq!(
+            properties
+                .get("playlist_name")
+                .unwrap()
+                .get("type")
+                .unwrap(),
+            "string"
+        );
+        assert_eq!(
+            properties.get("limit").unwrap().get("type").unwrap(),
+            "integer"
+        );
     }
 
     #[test]
@@ -227,9 +245,7 @@ mod tests {
     fn test_list_playlist_songs_default_limit_extraction() {
         // Test default limit value is 50
         let params = serde_json::json!({});
-        let limit = params.get("limit")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(50) as usize;
+        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
         assert_eq!(limit, 50);
     }
 
@@ -237,9 +253,7 @@ mod tests {
     fn test_list_playlist_songs_custom_limit_extraction() {
         // Test custom limit extraction
         let params = serde_json::json!({"limit": 25});
-        let limit = params.get("limit")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(50) as usize;
+        let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
         assert_eq!(limit, 25);
     }
 
@@ -247,7 +261,8 @@ mod tests {
     fn test_list_playlist_songs_default_playlist_extraction() {
         // Test default playlist name is "ToPlay"
         let params = serde_json::json!({});
-        let playlist_name = params.get("playlist_name")
+        let playlist_name = params
+            .get("playlist_name")
             .and_then(|v| v.as_str())
             .unwrap_or("ToPlay");
         assert_eq!(playlist_name, "ToPlay");
@@ -257,7 +272,8 @@ mod tests {
     fn test_list_playlist_songs_custom_playlist_extraction() {
         // Test custom playlist name extraction
         let params = serde_json::json!({"playlist_name": "My Favorites"});
-        let playlist_name = params.get("playlist_name")
+        let playlist_name = params
+            .get("playlist_name")
             .and_then(|v| v.as_str())
             .unwrap_or("ToPlay");
         assert_eq!(playlist_name, "My Favorites");

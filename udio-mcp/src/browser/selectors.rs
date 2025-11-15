@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 /// Complete selector configuration for Udio pages
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Selectors {
     /// Playlist-related selectors
     pub playlist: PlaylistSelectors,
@@ -31,19 +31,7 @@ impl Selectors {
     /// Load selectors from default location
     pub fn load_default() -> Self {
         // Try to load from config file, fall back to defaults
-        Self::from_file("config/selectors.toml")
-            .unwrap_or_else(|_| Self::default())
-    }
-}
-
-impl Default for Selectors {
-    fn default() -> Self {
-        Self {
-            playlist: PlaylistSelectors::default(),
-            song: SongSelectors::default(),
-            player: PlayerSelectors::default(),
-            auth: AuthSelectors::default(),
-        }
+        Self::from_file("config/selectors.toml").unwrap_or_else(|_| Self::default())
     }
 }
 
@@ -71,19 +59,13 @@ impl Default for PlaylistSelectors {
                 "[data-testid='playlist-container']".to_string(),
                 ".library-content".to_string(),
             ],
-            item: vec![
-                ".playlist-item".to_string(),
-                "[data-playlist]".to_string(),
-            ],
+            item: vec![".playlist-item".to_string(), "[data-playlist]".to_string()],
             title: vec![
                 ".playlist-title".to_string(),
                 ".playlist-name".to_string(),
                 "h2".to_string(),
             ],
-            song_count: vec![
-                ".song-count".to_string(),
-                ".track-count".to_string(),
-            ],
+            song_count: vec![".song-count".to_string(), ".track-count".to_string()],
         }
     }
 }
@@ -123,10 +105,7 @@ impl Default for SongSelectors {
                 ".track-name".to_string(),
                 "h3".to_string(),
             ],
-            artist: vec![
-                ".song-artist".to_string(),
-                ".artist-name".to_string(),
-            ],
+            artist: vec![".song-artist".to_string(), ".artist-name".to_string()],
             duration: vec![
                 ".song-duration".to_string(),
                 ".duration".to_string(),
@@ -183,22 +162,13 @@ impl Default for PlayerSelectors {
                 ".btn-play-pause".to_string(),
                 "[data-action='play-pause']".to_string(),
             ],
-            next_button: vec![
-                ".btn-next".to_string(),
-                "[data-action='next']".to_string(),
-            ],
+            next_button: vec![".btn-next".to_string(), "[data-action='next']".to_string()],
             previous_button: vec![
                 ".btn-previous".to_string(),
                 "[data-action='previous']".to_string(),
             ],
-            progress_bar: vec![
-                ".progress-bar".to_string(),
-                ".seek-bar".to_string(),
-            ],
-            current_time: vec![
-                ".current-time".to_string(),
-                ".time-current".to_string(),
-            ],
+            progress_bar: vec![".progress-bar".to_string(), ".seek-bar".to_string()],
+            current_time: vec![".current-time".to_string(), ".time-current".to_string()],
             total_time: vec![
                 ".total-time".to_string(),
                 ".time-total".to_string(),

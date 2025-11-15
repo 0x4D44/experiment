@@ -1,11 +1,11 @@
 // Browser lifecycle management
 // Handles Chrome/Chromium browser launch, navigation, and cleanup
 
+use anyhow::{Context, Result};
 use chromiumoxide::{Browser, BrowserConfig as ChromeBrowserConfig};
 use futures::StreamExt;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use anyhow::{Result, Context};
 
 use super::config::BrowserConfig;
 
@@ -29,11 +29,6 @@ impl BrowserManager {
             config,
             active: Arc::new(RwLock::new(false)),
         }
-    }
-
-    /// Create a new browser manager with default configuration
-    pub fn default() -> Self {
-        Self::new(BrowserConfig::default())
     }
 
     /// Launch the browser if not already running
@@ -71,7 +66,8 @@ impl BrowserManager {
             chrome_config = chrome_config.chrome_executable(path);
         }
 
-        let chrome_config = chrome_config.build()
+        let chrome_config = chrome_config
+            .build()
             .map_err(|e| anyhow::anyhow!("Failed to build Chrome configuration: {}", e))?;
 
         // Launch the browser
@@ -113,8 +109,7 @@ impl BrowserManager {
             tracing::info!("Shutting down browser...");
 
             // Close the browser
-            browser.close().await
-                .context("Failed to close browser")?;
+            browser.close().await.context("Failed to close browser")?;
 
             *self.active.write().await = false;
 
@@ -138,15 +133,21 @@ impl BrowserManager {
 
         // Access the browser to create a page
         let browser_lock = self.browser.read().await;
-        let browser = browser_lock.as_ref()
-            .context("Browser not available")?;
+        let browser = browser_lock.as_ref().context("Browser not available")?;
 
-        let page = browser.new_page(url)
+        let page = browser
+            .new_page(url)
             .await
             .context("Failed to create new page")?;
 
         tracing::debug!("Page created successfully");
         Ok(page)
+    }
+}
+
+impl Default for BrowserManager {
+    fn default() -> Self {
+        Self::new(BrowserConfig::default())
     }
 }
 
@@ -207,33 +208,39 @@ mod tests {
 
     #[test]
     fn test_manager_with_custom_chrome_args() {
-        let config = BrowserConfig::new()
-            .with_arg("--disable-gpu");
+        let config = BrowserConfig::new().with_arg("--disable-gpu");
 
         let manager = BrowserManager::new(config);
         // Default config has 2 args, we added 1 more = 3 total
         assert_eq!(manager.config.chrome_args.len(), 3);
-        assert!(manager.config.chrome_args.contains(&"--disable-gpu".to_string()));
+        assert!(manager
+            .config
+            .chrome_args
+            .contains(&"--disable-gpu".to_string()));
     }
 
     #[test]
     fn test_manager_with_user_agent() {
-        let config = BrowserConfig::new()
-            .with_user_agent("Mozilla/5.0 TestBot");
+        let config = BrowserConfig::new().with_user_agent("Mozilla/5.0 TestBot");
 
         let manager = BrowserManager::new(config);
         assert!(manager.config.user_agent.is_some());
-        assert_eq!(manager.config.user_agent.clone().unwrap(), "Mozilla/5.0 TestBot");
+        assert_eq!(
+            manager.config.user_agent.clone().unwrap(),
+            "Mozilla/5.0 TestBot"
+        );
     }
 
     #[test]
     fn test_manager_with_chrome_path() {
-        let config = BrowserConfig::new()
-            .with_chrome_path("/usr/bin/chromium");
+        let config = BrowserConfig::new().with_chrome_path("/usr/bin/chromium");
 
         let manager = BrowserManager::new(config);
         assert!(manager.config.chrome_path.is_some());
-        assert_eq!(manager.config.chrome_path.clone().unwrap(), "/usr/bin/chromium");
+        assert_eq!(
+            manager.config.chrome_path.clone().unwrap(),
+            "/usr/bin/chromium"
+        );
     }
 
     #[test]

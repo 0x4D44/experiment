@@ -1,17 +1,14 @@
 // Page automation utilities
 // Provides helper functions for interacting with web pages
 
-use chromiumoxide::Page;
+use anyhow::{bail, Context, Result};
 use chromiumoxide::element::Element;
-use anyhow::{Result, Context, bail};
+use chromiumoxide::Page;
 use std::time::Duration;
 
 /// Find an element using a list of selector fallbacks
 /// Tries each selector in order until one matches
-pub async fn find_element_with_fallback(
-    page: &Page,
-    selectors: &[String],
-) -> Result<Element> {
+pub async fn find_element_with_fallback(page: &Page, selectors: &[String]) -> Result<Element> {
     for selector in selectors {
         tracing::debug!("Trying selector: {}", selector);
 
@@ -27,7 +24,10 @@ pub async fn find_element_with_fallback(
         }
     }
 
-    bail!("No element found with any of the provided selectors: {:?}", selectors)
+    bail!(
+        "No element found with any of the provided selectors: {:?}",
+        selectors
+    )
 }
 
 /// Find all elements matching a list of selector fallbacks
@@ -41,7 +41,11 @@ pub async fn find_elements_with_fallback(
 
         match page.find_elements(selector).await {
             Ok(elements) if !elements.is_empty() => {
-                tracing::debug!("Found {} elements with selector: {}", elements.len(), selector);
+                tracing::debug!(
+                    "Found {} elements with selector: {}",
+                    elements.len(),
+                    selector
+                );
                 return Ok(elements);
             }
             Ok(_) => {
@@ -55,37 +59,35 @@ pub async fn find_elements_with_fallback(
         }
     }
 
-    bail!("No elements found with any of the provided selectors: {:?}", selectors)
+    bail!(
+        "No elements found with any of the provided selectors: {:?}",
+        selectors
+    )
 }
 
 /// Click an element found using selector fallbacks
-pub async fn click_element(
-    page: &Page,
-    selectors: &[String],
-) -> Result<()> {
-    let element = find_element_with_fallback(page, selectors).await
+pub async fn click_element(page: &Page, selectors: &[String]) -> Result<()> {
+    let element = find_element_with_fallback(page, selectors)
+        .await
         .context("Failed to find element to click")?;
 
-    element.click().await
-        .context("Failed to click element")?;
+    element.click().await.context("Failed to click element")?;
 
     tracing::debug!("Clicked element");
     Ok(())
 }
 
 /// Type text into an input element found using selector fallbacks
-pub async fn type_into_element(
-    page: &Page,
-    selectors: &[String],
-    text: &str,
-) -> Result<()> {
-    let element = find_element_with_fallback(page, selectors).await
+pub async fn type_into_element(page: &Page, selectors: &[String], text: &str) -> Result<()> {
+    let element = find_element_with_fallback(page, selectors)
+        .await
         .context("Failed to find element to type into")?;
 
-    element.click().await
-        .context("Failed to focus element")?;
+    element.click().await.context("Failed to focus element")?;
 
-    element.type_str(text).await
+    element
+        .type_str(text)
+        .await
         .context("Failed to type text")?;
 
     tracing::debug!("Typed {} characters into element", text.len());
@@ -166,14 +168,14 @@ pub async fn wait_for_navigation(_page: &Page, timeout: Duration) -> Result<()> 
 
 /// Take a screenshot of the page
 pub async fn take_screenshot(page: &Page, path: &str) -> Result<Vec<u8>> {
-    let screenshot = page.screenshot(chromiumoxide::page::ScreenshotParams::builder().build())
+    let screenshot = page
+        .screenshot(chromiumoxide::page::ScreenshotParams::builder().build())
         .await
         .context("Failed to take screenshot")?;
 
     // Optionally save to file
     if !path.is_empty() {
-        std::fs::write(path, &screenshot)
-            .context("Failed to save screenshot")?;
+        std::fs::write(path, &screenshot).context("Failed to save screenshot")?;
         tracing::info!("Screenshot saved to: {}", path);
     }
 
@@ -181,14 +183,14 @@ pub async fn take_screenshot(page: &Page, path: &str) -> Result<Vec<u8>> {
 }
 
 /// Scroll to an element to make it visible
-pub async fn scroll_to_element(
-    page: &Page,
-    selectors: &[String],
-) -> Result<()> {
-    let element = find_element_with_fallback(page, selectors).await
+pub async fn scroll_to_element(page: &Page, selectors: &[String]) -> Result<()> {
+    let element = find_element_with_fallback(page, selectors)
+        .await
         .context("Failed to find element to scroll to")?;
 
-    element.scroll_into_view().await
+    element
+        .scroll_into_view()
+        .await
         .context("Failed to scroll to element")?;
 
     tracing::debug!("Scrolled to element");
@@ -196,10 +198,7 @@ pub async fn scroll_to_element(
 }
 
 /// Check if an element is visible on the page
-pub async fn is_element_visible(
-    page: &Page,
-    selectors: &[String],
-) -> bool {
+pub async fn is_element_visible(page: &Page, selectors: &[String]) -> bool {
     match find_element_with_fallback(page, selectors).await {
         Ok(_element) => {
             // Element exists, assume it's visible
@@ -222,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_selector_fallback_list_creation() {
-        let selectors = vec![
+        let selectors = [
             ".primary-selector".to_string(),
             ".fallback-selector".to_string(),
             "#last-resort".to_string(),
@@ -302,7 +301,7 @@ mod tests {
 
     #[test]
     fn test_multiple_selectors_order() {
-        let selectors = vec![
+        let selectors = [
             "button.primary".to_string(),
             "button".to_string(),
             "[role='button']".to_string(),
@@ -344,7 +343,7 @@ mod tests {
     #[test]
     fn test_selector_fallback_count() {
         // Common pattern: 3 selectors (primary, secondary, fallback)
-        let selectors = vec![
+        let selectors = [
             ".specific-class".to_string(),
             ".general-class".to_string(),
             "div".to_string(),
