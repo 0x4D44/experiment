@@ -4,7 +4,9 @@
 pub mod renderer;
 pub mod camera3d;
 pub mod track_mesh;
+pub mod car_model;
 
 pub use renderer::Renderer3D;
 pub use camera3d::{Camera3D, CameraMode};
 pub use track_mesh::{TrackMesh, TrackVertex};
+pub use car_model::{CarModel, CarVertex, LODLevel};
