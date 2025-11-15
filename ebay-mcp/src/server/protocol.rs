@@ -697,4 +697,41 @@ mod tests {
         let capability2 = ResourceCapability { subscribe: false };
         assert_eq!(capability2.subscribe, false);
     }
+
+    #[test]
+    fn test_tool_capability_empty() {
+        let capability = ToolCapability {};
+        let _debug = format!("{:?}", capability);
+    }
+
+    #[test]
+    fn test_prompt_capability_empty() {
+        let capability = PromptCapability {};
+        let _debug = format!("{:?}", capability);
+    }
+
+    #[test]
+    fn test_json_rpc_notification() {
+        let notification = JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "notifications/initialized".to_string(),
+            params: Some(json!({})),
+        };
+
+        let json = serde_json::to_string(&notification).unwrap();
+        assert!(json.contains("notifications/initialized"));
+    }
+
+    #[test]
+    fn test_call_tool_result_with_error() {
+        let result = CallToolResult {
+            content: vec![Content::Text {
+                text: "Error occurred".to_string(),
+            }],
+            is_error: Some(true),
+        };
+
+        assert_eq!(result.is_error, Some(true));
+        assert_eq!(result.content.len(), 1);
+    }
 }
