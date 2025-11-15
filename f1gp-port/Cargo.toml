@@ -6,6 +6,7 @@ members = [
     "tools/track_inspector",
     "tools/graphics_test",
     "tools/playable_demo",
+    "tools/3d_demo",
 ]
 
 [workspace.package]
@@ -36,6 +37,7 @@ memmap2 = "0.9"
 # 3D Graphics
 wgpu = "27.0"
 pollster = "0.3"
+winit = "0.30"
 
 # Audio
 rodio = "0.17"
@@ -76,6 +78,7 @@ sdl2 = { version = "0.37", features = ["bundled"] }
 # 3D Graphics
 wgpu.workspace = true
 pollster.workspace = true
+winit.workspace = true
 
 # Audio (optional due to platform dependencies)
 rodio = { workspace = true, optional = true }

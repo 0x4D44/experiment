@@ -10,6 +10,7 @@ use crate::game::session::RaceSession;
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
+use crate::render3d::{Camera3D, CameraMode, Renderer3D};
 use crate::ui::{Menu, MenuAction};
 use anyhow::Result;
 use glam::{Vec2, Vec3};
@@ -78,6 +79,9 @@ pub struct GameState {
 
     /// Camera
     camera: Camera,
+
+    /// Optional 3D renderer
+    renderer_3d: Option<Renderer3D>,
 
     /// Input manager
     input_manager: InputManager,
@@ -153,6 +157,7 @@ impl GameState {
             car_renderer,
             hud,
             camera,
+            renderer_3d: None,
             input_manager,
             mode: GameMode::Practice,
             paused: false,
@@ -810,6 +815,39 @@ impl GameState {
         if self.best_lap.is_none() || time < self.best_lap.unwrap() {
             self.best_lap = Some(time);
         }
+    }
+
+    /// Set 3D renderer
+    pub fn set_renderer_3d(&mut self, renderer_3d: Renderer3D) {
+        self.renderer_3d = Some(renderer_3d);
+    }
+
+    /// Get mutable reference to 3D renderer
+    pub fn renderer_3d_mut(&mut self) -> Option<&mut Renderer3D> {
+        self.renderer_3d.as_mut()
+    }
+
+    /// Get reference to 3D renderer
+    pub fn renderer_3d(&self) -> Option<&Renderer3D> {
+        self.renderer_3d.as_ref()
+    }
+
+    /// Update 3D camera to follow player car
+    pub fn update_3d_camera(&mut self, delta_time: f32) {
+        if let Some(renderer_3d) = &mut self.renderer_3d {
+            // Update camera from car
+            renderer_3d.camera.update_from_car(&self.player_car, delta_time);
+        }
+    }
+
+    /// Get AI cars for 3D rendering
+    pub fn ai_cars(&self) -> &[CarPhysics] {
+        &self.ai_cars
+    }
+
+    /// Get current track for 3D rendering
+    pub fn track(&self) -> Option<&Track> {
+        self.track.as_ref()
     }
 }
 
