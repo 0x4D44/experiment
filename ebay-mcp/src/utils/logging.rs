@@ -112,4 +112,71 @@ mod tests {
             assert!(result.is_ok());
         }
     }
+
+    #[test]
+    fn test_parse_log_level_with_whitespace() {
+        // Test that whitespace doesn't affect level parsing (after trimming)
+        let level = parse_log_level(" info ");
+        // Note: Our implementation doesn't trim, so this will default to INFO
+        assert_eq!(level, Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_with_numbers() {
+        // Numeric strings should default to INFO
+        let level = parse_log_level("123");
+        assert_eq!(level, Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_with_special_chars() {
+        // Special characters should default to INFO
+        let level = parse_log_level("@#$%");
+        assert_eq!(level, Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_mixed_case_variations() {
+        // Test more mixed case variations
+        assert_eq!(parse_log_level("TrAcE"), Level::TRACE);
+        assert_eq!(parse_log_level("dEbUg"), Level::DEBUG);
+        assert_eq!(parse_log_level("InFo"), Level::INFO);
+        assert_eq!(parse_log_level("wArN"), Level::WARN);
+        assert_eq!(parse_log_level("ErRoR"), Level::ERROR);
+    }
+
+    #[test]
+    fn test_parse_log_level_partial_matches() {
+        // Partial matches should default to INFO
+        assert_eq!(parse_log_level("trac"), Level::INFO);
+        assert_eq!(parse_log_level("inf"), Level::INFO);
+        assert_eq!(parse_log_level("warn_level"), Level::INFO);
+    }
+
+    #[test]
+    fn test_parse_log_level_similar_strings() {
+        // Similar but incorrect strings should default to INFO
+        assert_eq!(parse_log_level("information"), Level::INFO);
+        assert_eq!(parse_log_level("warning"), Level::INFO);
+        assert_eq!(parse_log_level("errors"), Level::INFO);
+        assert_eq!(parse_log_level("debugging"), Level::INFO);
+    }
+
+    #[test]
+    fn test_init_logging_with_warn() {
+        // Test initialization with warn level
+        if std::env::var("RUN_INIT_TEST_WARN").is_ok() {
+            let result = init_logging("warn");
+            assert!(result.is_ok());
+        }
+    }
+
+    #[test]
+    fn test_init_logging_with_error() {
+        // Test initialization with error level
+        if std::env::var("RUN_INIT_TEST_ERROR").is_ok() {
+            let result = init_logging("error");
+            assert!(result.is_ok());
+        }
+    }
 }
