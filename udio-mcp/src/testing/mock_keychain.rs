@@ -3,7 +3,6 @@
 /// Provides mock implementation of keychain operations
 /// to enable unit testing of authentication code without
 /// requiring OS keychain access.
-
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -40,7 +39,10 @@ impl MockKeychain {
         }
 
         let key = format!("{}:{}", service, username);
-        self.store.write().unwrap().insert(key, password.to_string());
+        self.store
+            .write()
+            .unwrap()
+            .insert(key, password.to_string());
         Ok(())
     }
 

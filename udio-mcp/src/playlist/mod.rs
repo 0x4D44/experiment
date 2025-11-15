@@ -1,8 +1,10 @@
 // Playlist operations module
 // Handles playlist management and data extraction from Udio
 
-pub mod manager;
+/// Playlist data extraction
 pub mod extractor;
+/// Playlist manager
+pub mod manager;
 
-pub use manager::PlaylistManager;
 pub use extractor::PlaylistExtractor;
+pub use manager::PlaylistManager;

@@ -34,7 +34,7 @@ pub struct Song {
 }
 
 /// Additional metadata for a song
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct SongMetadata {
     /// Album name if applicable
     pub album: Option<String>,
@@ -106,25 +106,18 @@ impl Song {
     }
 }
 
-impl Default for SongMetadata {
-    fn default() -> Self {
-        Self {
-            album: None,
-            thumbnail_url: None,
-            play_count: None,
-            rating: None,
-            is_favorite: false,
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_song_creation() {
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123");
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        );
         assert_eq!(song.id, "song123");
         assert_eq!(song.title, "Test Song");
         assert_eq!(song.duration_seconds, 180);
@@ -135,9 +128,14 @@ mod tests {
 
     #[test]
     fn test_song_builder() {
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123")
-            .with_artist("Test Artist")
-            .with_tags(vec!["rock".to_string(), "energetic".to_string()]);
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        )
+        .with_artist("Test Artist")
+        .with_tags(vec!["rock".to_string(), "energetic".to_string()]);
 
         assert_eq!(song.artist, Some("Test Artist".to_string()));
         assert_eq!(song.tags.len(), 2);
@@ -147,17 +145,32 @@ mod tests {
 
     #[test]
     fn test_format_duration() {
-        let song = Song::new("song123", "Test Song", 125, "https://udio.com/songs/song123");
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            125,
+            "https://udio.com/songs/song123",
+        );
         assert_eq!(song.format_duration(), "02:05");
 
-        let song2 = Song::new("song456", "Long Song", 3661, "https://udio.com/songs/song456");
+        let song2 = Song::new(
+            "song456",
+            "Long Song",
+            3661,
+            "https://udio.com/songs/song456",
+        );
         assert_eq!(song2.format_duration(), "61:01");
     }
 
     #[test]
     fn test_has_tag() {
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123")
-            .with_tags(vec!["rock".to_string(), "pop".to_string()]);
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        )
+        .with_tags(vec!["rock".to_string(), "pop".to_string()]);
 
         assert!(song.has_tag("rock"));
         assert!(song.has_tag("ROCK")); // Case-insensitive
@@ -175,8 +188,13 @@ mod tests {
             is_favorite: true,
         };
 
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123")
-            .with_metadata(metadata.clone());
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        )
+        .with_metadata(metadata.clone());
 
         assert_eq!(song.metadata, Some(metadata));
     }
@@ -205,13 +223,23 @@ mod tests {
 
     #[test]
     fn test_has_tag_empty() {
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123");
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        );
         assert!(!song.has_tag("any"));
     }
 
     #[test]
     fn test_song_created_at_timestamp() {
-        let song = Song::new("song123", "Test Song", 180, "https://udio.com/songs/song123");
+        let song = Song::new(
+            "song123",
+            "Test Song",
+            180,
+            "https://udio.com/songs/song123",
+        );
         assert!(song.created_at > 0);
     }
 }

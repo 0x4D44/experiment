@@ -2,12 +2,12 @@
 // Reads from stdin, writes to stdout
 
 use async_trait::async_trait;
+use std::sync::Arc;
 use tokio::io::{self, AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::Mutex;
-use std::sync::Arc;
 
-use crate::mcp::error::{McpError, McpResult};
 use super::Transport;
+use crate::mcp::error::{McpError, McpResult};
 
 /// Standard I/O transport implementation
 /// Reads JSON-RPC messages from stdin, writes responses to stdout

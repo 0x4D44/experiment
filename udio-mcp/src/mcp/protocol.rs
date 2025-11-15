@@ -6,51 +6,77 @@ pub const MCP_VERSION: &str = "2024-11-05";
 
 /// Standard MCP method names
 pub mod methods {
+    /// Initialize method name
     pub const INITIALIZE: &str = "initialize";
+    /// Initialized notification name
     pub const INITIALIZED: &str = "notifications/initialized";
+    /// Ping method name
     pub const PING: &str = "ping";
+    /// Shutdown method name
     pub const SHUTDOWN: &str = "shutdown";
 
     // Tool methods
+    /// Tools list method name
     pub const TOOLS_LIST: &str = "tools/list";
+    /// Tools call method name
     pub const TOOLS_CALL: &str = "tools/call";
 
     // Resource methods
+    /// Resources list method name
     pub const RESOURCES_LIST: &str = "resources/list";
+    /// Resources read method name
     pub const RESOURCES_READ: &str = "resources/read";
+    /// Resources subscribe method name
     pub const RESOURCES_SUBSCRIBE: &str = "resources/subscribe";
+    /// Resources unsubscribe method name
     pub const RESOURCES_UNSUBSCRIBE: &str = "resources/unsubscribe";
 
     // Prompt methods
+    /// Prompts list method name
     pub const PROMPTS_LIST: &str = "prompts/list";
+    /// Prompts get method name
     pub const PROMPTS_GET: &str = "prompts/get";
 
     // Logging
+    /// Logging set level method name
     pub const LOGGING_SET_LEVEL: &str = "logging/setLevel";
 }
 
 /// MCP capability names
 pub mod capabilities {
+    /// Tools capability name
     pub const TOOLS: &str = "tools";
+    /// Resources capability name
     pub const RESOURCES: &str = "resources";
+    /// Prompts capability name
     pub const PROMPTS: &str = "prompts";
+    /// Logging capability name
     pub const LOGGING: &str = "logging";
 }
 
 /// Log levels for MCP logging
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogLevel {
+    /// Debug level logging
     Debug,
+    /// Info level logging
     Info,
+    /// Notice level logging
     Notice,
+    /// Warning level logging
     Warning,
+    /// Error level logging
     Error,
+    /// Critical level logging
     Critical,
+    /// Alert level logging
     Alert,
+    /// Emergency level logging
     Emergency,
 }
 
 impl LogLevel {
+    /// Convert log level to string representation
     pub fn as_str(&self) -> &'static str {
         match self {
             LogLevel::Debug => "debug",

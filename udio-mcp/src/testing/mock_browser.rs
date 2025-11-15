@@ -3,7 +3,6 @@
 /// Provides mock implementations of browser, page, and element types
 /// to enable unit testing of browser-dependent code without requiring
 /// a real Chrome/Chromium instance.
-
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -12,10 +11,15 @@ use std::time::Duration;
 /// Mock element representing a DOM element in tests
 #[derive(Debug, Clone)]
 pub struct MockElement {
+    /// HTML tag name
     pub tag_name: String,
+    /// Element text content
     pub text_content: String,
+    /// Element attributes
     pub attributes: HashMap<String, String>,
+    /// Whether element is visible
     pub visible: bool,
+    /// Whether element is enabled
     pub enabled: bool,
 }
 
@@ -64,9 +68,13 @@ impl MockElement {
 /// Mock page representing a browser page in tests
 #[derive(Debug, Clone)]
 pub struct MockPage {
+    /// Page URL
     pub url: String,
+    /// Elements on the page indexed by selector
     pub elements: HashMap<String, Vec<MockElement>>,
+    /// Whether navigation is complete
     pub navigation_complete: bool,
+    /// Screenshot data
     pub screenshot_data: Vec<u8>,
 }
 
@@ -85,7 +93,7 @@ impl MockPage {
     pub fn with_element(mut self, selector: impl Into<String>, element: MockElement) -> Self {
         self.elements
             .entry(selector.into())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(element);
         self
     }
@@ -461,12 +469,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_mock_page_wait_for_element_success() {
-        let page = MockPage::new("https://test.com")
-            .with_element("#test", MockElement::new("div"));
+        let page = MockPage::new("https://test.com").with_element("#test", MockElement::new("div"));
 
-        let result = page
-            .wait_for_element("#test", Duration::from_secs(1))
-            .await;
+        let result = page.wait_for_element("#test", Duration::from_secs(1)).await;
         assert!(result.is_ok());
     }
 

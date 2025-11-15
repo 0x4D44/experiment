@@ -10,13 +10,16 @@ use std::sync::Arc;
 use crate::mcp::error::{McpError, McpResult};
 
 // Concrete tool implementations
-pub mod list_playlist_songs;
-pub mod play_song;
+/// Control playback tool implementation
 pub mod control_playback;
+/// List playlist songs tool implementation
+pub mod list_playlist_songs;
+/// Play song tool implementation
+pub mod play_song;
 
+pub use control_playback::ControlPlaybackTool;
 pub use list_playlist_songs::ListPlaylistSongsTool;
 pub use play_song::PlaySongTool;
-pub use control_playback::ControlPlaybackTool;
 
 /// Tool trait that all tools must implement
 #[async_trait]
@@ -38,13 +41,17 @@ pub trait Tool: Send + Sync {
 /// Tool metadata for listing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ToolInfo {
+    /// Tool name
     pub name: String,
+    /// Tool description
     pub description: String,
+    /// JSON schema for tool input
     #[serde(rename = "inputSchema")]
     pub input_schema: Value,
 }
 
 impl ToolInfo {
+    /// Create ToolInfo from a Tool trait object
     pub fn from_tool(tool: &dyn Tool) -> Self {
         Self {
             name: tool.name().to_string(),
@@ -72,7 +79,10 @@ impl ToolRegistry {
         let name = tool.name().to_string();
 
         if self.tools.contains_key(&name) {
-            return Err(McpError::internal(format!("Tool '{}' already registered", name)));
+            return Err(McpError::internal(format!(
+                "Tool '{}' already registered",
+                name
+            )));
         }
 
         self.tools.insert(name, tool);

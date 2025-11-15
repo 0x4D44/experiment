@@ -2,8 +2,9 @@
 ///
 /// This module provides mock implementations and test helpers
 /// to facilitate testing of browser-dependent and OS-dependent code.
-
+/// Mock browser implementation for testing
 pub mod mock_browser;
+/// Mock keychain implementation for testing
 pub mod mock_keychain;
 
 pub use mock_browser::{create_test_page, MockBrowser, MockBrowserBuilder, MockElement, MockPage};
@@ -97,9 +98,7 @@ mod tests {
         let keychain = create_test_keychain();
         assert!(keychain.has_password("udio", "test@example.com"));
         assert_eq!(
-            keychain
-                .get_password("udio", "test@example.com")
-                .unwrap(),
+            keychain.get_password("udio", "test@example.com").unwrap(),
             "test_password"
         );
     }

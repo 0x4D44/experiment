@@ -1,7 +1,7 @@
 // Playlist data extraction from Udio web pages
 // Uses browser automation to extract playlist and song information
 
-use anyhow::{Result, Context};
+use anyhow::{Context, Result};
 use chromiumoxide::Page;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -32,11 +32,15 @@ impl PlaylistExtractor {
         tracing::info!("Extracting playlist: {}", playlist_name);
 
         // Extract playlist ID from URL or page
-        let playlist_id = self.extract_playlist_id(page).await
+        let playlist_id = self
+            .extract_playlist_id(page)
+            .await
             .unwrap_or_else(|_| format!("playlist_{}", playlist_name.replace(' ', "_")));
 
         // Extract songs
-        let songs = self.extract_songs(page).await
+        let songs = self
+            .extract_songs(page)
+            .await
             .context("Failed to extract songs from playlist")?;
 
         let song_count = songs.len();
@@ -75,10 +79,10 @@ impl PlaylistExtractor {
         tracing::debug!("Extracting songs from page");
 
         // Find all song items
-        let song_elements = automation::find_elements_with_fallback(
-            page,
-            &self.selectors.song.item,
-        ).await.context("No song items found on page")?;
+        let song_elements =
+            automation::find_elements_with_fallback(page, &self.selectors.song.item)
+                .await
+                .context("No song items found on page")?;
 
         tracing::debug!("Found {} song elements", song_elements.len());
 
@@ -120,14 +124,21 @@ impl PlaylistExtractor {
             .unwrap_or_else(|| format!("song_{}", index));
 
         // Extract title
-        let title = self.extract_song_field(element, &self.selectors.song.title).await
+        let title = self
+            .extract_song_field(element, &self.selectors.song.title)
+            .await
             .unwrap_or_else(|_| format!("Unknown Song {}", index + 1));
 
         // Extract artist
-        let artist = self.extract_song_field(element, &self.selectors.song.artist).await.ok();
+        let artist = self
+            .extract_song_field(element, &self.selectors.song.artist)
+            .await
+            .ok();
 
         // Extract duration
-        let duration_text = self.extract_song_field(element, &self.selectors.song.duration).await
+        let duration_text = self
+            .extract_song_field(element, &self.selectors.song.duration)
+            .await
             .unwrap_or_else(|_| "0:00".to_string());
         let duration_seconds = parse_duration(&duration_text);
 
@@ -210,7 +221,7 @@ impl PlaylistExtractor {
         // Try to get from URL
         if let Ok(Some(url)) = page.url().await {
             // Extract ID from URL pattern like /playlists/abc123
-            if let Some(id) = url.split('/').last() {
+            if let Some(id) = url.split('/').next_back() {
                 if !id.is_empty() {
                     return Ok(id.to_string());
                 }
@@ -277,14 +288,12 @@ mod tests {
     #[test]
     fn test_playlist_extractor_creation() {
         let _extractor = PlaylistExtractor::new();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 
     #[test]
     fn test_playlist_extractor_default() {
         let _extractor = PlaylistExtractor::default();
-        // Verify it can be created
-        assert!(true);
+        // Verify it can be created without panicking
     }
 }

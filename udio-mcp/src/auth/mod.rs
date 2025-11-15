@@ -1,14 +1,19 @@
 // Authentication module
 // Handles credential storage, login automation, and session management
 
-pub mod keychain;
+/// Credentials management
 pub mod credentials;
-pub mod session;
+/// Keychain integration for secure storage
+pub mod keychain;
+/// Login automation
 pub mod login;
+/// Authentication manager
 pub mod manager;
+/// Session management
+pub mod session;
 
-pub use keychain::KeychainManager;
 pub use credentials::{Credentials, CredentialsStore};
-pub use session::{Session, SessionStore};
+pub use keychain::KeychainManager;
 pub use login::LoginAutomation;
 pub use manager::AuthManager;
+pub use session::{Session, SessionStore};

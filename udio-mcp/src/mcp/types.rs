@@ -8,7 +8,9 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(untagged)]
 pub enum RequestId {
+    /// String request ID
     String(String),
+    /// Numeric request ID
     Number(i64),
 }
 
@@ -24,9 +26,13 @@ impl std::fmt::Display for RequestId {
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Request {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// Request ID
     pub id: RequestId,
+    /// Method name
     pub method: String,
+    /// Optional parameters
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
 }
@@ -46,10 +52,14 @@ impl Request {
 /// JSON-RPC 2.0 Response
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Response {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// Request ID this response corresponds to
     pub id: RequestId,
+    /// Result value (present on success)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub result: Option<Value>,
+    /// Error object (present on error)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<ErrorObject>,
 }
@@ -79,8 +89,11 @@ impl Response {
 /// JSON-RPC 2.0 Notification (request without ID, no response expected)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Notification {
+    /// JSON-RPC version (always "2.0")
     pub jsonrpc: String,
+    /// Method name
     pub method: String,
+    /// Optional parameters
     #[serde(skip_serializing_if = "Option::is_none")]
     pub params: Option<Value>,
 }
@@ -99,8 +112,11 @@ impl Notification {
 /// JSON-RPC 2.0 Error Object
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ErrorObject {
+    /// Error code
     pub code: i32,
+    /// Error message
     pub message: String,
+    /// Optional additional error data
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Value>,
 }
@@ -128,14 +144,21 @@ impl ErrorObject {
 /// Standard JSON-RPC 2.0 error codes
 #[allow(dead_code)]
 pub mod error_codes {
+    /// Parse error code
     pub const PARSE_ERROR: i32 = -32700;
+    /// Invalid request error code
     pub const INVALID_REQUEST: i32 = -32600;
+    /// Method not found error code
     pub const METHOD_NOT_FOUND: i32 = -32601;
+    /// Invalid params error code
     pub const INVALID_PARAMS: i32 = -32602;
+    /// Internal error code
     pub const INTERNAL_ERROR: i32 = -32603;
 
     // MCP-specific error codes
+    /// Server error range start
     pub const SERVER_ERROR_START: i32 = -32000;
+    /// Server error range end
     pub const SERVER_ERROR_END: i32 = -32099;
 }
 
@@ -143,8 +166,11 @@ pub mod error_codes {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Message {
+    /// JSON-RPC request message
     Request(Request),
+    /// JSON-RPC response message
     Response(Response),
+    /// JSON-RPC notification message
     Notification(Notification),
 }
 
@@ -194,10 +220,7 @@ mod tests {
 
     #[test]
     fn test_response_success() {
-        let response = Response::success(
-            RequestId::Number(1),
-            json!({"status": "ok"}),
-        );
+        let response = Response::success(RequestId::Number(1), json!({"status": "ok"}));
 
         assert!(response.result.is_some());
         assert!(response.error.is_none());

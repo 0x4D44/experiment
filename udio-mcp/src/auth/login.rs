@@ -1,13 +1,13 @@
 // Login automation for Udio platform
 // Uses browser automation to perform login and extract session
 
-use anyhow::{Result, Context, bail};
+use anyhow::{bail, Context, Result};
 use chromiumoxide::Page;
 use std::time::Duration;
 
-use crate::browser::{automation, selectors::Selectors};
-use super::session::{Session, Cookie};
 use super::credentials::Credentials;
+use super::session::{Cookie, Session};
+use crate::browser::{automation, selectors::Selectors};
 
 /// Handles automated login to Udio platform
 pub struct LoginAutomation {
@@ -37,14 +37,14 @@ impl LoginAutomation {
 
     /// Perform login and return authenticated session
     pub async fn login(&self, page: &Page, credentials: &Credentials) -> Result<Session> {
-        credentials.validate()
-            .context("Invalid credentials")?;
+        credentials.validate().context("Invalid credentials")?;
 
         tracing::info!("Starting login automation for: {}", credentials.email);
 
         // Navigate to login page
         let login_url = format!("{}/login", self.base_url);
-        page.goto(&login_url).await
+        page.goto(&login_url)
+            .await
             .context("Failed to navigate to login page")?;
 
         // Wait for page to load
@@ -57,13 +57,13 @@ impl LoginAutomation {
             &self.selectors.auth.email_input,
             Duration::from_secs(10),
             Duration::from_millis(500),
-        ).await.context("Email input field not found")?;
+        )
+        .await
+        .context("Email input field not found")?;
 
-        automation::type_into_element(
-            page,
-            &self.selectors.auth.email_input,
-            &credentials.email,
-        ).await.context("Failed to enter email")?;
+        automation::type_into_element(page, &self.selectors.auth.email_input, &credentials.email)
+            .await
+            .context("Failed to enter email")?;
 
         tracing::debug!("Email entered successfully");
 
@@ -73,23 +73,27 @@ impl LoginAutomation {
             page,
             &self.selectors.auth.password_input,
             &credentials.password,
-        ).await.context("Failed to enter password")?;
+        )
+        .await
+        .context("Failed to enter password")?;
 
         tracing::debug!("Password entered successfully");
 
         // Click submit button
         tracing::debug!("Clicking submit button");
-        automation::click_element(
-            page,
-            &self.selectors.auth.submit_button,
-        ).await.context("Failed to click submit button")?;
+        automation::click_element(page, &self.selectors.auth.submit_button)
+            .await
+            .context("Failed to click submit button")?;
 
         // Wait for login to complete (navigation or specific element)
-        self.wait_for_login_completion(page).await
+        self.wait_for_login_completion(page)
+            .await
             .context("Login did not complete successfully")?;
 
         // Extract session cookies
-        let cookies = self.extract_cookies(page).await
+        let cookies = self
+            .extract_cookies(page)
+            .await
             .context("Failed to extract session cookies")?;
 
         if cookies.is_empty() {
@@ -127,7 +131,9 @@ impl LoginAutomation {
     /// Extract cookies from the current page
     async fn extract_cookies(&self, page: &Page) -> Result<Vec<Cookie>> {
         // Get all cookies from the browser
-        let browser_cookies = page.get_cookies().await
+        let browser_cookies = page
+            .get_cookies()
+            .await
             .context("Failed to get cookies from page")?;
 
         let mut cookies = Vec::new();
@@ -168,14 +174,17 @@ impl LoginAutomation {
 
         // Clear cookies
         let cookies = page.get_cookies().await?;
-        let delete_params: Vec<_> = cookies.into_iter().map(|cookie| {
-            chromiumoxide::cdp::browser_protocol::network::DeleteCookiesParams {
-                name: cookie.name,
-                url: None,
-                domain: Some(cookie.domain),
-                path: Some(cookie.path),
-            }
-        }).collect();
+        let delete_params: Vec<_> = cookies
+            .into_iter()
+            .map(
+                |cookie| chromiumoxide::cdp::browser_protocol::network::DeleteCookiesParams {
+                    name: cookie.name,
+                    url: None,
+                    domain: Some(cookie.domain),
+                    path: Some(cookie.path),
+                },
+            )
+            .collect();
 
         if !delete_params.is_empty() {
             page.delete_cookies(delete_params).await?;
@@ -261,9 +270,10 @@ mod tests {
 
     #[test]
     fn test_cookie_vec_with_data() {
-        let mut cookies = Vec::new();
-        cookies.push(Cookie::new("session", "value1"));
-        cookies.push(Cookie::new("auth", "value2"));
+        let cookies = [
+            Cookie::new("session", "value1"),
+            Cookie::new("auth", "value2"),
+        ];
         assert_eq!(cookies.len(), 2);
     }
 
@@ -297,7 +307,7 @@ mod tests {
 
     #[test]
     fn test_non_empty_cookies_check() {
-        let cookies = vec![Cookie::new("session", "value")];
+        let cookies = [Cookie::new("session", "value")];
         let is_empty = cookies.is_empty();
         assert!(!is_empty);
     }

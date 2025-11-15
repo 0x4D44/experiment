@@ -1,10 +1,11 @@
 // Transport layer for MCP protocol
 // Handles communication between client and server
 
+/// Standard I/O transport implementation
 pub mod stdio;
 
-use async_trait::async_trait;
 use crate::mcp::error::McpResult;
+use async_trait::async_trait;
 
 /// Transport trait for MCP communication
 /// Implementations handle the actual I/O for sending and receiving messages
@@ -57,7 +58,7 @@ mod tests {
         async fn send(&self, _message: &str) -> McpResult<()> {
             if !self.active {
                 return Err(crate::mcp::error::McpError::TransportError(
-                    "Transport not active".to_string()
+                    "Transport not active".to_string(),
                 ));
             }
             Ok(())
