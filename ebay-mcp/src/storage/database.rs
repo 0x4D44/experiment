@@ -549,4 +549,120 @@ mod tests {
         assert_eq!(history[1].query, "second");
         assert_eq!(history[2].query, "first");
     }
+
+    #[test]
+    fn test_add_search_history_with_filters() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        let filters_json = r#"{"price_min":10.0,"price_max":100.0}"#;
+        db.add_search_history("laptop", Some(filters_json), 50, 1500, true, None)
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].query, "laptop");
+        assert_eq!(history[0].filters_json, Some(filters_json.to_string()));
+        assert_eq!(history[0].result_count, 50);
+        assert_eq!(history[0].duration_ms, 1500);
+        assert_eq!(history[0].success, true);
+        assert!(history[0].error_message.is_none());
+    }
+
+    #[test]
+    fn test_add_search_history_with_error() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        let error_msg = "Network timeout";
+        db.add_search_history("failed query", None, 0, 500, false, Some(error_msg))
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].query, "failed query");
+        assert_eq!(history[0].success, false);
+        assert_eq!(history[0].error_message, Some(error_msg.to_string()));
+    }
+
+    #[test]
+    fn test_get_search_history_with_offset() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Add 5 entries
+        for i in 1..=5 {
+            db.add_search_history(&format!("query{}", i), None, i * 10, 100, true, None)
+                .unwrap();
+        }
+
+        // Get entries 3-5 (offset 2, limit 3)
+        let history = db.get_search_history(3, 2).unwrap();
+        assert_eq!(history.len(), 3);
+    }
+
+    #[test]
+    fn test_get_search_history_empty_result() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // No entries, should return empty vec
+        let history = db.get_search_history(10, 0).unwrap();
+        assert_eq!(history.len(), 0);
+    }
+
+    #[test]
+    fn test_get_phrase_usage_nonexistent() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Phrase doesn't exist, should return 0
+        let count = db.get_phrase_usage("nonexistent_phrase").unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_update_phrase_usage_creates_entry() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // First update should create the entry
+        db.update_phrase_usage("new_phrase").unwrap();
+
+        let count = db.get_phrase_usage("new_phrase").unwrap();
+        assert_eq!(count, 1);
+
+        // Second update should increment
+        db.update_phrase_usage("new_phrase").unwrap();
+
+        let count = db.get_phrase_usage("new_phrase").unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_cleanup_expired_cache_preserves_valid() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Insert both expired and valid entries
+        db.conn.execute(
+            "INSERT INTO cache_entries (cache_key, expires_at, hit_count)
+             VALUES ('expired1', datetime('now', '-1 hour'), 0),
+                    ('valid1', datetime('now', '+1 hour'), 0),
+                    ('valid2', datetime('now', '+2 hours'), 0)",
+            [],
+        ).unwrap();
+
+        // Should only delete expired
+        let deleted = db.cleanup_expired_cache().unwrap();
+        assert_eq!(deleted, 1);
+
+        // Check valid entries still exist
+        let count: i64 = db.conn.query_row(
+            "SELECT COUNT(*) FROM cache_entries WHERE cache_key LIKE 'valid%'",
+            [],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(count, 2);
+    }
 }
