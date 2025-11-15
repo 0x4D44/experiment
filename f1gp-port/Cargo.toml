@@ -37,6 +37,9 @@ memmap2 = "0.9"
 wgpu = "27.0"
 pollster = "0.3"
 
+# Audio
+rodio = "0.17"
+
 # Development
 criterion = "0.5"
 
@@ -74,8 +77,15 @@ sdl2 = { version = "0.37", features = ["bundled"] }
 wgpu.workspace = true
 pollster.workspace = true
 
+# Audio (optional due to platform dependencies)
+rodio = { workspace = true, optional = true }
+
 # Random number generation
 fastrand = "2.0"
+
+[features]
+default = []
+audio = ["rodio"]
 
 [dev-dependencies]
 criterion.workspace = true
