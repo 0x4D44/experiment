@@ -665,4 +665,97 @@ mod tests {
         ).unwrap();
         assert_eq!(count, 2);
     }
+
+    #[test]
+    fn test_add_search_history_with_very_long_query() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Very long query string
+        let long_query = "a".repeat(1000);
+        db.add_search_history(&long_query, None, 10, 500, true, None)
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history[0].query, long_query);
+    }
+
+    #[test]
+    fn test_add_search_history_with_special_characters() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Query with special characters and quotes
+        let special_query = r#"laptop "gaming" & 'pro' <model>"#;
+        db.add_search_history(special_query, None, 5, 1200, true, None)
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history[0].query, special_query);
+    }
+
+    #[test]
+    fn test_add_search_history_with_large_result_count() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Very large result count
+        let large_count = 1_000_000_usize;
+        db.add_search_history("popular query", None, large_count, 5000, true, None)
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history[0].result_count, large_count);
+    }
+
+    #[test]
+    fn test_add_search_history_with_zero_duration() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Zero duration (instant response)
+        db.add_search_history("cached query", None, 10, 0, true, None)
+            .unwrap();
+
+        let history = db.get_search_history(1, 0).unwrap();
+        assert_eq!(history[0].duration_ms, 0);
+    }
+
+    #[test]
+    fn test_phrase_usage_with_special_characters() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Phrase ID with special characters
+        let phrase_id = "phrase-with-dashes_and_underscores.123";
+        db.update_phrase_usage(phrase_id).unwrap();
+        db.update_phrase_usage(phrase_id).unwrap();
+
+        let count = db.get_phrase_usage(phrase_id).unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn test_get_search_history_limit_zero() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let db = Database::new(temp_file.path()).unwrap();
+
+        // Add some entries
+        db.add_search_history("query1", None, 10, 100, true, None)
+            .unwrap();
+
+        // Request with limit 0
+        let history = db.get_search_history(0, 0).unwrap();
+        assert_eq!(history.len(), 0);
+    }
+
+    #[test]
+    fn test_database_new_creates_file() {
+        let temp_file = NamedTempFile::new().unwrap();
+        let path = temp_file.path();
+
+        // Database should be created successfully
+        let result = Database::new(path);
+        assert!(result.is_ok());
+    }
 }
