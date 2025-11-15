@@ -345,4 +345,881 @@ mod tests {
             BuyingFormat::BuyItNow
         ));
     }
+
+    #[test]
+    fn test_scraper_config_creation() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 5,
+            screenshot_on_error: true,
+            screenshot_dir: Some(std::path::PathBuf::from("/tmp/screenshots")),
+        };
+
+        assert_eq!(config.base_url, "https://www.ebay.com");
+        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.screenshot_on_error, true);
+        assert!(config.screenshot_dir.is_some());
+    }
+
+    #[test]
+    fn test_ebay_scraper_new() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(
+            vec!["Mozilla/5.0".to_string()],
+            false,
+            Duration::from_millis(100),
+            Duration::from_millis(500),
+        );
+
+        let scraper = EbayScraper::new(config, anti_det);
+
+        // Scraper should be created successfully
+        let url = scraper.build_search_url("test", &SearchFilters::default(), 1);
+        assert!(url.contains("ebay.com"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_category() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.category = Some("Electronics".to_string());
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        assert!(url.contains("_sacat=Electronics"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_condition() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec!["New".to_string(), "Used".to_string()]);
+
+        let url = scraper.build_search_url("camera", &filters, 1);
+
+        assert!(url.contains("LH_ItemCondition=1000,3000"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_buying_format() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["BuyItNow".to_string()]);
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_BIN=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_auction() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["Auction".to_string()]);
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_Auction=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_free_shipping() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.shipping = Some(crate::models::ShippingOptions {
+            free_shipping: true,
+            local_pickup: false,
+            international: false,
+        });
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_FS=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_local_pickup() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.shipping = Some(crate::models::ShippingOptions {
+            free_shipping: false,
+            local_pickup: true,
+            international: false,
+        });
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_LPickup=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_pagination() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let url = scraper.build_search_url("test", &SearchFilters::default(), 3);
+
+        assert!(url.contains("_pgn=3"));
+    }
+
+    #[test]
+    fn test_build_search_url_page_1_no_pagination() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let url = scraper.build_search_url("test", &SearchFilters::default(), 1);
+
+        assert!(!url.contains("_pgn="));
+    }
+
+    #[test]
+    fn test_condition_to_code_all_variants() {
+        assert_eq!(condition_to_code("New"), "1000");
+        assert_eq!(condition_to_code("new"), "1000");
+        assert_eq!(condition_to_code("Open Box"), "1500");
+        assert_eq!(condition_to_code("open box"), "1500");
+        assert_eq!(condition_to_code("Refurbished"), "2000");
+        assert_eq!(condition_to_code("refurbished"), "2000");
+        assert_eq!(condition_to_code("Used"), "3000");
+        assert_eq!(condition_to_code("used"), "3000");
+        assert_eq!(condition_to_code("For Parts or Not Working"), "7000");
+        assert_eq!(condition_to_code("for parts or not working"), "7000");
+        assert_eq!(condition_to_code("unknown"), "3000"); // Default
+    }
+
+    #[test]
+    fn test_parse_price_various_formats() {
+        // Standard formats
+        assert_eq!(parse_price("$99.99").unwrap().amount, 99.99);
+        assert_eq!(parse_price("$1,234.56").unwrap().amount, 1234.56);
+        assert_eq!(parse_price("123.45 USD").unwrap().amount, 123.45);
+
+        // Without symbols
+        assert_eq!(parse_price("50.00").unwrap().amount, 50.0);
+        assert_eq!(parse_price("1000").unwrap().amount, 1000.0);
+
+        // With extra whitespace
+        assert_eq!(parse_price("  $75.25  ").unwrap().amount, 75.25);
+
+        // Invalid formats
+        assert!(parse_price("").is_none());
+        assert!(parse_price("abc").is_none());
+        assert!(parse_price("$$$").is_none());
+    }
+
+    #[test]
+    fn test_parse_buying_format_case_insensitive() {
+        assert!(matches!(parse_buying_format("AUCTION"), BuyingFormat::Auction));
+        assert!(matches!(parse_buying_format("auction"), BuyingFormat::Auction));
+        assert!(matches!(parse_buying_format("Auction Item"), BuyingFormat::Auction));
+
+        assert!(matches!(parse_buying_format("BUY IT NOW"), BuyingFormat::BuyItNow));
+        assert!(matches!(parse_buying_format("buy it now"), BuyingFormat::BuyItNow));
+
+        // Default case
+        assert!(matches!(parse_buying_format("other"), BuyingFormat::BestOffer));
+    }
+
+    #[test]
+    fn test_build_search_url_with_multiple_conditions() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec!["New".to_string(), "Refurbished".to_string()]);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        assert!(url.contains("LH_ItemCondition=1000,2000"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_empty_condition() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec![]);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        // Empty condition list should not add any condition parameter
+        assert!(!url.contains("LH_ItemCondition"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_buy_it_now() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["BuyItNow".to_string()]);
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_BIN=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_multiple_buying_formats() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["Auction".to_string(), "BuyItNow".to_string()]);
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        assert!(url.contains("LH_Auction=1"));
+        assert!(url.contains("LH_BIN=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_unknown_buying_format() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["Unknown".to_string()]);
+
+        let url = scraper.build_search_url("item", &filters, 1);
+
+        // Unknown format should not add auction or bin parameters
+        assert!(!url.contains("LH_Auction"));
+        assert!(!url.contains("LH_BIN"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_all_filters() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.category = Some("Electronics".to_string());
+        filters.price_min = Some(50.0);
+        filters.price_max = Some(500.0);
+        filters.condition = Some(vec!["New".to_string()]);
+        filters.buying_format = Some(vec!["BuyItNow".to_string()]);
+        filters.shipping = Some(crate::models::ShippingOptions {
+            free_shipping: true,
+            local_pickup: true,
+            international: false,
+        });
+        filters.sort_by = Some(SortOrder::PriceLowest);
+
+        let url = scraper.build_search_url("laptop", &filters, 2);
+
+        assert!(url.contains("_nkw=laptop"));
+        assert!(url.contains("_sacat=Electronics"));
+        assert!(url.contains("_udlo=50"));
+        assert!(url.contains("_udhi=500"));
+        assert!(url.contains("LH_ItemCondition=1000"));
+        assert!(url.contains("LH_BIN=1"));
+        assert!(url.contains("LH_FS=1"));
+        assert!(url.contains("LH_LPickup=1"));
+        assert!(url.contains("_sop=1")); // PriceLowest
+        assert!(url.contains("_pgn=2"));
+    }
+
+    #[test]
+    fn test_build_search_url_special_characters() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let url = scraper.build_search_url("laptop & tablet", &SearchFilters::default(), 1);
+
+        // Should URL encode special characters
+        assert!(url.contains("laptop+%26+tablet") || url.contains("laptop%20%26%20tablet"));
+    }
+
+    #[test]
+    fn test_parse_price_edge_cases() {
+        // Zero
+        assert_eq!(parse_price("$0.00").unwrap().amount, 0.0);
+        assert_eq!(parse_price("0").unwrap().amount, 0.0);
+
+        // Very large number
+        assert_eq!(parse_price("$999,999.99").unwrap().amount, 999999.99);
+
+        // Decimal only
+        assert_eq!(parse_price("$.50").unwrap().amount, 0.5);
+
+        // Multiple currency symbols (should still parse)
+        let result = parse_price("$$100");
+        assert!(result.is_some());
+
+        // Just whitespace
+        assert!(parse_price("   ").is_none());
+    }
+
+    #[test]
+    fn test_scraper_config_with_screenshot_dir() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.co.uk".to_string(),
+            max_retries: 5,
+            screenshot_on_error: true,
+            screenshot_dir: Some(std::path::PathBuf::from("/var/screenshots")),
+        };
+
+        assert_eq!(config.base_url, "https://www.ebay.co.uk");
+        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.screenshot_on_error, true);
+        assert_eq!(
+            config.screenshot_dir,
+            Some(std::path::PathBuf::from("/var/screenshots"))
+        );
+    }
+
+    #[test]
+    fn test_parse_buying_format_edge_cases() {
+        // Empty string
+        assert!(matches!(parse_buying_format(""), BuyingFormat::BestOffer));
+
+        // Partial matches
+        assert!(matches!(
+            parse_buying_format("This is an auction listing"),
+            BuyingFormat::Auction
+        ));
+        assert!(matches!(
+            parse_buying_format("Click to buy it now!"),
+            BuyingFormat::BuyItNow
+        ));
+
+        // Mixed case partial
+        assert!(matches!(
+            parse_buying_format("BuY iT nOw"),
+            BuyingFormat::BuyItNow
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_search_stub_implementation() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 3,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters::default();
+        let results = scraper.search("test query", &filters, 1).await;
+
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+        assert_eq!(search_results.query, "test query");
+        assert_eq!(search_results.items.len(), 0); // Stub returns empty results
+        assert_eq!(search_results.total_count, 0);
+        assert_eq!(search_results.page, 1);
+    }
+
+    #[tokio::test]
+    async fn test_search_builds_url() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters {
+            price_min: Some(10.0),
+            price_max: Some(100.0),
+            ..Default::default()
+        };
+
+        let results = scraper.search("laptop", &filters, 2).await;
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+        assert_eq!(search_results.query, "laptop");
+        assert_eq!(search_results.page, 2);
+    }
+
+    #[tokio::test]
+    async fn test_extract_listings_stub() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let scraper = EbayScraper::new(config, anti_detection);
+
+        let listings = scraper.extract_listings().await;
+        assert!(listings.is_ok());
+        assert_eq!(listings.unwrap().len(), 0); // Stub returns empty vec
+    }
+
+    #[tokio::test]
+    async fn test_search_with_filters_duration_tracked() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_detection = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+        let mut scraper = EbayScraper::new(config, anti_detection);
+
+        let filters = SearchFilters {
+            category: Some("Electronics".to_string()),
+            ..Default::default()
+        };
+
+        let results = scraper.search("phone", &filters, 1).await;
+        assert!(results.is_ok());
+        let search_results = results.unwrap();
+
+        // Verify duration is tracked
+        assert!(search_results.duration.as_millis() >= 0);
+        // Verify filters are preserved
+        assert_eq!(search_results.filters.category, Some("Electronics".to_string()));
+    }
+
+    #[test]
+    fn test_build_search_url_with_all_shipping_options() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.shipping = Some(crate::models::ShippingOptions {
+            free_shipping: true,
+            local_pickup: true,
+            international: true,
+        });
+
+        let url = scraper.build_search_url("test", &filters, 1);
+
+        assert!(url.contains("LH_FS=1")); // Free shipping
+        assert!(url.contains("LH_LPickup=1")); // Local pickup
+    }
+
+    #[test]
+    fn test_build_search_url_with_sort_order() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.sort_by = Some(crate::models::SortOrder::PriceLowest);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        assert!(url.contains("_sop="));
+    }
+
+    #[test]
+    fn test_condition_to_code_variations() {
+        // Test case variations
+        assert_eq!(condition_to_code("NEW"), "1000");
+        assert_eq!(condition_to_code("New"), "1000");
+        assert_eq!(condition_to_code("USED"), "3000");
+        assert_eq!(condition_to_code("Used"), "3000");
+        assert_eq!(condition_to_code("REFURBISHED"), "2000");
+        assert_eq!(condition_to_code("Refurbished"), "2000");
+        assert_eq!(condition_to_code("for parts or not working"), "7000");
+        assert_eq!(condition_to_code("FOR PARTS OR NOT WORKING"), "7000");
+        assert_eq!(condition_to_code("open box"), "1500");
+        assert_eq!(condition_to_code("OPEN BOX"), "1500");
+        // Test default case
+        assert_eq!(condition_to_code("unknown condition"), "3000");
+    }
+
+    #[test]
+    fn test_parse_price_with_currency_symbols() {
+        let price = parse_price("$99.99");
+        assert!(price.is_some());
+        let p = price.unwrap();
+        assert_eq!(p.amount, 99.99);
+
+        let price2 = parse_price("USD 50.00");
+        assert!(price2.is_some());
+        assert_eq!(price2.unwrap().amount, 50.00);
+
+        let price3 = parse_price("123.45");
+        assert!(price3.is_some());
+        assert_eq!(price3.unwrap().amount, 123.45);
+    }
+
+    #[test]
+    fn test_parse_price_invalid_formats() {
+        assert!(parse_price("not a price").is_none());
+        assert!(parse_price("").is_none());
+        assert!(parse_price("abc123").is_none());
+    }
+
+    #[test]
+    fn test_parse_buying_format_variations() {
+        assert!(matches!(parse_buying_format("auction"), BuyingFormat::Auction));
+        assert!(matches!(parse_buying_format("AUCTION"), BuyingFormat::Auction));
+        assert!(matches!(parse_buying_format("Buy It Now"), BuyingFormat::BuyItNow));
+        assert!(matches!(parse_buying_format("BUY IT NOW"), BuyingFormat::BuyItNow));
+        assert!(matches!(parse_buying_format("buy it now"), BuyingFormat::BuyItNow));
+        // Default case (not auction or buy it now)
+        assert!(matches!(parse_buying_format("best offer"), BuyingFormat::BestOffer));
+        assert!(matches!(parse_buying_format(""), BuyingFormat::BestOffer));
+    }
+
+    #[test]
+    fn test_scraper_config_with_screenshot_enabled() {
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 5,
+            screenshot_on_error: true,
+            screenshot_dir: Some(std::path::PathBuf::from("/tmp/screenshots")),
+        };
+
+        assert_eq!(config.max_retries, 5);
+        assert_eq!(config.screenshot_on_error, true);
+        assert!(config.screenshot_dir.is_some());
+    }
+
+    #[test]
+    fn test_build_search_url_query_encoding() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        // Test with query that needs encoding
+        let url = scraper.build_search_url("laptop with SSD", &SearchFilters::default(), 1);
+
+        // URL should contain encoded query
+        assert!(url.contains("laptop"));
+        assert!(url.contains("SSD") || url.contains("ssd"));
+    }
+
+    #[test]
+    fn test_build_search_url_with_triple_conditions() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec!["New".to_string(), "Used".to_string(), "Refurbished".to_string()]);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        // Should contain multiple condition codes separated by commas
+        assert!(url.contains("LH_ItemCondition="));
+        assert!(url.contains("1000")); // New
+        assert!(url.contains("3000")); // Used
+        assert!(url.contains("2000")); // Refurbished
+    }
+
+    #[test]
+    fn test_build_search_url_with_empty_condition_list() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.condition = Some(vec![]); // Empty list
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        // Should not contain LH_ItemCondition parameter
+        assert!(!url.contains("LH_ItemCondition="));
+    }
+
+    #[test]
+    fn test_build_search_url_with_both_buying_formats() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["Auction".to_string(), "BuyItNow".to_string()]);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        // Should contain both format parameters
+        assert!(url.contains("LH_Auction=1"));
+        assert!(url.contains("LH_BIN=1"));
+    }
+
+    #[test]
+    fn test_build_search_url_page_one_no_pgn_parameter() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let url = scraper.build_search_url("laptop", &SearchFilters::default(), 1);
+
+        // Page 1 should not include _pgn parameter
+        assert!(!url.contains("_pgn="));
+    }
+
+    #[test]
+    fn test_parse_price_with_various_comma_formats() {
+        // US format: 1,234.56
+        let price1 = parse_price("$1,234.56");
+        assert_eq!(price1.unwrap().amount, 1234.56);
+
+        // Multiple commas
+        let price2 = parse_price("$10,000,000.00");
+        assert_eq!(price2.unwrap().amount, 10000000.00);
+
+        // No commas
+        let price3 = parse_price("$1234");
+        assert_eq!(price3.unwrap().amount, 1234.0);
+    }
+
+    #[test]
+    fn test_ebay_scraper_new_with_all_config() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 5,
+            screenshot_on_error: true,
+            screenshot_dir: Some(std::path::PathBuf::from("/tmp")),
+        };
+
+        let anti_det = AntiDetection::new(
+            vec!["agent1".to_string()],
+            true,
+            Duration::from_millis(100),
+            Duration::from_millis(500),
+        );
+
+        let scraper = EbayScraper::new(config.clone(), anti_det.clone());
+
+        // Verify scraper was created with correct config
+        assert_eq!(scraper.config.base_url, "https://www.ebay.com");
+        assert_eq!(scraper.config.max_retries, 5);
+    }
+
+    #[test]
+    fn test_build_search_url_ignores_unknown_format() {
+        use std::time::Duration;
+
+        let config = ScraperConfig {
+            base_url: "https://www.ebay.com".to_string(),
+            max_retries: 1,
+            screenshot_on_error: false,
+            screenshot_dir: None,
+        };
+        let anti_det = AntiDetection::new(vec![], false, Duration::from_millis(0), Duration::from_millis(0));
+        let scraper = EbayScraper::new(config, anti_det);
+
+        let mut filters = SearchFilters::default();
+        filters.buying_format = Some(vec!["UnknownFormat".to_string()]);
+
+        let url = scraper.build_search_url("laptop", &filters, 1);
+
+        // Unknown format should be ignored (no LH_Auction or LH_BIN)
+        assert!(!url.contains("LH_Auction=1"));
+        assert!(!url.contains("LH_BIN=1"));
+    }
+
+    #[test]
+    fn test_parse_price_with_leading_zeros() {
+        let price = parse_price("$0009.99");
+        assert_eq!(price.unwrap().amount, 9.99);
+    }
 }

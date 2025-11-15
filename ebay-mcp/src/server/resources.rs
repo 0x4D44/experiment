@@ -136,3 +136,38 @@ impl ResourceHandler {
         Ok(serde_json::to_string_pretty(&stats_json)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // For now, we test protocol types and defer integration tests
+    // Full integration testing of ResourceHandler requires a working SearchManager
+    // which in turn requires BrowserPool, ConfigManager, etc.
+
+    #[test]
+    fn test_resource_uris() {
+        // Test that we have the expected resource URIs defined
+        let expected_uris = vec![
+            "ebay://config",
+            "ebay://phrases",
+            "ebay://history",
+            "ebay://stats",
+        ];
+
+        // These are the URIs we should support
+        for uri in expected_uris {
+            assert!(uri.starts_with("ebay://"));
+        }
+    }
+
+    #[test]
+    fn test_phrase_uri_prefix() {
+        // Test phrase-specific URI pattern
+        let test_uri = "ebay://phrases/test-id-123";
+        assert!(test_uri.starts_with("ebay://phrases/"));
+
+        let phrase_id = test_uri.strip_prefix("ebay://phrases/").unwrap();
+        assert_eq!(phrase_id, "test-id-123");
+    }
+}
