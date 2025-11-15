@@ -308,4 +308,89 @@ mod tests {
         let result = returns_error();
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_to_mcp_error_code_other_errors() {
+        // Test that other error types map to -32603 (internal error)
+        assert_eq!(
+            EbayMcpError::Config("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::ScrapingFailed("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::Database("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::Network("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::NotImplemented("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+    }
+
+    #[test]
+    fn test_user_message_other_errors() {
+        // Test that other error types return to_string() for user_message
+        let err = EbayMcpError::Config("invalid config".to_string());
+        assert_eq!(err.user_message(), "Configuration error: invalid config");
+
+        let err = EbayMcpError::Network("timeout".to_string());
+        assert_eq!(err.user_message(), "Network error: timeout");
+
+        let err = EbayMcpError::NotImplemented("feature".to_string());
+        assert_eq!(err.user_message(), "Not implemented: feature");
+    }
+
+    #[test]
+    fn test_debug_trait() {
+        let err = EbayMcpError::Browser("test".to_string());
+        let debug_str = format!("{:?}", err);
+        assert!(debug_str.contains("Browser"));
+    }
+
+    #[test]
+    fn test_to_mcp_error_code_comprehensive() {
+        // Test all special MCP error codes
+        assert_eq!(EbayMcpError::CaptchaDetected.to_mcp_error_code(), -32000);
+        assert_eq!(EbayMcpError::RateLimited.to_mcp_error_code(), -32000);
+        assert_eq!(
+            EbayMcpError::PhraseNotFound("test".to_string()).to_mcp_error_code(),
+            -32602
+        );
+        assert_eq!(
+            EbayMcpError::InvalidInput("test".to_string()).to_mcp_error_code(),
+            -32602
+        );
+        assert_eq!(
+            EbayMcpError::Protocol("test".to_string()).to_mcp_error_code(),
+            -32600
+        );
+    }
+
+    #[test]
+    fn test_error_display_comprehensive() {
+        // Test display for special error variants
+        assert!(EbayMcpError::CaptchaDetected
+            .to_string()
+            .contains("CAPTCHA"));
+        assert!(EbayMcpError::RateLimited.to_string().contains("Rate"));
+
+        let phrase_err = EbayMcpError::PhraseNotFound("test_id".to_string());
+        let display_str = phrase_err.to_string();
+        assert!(display_str.contains("phrase"));
+        assert!(display_str.contains("test_id"));
+
+        let invalid_err = EbayMcpError::InvalidInput("bad data".to_string());
+        assert!(invalid_err.to_string().contains("Invalid"));
+
+        let protocol_err = EbayMcpError::Protocol("bad message".to_string());
+        assert!(protocol_err.to_string().contains("protocol"));
+    }
+
 }

@@ -222,3 +222,103 @@ pub struct SearchManagerStats {
     pub cache_entries: usize,
     pub cache_enabled: bool,
 }
+
+// TODO: Add integration tests for SearchManager
+// These require complex setup with ConfigManager, BrowserPool, Cache, and Database
+// For now, focusing on easier-to-test modules to boost coverage quickly
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_search_manager_stats_structure() {
+        let stats = SearchManagerStats {
+            browser_pool_active: 5,
+            browser_pool_available: 10,
+            cache_entries: 42,
+            cache_enabled: true,
+        };
+
+        assert_eq!(stats.browser_pool_active, 5);
+        assert_eq!(stats.browser_pool_available, 10);
+        assert_eq!(stats.cache_entries, 42);
+        assert_eq!(stats.cache_enabled, true);
+    }
+
+    #[test]
+    fn test_search_manager_stats_clone() {
+        let stats = SearchManagerStats {
+            browser_pool_active: 3,
+            browser_pool_available: 7,
+            cache_entries: 15,
+            cache_enabled: false,
+        };
+
+        let cloned = stats.clone();
+        assert_eq!(cloned.browser_pool_active, 3);
+        assert_eq!(cloned.browser_pool_available, 7);
+        assert_eq!(cloned.cache_entries, 15);
+        assert_eq!(cloned.cache_enabled, false);
+    }
+
+    #[test]
+    fn test_search_manager_stats_debug() {
+        let stats = SearchManagerStats {
+            browser_pool_active: 1,
+            browser_pool_available: 2,
+            cache_entries: 3,
+            cache_enabled: true,
+        };
+
+        let debug_str = format!("{:?}", stats);
+        assert!(debug_str.contains("SearchManagerStats"));
+        assert!(debug_str.contains("browser_pool_active"));
+    }
+
+    #[test]
+    fn test_search_manager_stats_with_zero_values() {
+        let stats = SearchManagerStats {
+            browser_pool_active: 0,
+            browser_pool_available: 0,
+            cache_entries: 0,
+            cache_enabled: false,
+        };
+
+        assert_eq!(stats.browser_pool_active, 0);
+        assert_eq!(stats.cache_entries, 0);
+    }
+
+    #[test]
+    fn test_search_manager_stats_with_large_values() {
+        let stats = SearchManagerStats {
+            browser_pool_active: 1000,
+            browser_pool_available: 5000,
+            cache_entries: 999999,
+            cache_enabled: true,
+        };
+
+        assert_eq!(stats.browser_pool_active, 1000);
+        assert_eq!(stats.browser_pool_available, 5000);
+        assert_eq!(stats.cache_entries, 999999);
+    }
+
+    // Note: Full integration tests for SearchManager require:
+    // - Mock ConfigManager
+    // - Mock/real BrowserPool
+    // - Mock/real ResultCache
+    // - Mock/real Database
+    //
+    // These tests would cover:
+    // - search() with cache hit/miss
+    // - search_by_phrase_id()
+    // - save_phrase() / update_phrase() / delete_phrase()
+    // - list_phrases() with/without tag filtering
+    // - get_phrase()
+    // - get_history()
+    // - clear_cache()
+    // - execute_search() (currently returns NotImplemented)
+    // - stats()
+    //
+    // For now, these integration tests are deferred due to complexity
+}

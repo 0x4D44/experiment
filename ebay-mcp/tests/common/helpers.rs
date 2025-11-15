@@ -2,6 +2,8 @@
 
 use tempfile::{NamedTempFile, TempDir};
 use std::path::PathBuf;
+use tokio::runtime::Runtime;
+use std::future::Future;
 
 /// Create a temporary database for testing
 pub fn create_temp_database() -> NamedTempFile {
@@ -11,6 +13,25 @@ pub fn create_temp_database() -> NamedTempFile {
 /// Create a temporary directory for testing
 pub fn create_temp_dir() -> TempDir {
     TempDir::new().expect("Failed to create temp directory")
+}
+
+/// Run an async test with a tokio runtime
+pub fn run_async_test<F: Future>(future: F) -> F::Output {
+    Runtime::new()
+        .expect("Failed to create runtime")
+        .block_on(future)
+}
+
+/// Create a test database with initialized schema
+pub async fn create_initialized_test_db() -> (NamedTempFile, ebay_mcp_server::storage::Database) {
+    let temp_file = create_temp_database();
+    let db_path = temp_file.path().to_str().unwrap();
+
+    let db = ebay_mcp_server::storage::Database::new(db_path)
+        .await
+        .expect("Failed to create test database");
+
+    (temp_file, db)
 }
 
 /// Create a temporary config file with default settings

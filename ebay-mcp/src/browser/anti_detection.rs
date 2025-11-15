@@ -180,4 +180,143 @@ mod tests {
         assert!(elapsed >= Duration::from_millis(10));
         assert!(elapsed <= Duration::from_millis(50)); // Some buffer
     }
+
+    #[test]
+    fn test_empty_user_agents_uses_default() {
+        let anti_det = AntiDetection::new(
+            vec![],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+
+        let agent = anti_det.random_user_agent();
+        assert_eq!(agent, DEFAULT_USER_AGENT);
+    }
+
+    #[test]
+    fn test_single_user_agent() {
+        let user_agents = vec!["Custom Agent".to_string()];
+
+        let anti_det = AntiDetection::new(
+            user_agents.clone(),
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+
+        let agent = anti_det.random_user_agent();
+        assert_eq!(agent, "Custom Agent");
+    }
+
+    #[tokio::test]
+    async fn test_random_delay_disabled() {
+        let anti_det = AntiDetection::new(
+            vec![],
+            false, // Disabled
+            Duration::from_millis(100),
+            Duration::from_millis(200),
+        );
+
+        let start = std::time::Instant::now();
+        anti_det.random_delay().await;
+        let elapsed = start.elapsed();
+
+        // Should return immediately when disabled
+        assert!(elapsed < Duration::from_millis(10));
+    }
+
+    #[test]
+    fn test_anti_detection_script_not_empty() {
+        let script = AntiDetection::anti_detection_script();
+
+        assert!(!script.is_empty());
+        assert!(script.contains("navigator.webdriver"));
+        assert!(script.contains("window.chrome"));
+        assert!(script.contains("'plugins'"));
+        assert!(script.contains("'languages'"));
+    }
+
+    #[test]
+    fn test_stealth_args_contains_key_features() {
+        let args = AntiDetection::stealth_args();
+
+        assert!(args.len() > 5);
+        assert!(args.iter().any(|a| a.contains("AutomationControlled")));
+        assert!(args.iter().any(|a| a.contains("disable-dev-shm-usage")));
+        assert!(args.iter().any(|a| a.contains("disable-web-security")));
+        assert!(args.iter().any(|a| a.contains("no-first-run")));
+    }
+
+    #[test]
+    fn test_random_viewport_distribution() {
+        let anti_det = AntiDetection::new(
+            vec![],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+
+        // Test multiple times to ensure we get different sizes
+        let mut widths = std::collections::HashSet::new();
+        let mut heights = std::collections::HashSet::new();
+
+        for _ in 0..20 {
+            let (width, height) = anti_det.random_viewport();
+            widths.insert(width);
+            heights.insert(height);
+        }
+
+        // Should have gotten at least a couple different sizes
+        assert!(widths.len() >= 2);
+        assert!(heights.len() >= 2);
+    }
+
+    #[test]
+    fn test_anti_detection_new() {
+        let user_agents = vec!["UA1".to_string(), "UA2".to_string()];
+        let anti_det = AntiDetection::new(
+            user_agents.clone(),
+            true,
+            Duration::from_millis(50),
+            Duration::from_millis(150),
+        );
+
+        // Verify fields are set correctly
+        let agent = anti_det.random_user_agent();
+        assert!(user_agents.contains(&agent.to_string()));
+    }
+
+    #[test]
+    fn test_viewport_sizes_are_valid() {
+        let anti_det = AntiDetection::new(
+            vec![],
+            false,
+            Duration::from_millis(0),
+            Duration::from_millis(0),
+        );
+
+        // Valid common resolutions
+        let valid_widths = [1366, 1920, 1440, 1536, 1280];
+        let valid_heights = [768, 1080, 900, 864, 720];
+
+        let (width, height) = anti_det.random_viewport();
+
+        assert!(valid_widths.contains(&width));
+        assert!(valid_heights.contains(&height));
+    }
+
+    #[test]
+    fn test_anti_detection_clone() {
+        let anti_det = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            true,
+            Duration::from_millis(100),
+            Duration::from_millis(200),
+        );
+
+        let cloned = anti_det.clone();
+        assert_eq!(cloned.user_agents.len(), 1);
+        assert_eq!(cloned.randomize_delay, true);
+    }
 }
