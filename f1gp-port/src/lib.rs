@@ -12,6 +12,7 @@ pub mod physics;
 pub mod ai;
 pub mod game;
 pub mod render;
+pub mod render3d;  // Phase 6: 3D rendering
 pub mod audio;
 pub mod platform;
 pub mod ui;

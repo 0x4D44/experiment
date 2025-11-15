@@ -790,6 +790,11 @@ impl GameState {
         self.camera.set_viewport_size(width, height);
     }
 
+    /// Get player car reference
+    pub fn player_car(&self) -> &CarPhysics {
+        &self.player_car
+    }
+
     /// Get car database
     pub fn car_database(&self) -> &CarDatabase {
         &self.car_database
