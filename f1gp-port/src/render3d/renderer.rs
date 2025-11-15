@@ -11,6 +11,7 @@ use crate::game::GameState;
 use crate::data::Track;
 use super::camera3d::Camera3D;
 use super::track_mesh::{TrackMesh, TrackVertex};
+use super::car_model::{CarModel, CarVertex};
 
 /// Vertex for basic 3D rendering (test triangle)
 #[repr(C)]
@@ -74,6 +75,25 @@ impl LightUniforms {
     }
 }
 
+/// Uniforms for model transformation (per-car)
+#[repr(C)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
+struct ModelUniforms {
+    model: [[f32; 4]; 4],
+}
+
+impl ModelUniforms {
+    fn new() -> Self {
+        Self {
+            model: Mat4::IDENTITY.to_cols_array_2d(),
+        }
+    }
+
+    fn update(&mut self, transform: Mat4) {
+        self.model = transform.to_cols_array_2d();
+    }
+}
+
 /// 3D Renderer using wgpu
 pub struct Renderer3D {
     pub camera: Camera3D,
@@ -100,6 +120,15 @@ pub struct Renderer3D {
     basic_pipeline: wgpu::RenderPipeline,
     test_vertex_buffer: wgpu::Buffer,
     test_vertex_count: u32,
+
+    // Car rendering
+    car_pipeline: wgpu::RenderPipeline,
+    car_model: CarModel,
+    car_vertex_buffer: wgpu::Buffer,
+    car_index_buffer: wgpu::Buffer,
+    car_index_count: u32,
+    model_buffer: wgpu::Buffer,
+    model_bind_group_layout: wgpu::BindGroupLayout,
 }
 
 impl Renderer3D {
@@ -329,6 +358,111 @@ impl Renderer3D {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
+        // Create model bind group layout (Group 2 for car shader)
+        let model_bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("Model Bind Group Layout"),
+                entries: &[wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+            });
+
+        // Create model uniform buffer
+        let model_uniforms = ModelUniforms::new();
+        let model_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Model Buffer"),
+            contents: bytemuck::cast_slice(&[model_uniforms]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
+        // Load car shader
+        let car_shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("Car Shader"),
+            source: wgpu::ShaderSource::Wgsl(include_str!("shaders/car.wgsl").into()),
+        });
+
+        // Create car render pipeline
+        let car_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Car Pipeline Layout"),
+                bind_group_layouts: &[
+                    &camera_bind_group_layout,
+                    &light_bind_group_layout,
+                    &model_bind_group_layout,
+                ],
+                push_constant_ranges: &[],
+            });
+
+        let car_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Car Pipeline"),
+            layout: Some(&car_pipeline_layout),
+            vertex: wgpu::VertexState {
+                module: &car_shader,
+                entry_point: Some("vs_main"),
+                buffers: &[CarVertex::desc()],
+                compilation_options: Default::default(),
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &car_shader,
+                entry_point: Some("fs_main"),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: config.format,
+                    blend: Some(wgpu::BlendState::REPLACE),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                compilation_options: Default::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: wgpu::FrontFace::Ccw,
+                cull_mode: Some(wgpu::Face::Back),
+                polygon_mode: wgpu::PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth32Float,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+            cache: None,
+        });
+
+        // Create default car model (red for now, will be replaced per-team)
+        let car_model = CarModel::create_f1_car([1.0, 0.0, 0.0, 1.0]);
+
+        // Create car vertex buffer
+        let car_vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Car Vertex Buffer"),
+            contents: bytemuck::cast_slice(&car_model.vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        // Create car index buffer
+        let car_index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Car Index Buffer"),
+            contents: bytemuck::cast_slice(&car_model.indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let car_index_count = car_model.indices.len() as u32;
+
         Ok(Self {
             camera,
             camera_uniforms,
@@ -346,6 +480,13 @@ impl Renderer3D {
             basic_pipeline,
             test_vertex_buffer,
             test_vertex_count: test_vertices.len() as u32,
+            car_pipeline,
+            car_model,
+            car_vertex_buffer,
+            car_index_buffer,
+            car_index_count,
+            model_buffer,
+            model_bind_group_layout,
         })
     }
 
@@ -428,6 +569,72 @@ impl Renderer3D {
             render_pass.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
             render_pass.draw_indexed(0..self.track_index_count, 0, 0..1);
         }
+
+        drop(render_pass);
+
+        Ok(())
+    }
+
+    /// Render cars from game state
+    pub fn render_cars(
+        &self,
+        device: &wgpu::Device,
+        encoder: &mut wgpu::CommandEncoder,
+        view: &wgpu::TextureView,
+        game_state: &GameState,
+        queue: &wgpu::Queue,
+    ) -> Result<()> {
+        // Create model bind group for rendering
+        let model_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Model Bind Group"),
+            layout: &self.model_bind_group_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: self.model_buffer.as_entire_binding(),
+            }],
+        });
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Car Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // Don't clear, we already rendered track
+                    store: wgpu::StoreOp::Store,
+                },
+                depth_slice: None,
+            })],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_view,
+                depth_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // Keep existing depth
+                    store: wgpu::StoreOp::Store,
+                }),
+                stencil_ops: None,
+            }),
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        render_pass.set_pipeline(&self.car_pipeline);
+        render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_pass.set_bind_group(1, &self.light_bind_group, &[]);
+        render_pass.set_bind_group(2, &model_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.car_vertex_buffer.slice(..));
+        render_pass.set_index_buffer(self.car_index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+
+        // Render player car
+        let player_car = game_state.player_car();
+        let transform = CarModel::get_transform_matrix(player_car);
+        let mut model_uniforms = ModelUniforms::new();
+        model_uniforms.update(transform);
+        queue.write_buffer(&self.model_buffer, 0, bytemuck::cast_slice(&[model_uniforms]));
+        render_pass.draw_indexed(0..self.car_index_count, 0, 0..1);
+
+        // TODO: Render AI cars when we have access to them
+
+        drop(render_pass);
 
         Ok(())
     }
