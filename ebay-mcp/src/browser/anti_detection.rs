@@ -305,4 +305,18 @@ mod tests {
         assert!(valid_widths.contains(&width));
         assert!(valid_heights.contains(&height));
     }
+
+    #[test]
+    fn test_anti_detection_clone() {
+        let anti_det = AntiDetection::new(
+            vec!["test-agent".to_string()],
+            true,
+            Duration::from_millis(100),
+            Duration::from_millis(200),
+        );
+
+        let cloned = anti_det.clone();
+        assert_eq!(cloned.user_agents.len(), 1);
+        assert_eq!(cloned.randomize_delay, true);
+    }
 }

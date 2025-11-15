@@ -353,4 +353,44 @@ mod tests {
         let debug_str = format!("{:?}", err);
         assert!(debug_str.contains("Browser"));
     }
+
+    #[test]
+    fn test_to_mcp_error_code_comprehensive() {
+        // Test all special MCP error codes
+        assert_eq!(EbayMcpError::CaptchaDetected.to_mcp_error_code(), -32000);
+        assert_eq!(EbayMcpError::RateLimited.to_mcp_error_code(), -32000);
+        assert_eq!(
+            EbayMcpError::PhraseNotFound("test".to_string()).to_mcp_error_code(),
+            -32602
+        );
+        assert_eq!(
+            EbayMcpError::InvalidInput("test".to_string()).to_mcp_error_code(),
+            -32602
+        );
+        assert_eq!(
+            EbayMcpError::Protocol("test".to_string()).to_mcp_error_code(),
+            -32600
+        );
+    }
+
+    #[test]
+    fn test_error_display_comprehensive() {
+        // Test display for special error variants
+        assert!(EbayMcpError::CaptchaDetected
+            .to_string()
+            .contains("CAPTCHA"));
+        assert!(EbayMcpError::RateLimited.to_string().contains("Rate"));
+
+        let phrase_err = EbayMcpError::PhraseNotFound("test_id".to_string());
+        let display_str = phrase_err.to_string();
+        assert!(display_str.contains("phrase"));
+        assert!(display_str.contains("test_id"));
+
+        let invalid_err = EbayMcpError::InvalidInput("bad data".to_string());
+        assert!(invalid_err.to_string().contains("Invalid"));
+
+        let protocol_err = EbayMcpError::Protocol("bad message".to_string());
+        assert!(protocol_err.to_string().contains("protocol"));
+    }
+
 }
