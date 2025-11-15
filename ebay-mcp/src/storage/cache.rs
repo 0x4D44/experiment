@@ -427,4 +427,27 @@ mod tests {
         // Should be hex string
         assert!(key.chars().skip(5).all(|c| c.is_ascii_hexdigit()));
     }
+
+    #[tokio::test]
+    async fn test_cache_stats() {
+        let cache = ResultCache::new(true, 300, 100, None);
+        let results = create_test_results("test", 3);
+
+        cache.set("test".to_string(), SearchFilters::default(), results).await.unwrap();
+
+        let stats = cache.stats().await;
+        assert_eq!(stats.entries, 1);
+        assert_eq!(stats.max_entries, 100);
+        assert_eq!(stats.enabled, true);
+    }
+
+    #[tokio::test]
+    async fn test_cache_with_disk_cache_dir() {
+        let disk_dir = PathBuf::from("/tmp/test_cache");
+        let cache = ResultCache::new(true, 300, 100, Some(disk_dir.clone()));
+
+        // Cache should initialize successfully even with disk cache dir
+        let stats = cache.stats().await;
+        assert_eq!(stats.enabled, true);
+    }
 }
