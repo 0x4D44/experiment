@@ -308,4 +308,49 @@ mod tests {
         let result = returns_error();
         assert!(result.is_err());
     }
+
+    #[test]
+    fn test_to_mcp_error_code_other_errors() {
+        // Test that other error types map to -32603 (internal error)
+        assert_eq!(
+            EbayMcpError::Config("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::ScrapingFailed("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::Database("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::Network("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+        assert_eq!(
+            EbayMcpError::NotImplemented("test".to_string()).to_mcp_error_code(),
+            -32603
+        );
+    }
+
+    #[test]
+    fn test_user_message_other_errors() {
+        // Test that other error types return to_string() for user_message
+        let err = EbayMcpError::Config("invalid config".to_string());
+        assert_eq!(err.user_message(), "Configuration error: invalid config");
+
+        let err = EbayMcpError::Network("timeout".to_string());
+        assert_eq!(err.user_message(), "Network error: timeout");
+
+        let err = EbayMcpError::NotImplemented("feature".to_string());
+        assert_eq!(err.user_message(), "Not implemented: feature");
+    }
+
+    #[test]
+    fn test_debug_trait() {
+        let err = EbayMcpError::Browser("test".to_string());
+        let debug_str = format!("{:?}", err);
+        assert!(debug_str.contains("Browser"));
+    }
 }
