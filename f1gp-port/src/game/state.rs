@@ -2,7 +2,7 @@
 //!
 //! Manages the overall game state, integrating physics, rendering, and input.
 
-use crate::ai::{AIDriver, DriverPersonality, RacingLineFollower};
+use crate::ai::{AIDriver, DriverPersonality, NearbyCarInfo, RacingLineFollower};
 use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
@@ -240,30 +240,72 @@ impl GameState {
     /// Update AI drivers
     fn update_ai(&mut self, delta_time: f32) {
         // Update each AI driver and apply their inputs to their cars
-        for (ai_driver, ai_car) in self.ai_drivers.iter_mut().zip(self.ai_cars.iter_mut()) {
+        for i in 0..self.ai_drivers.len() {
+            // Gather nearby car information for this AI
+            let ai_position = self.ai_cars[i].body.position;
+            let mut nearby_cars = Vec::new();
+
+            // Add player car
+            let distance_to_player = (ai_position - self.player_car.body.position).length();
+            if distance_to_player < 100.0 {
+                // Determine if player is ahead or behind
+                let to_player = self.player_car.body.position - ai_position;
+                let ai_forward_3d = self.ai_cars[i].body.orientation * glam::Vec3::X;
+                let is_ahead = to_player.dot(ai_forward_3d) > 0.0;
+
+                nearby_cars.push(NearbyCarInfo {
+                    position: self.player_car.body.position,
+                    velocity: self.player_car.body.velocity,
+                    distance: distance_to_player,
+                    is_ahead,
+                });
+            }
+
+            // Add other AI cars
+            for (j, other_car) in self.ai_cars.iter().enumerate() {
+                if i == j {
+                    continue; // Skip self
+                }
+
+                let distance = (ai_position - other_car.body.position).length();
+                if distance < 100.0 {
+                    // Determine if other car is ahead or behind
+                    let to_other = other_car.body.position - ai_position;
+                    let ai_forward_3d = self.ai_cars[i].body.orientation * glam::Vec3::X;
+                    let is_ahead = to_other.dot(ai_forward_3d) > 0.0;
+
+                    nearby_cars.push(NearbyCarInfo {
+                        position: other_car.body.position,
+                        velocity: other_car.body.velocity,
+                        distance,
+                        is_ahead,
+                    });
+                }
+            }
+
             // Get AI input
-            let ai_input = ai_driver.update(ai_car, delta_time);
+            let ai_input = self.ai_drivers[i].update(&self.ai_cars[i], &nearby_cars, delta_time);
 
             // Apply AI input to car
-            ai_car.set_throttle(ai_input.throttle);
-            ai_car.set_brake(ai_input.brake);
-            ai_car.set_steering(ai_input.steering);
+            self.ai_cars[i].set_throttle(ai_input.throttle);
+            self.ai_cars[i].set_brake(ai_input.brake);
+            self.ai_cars[i].set_steering(ai_input.steering);
 
             if ai_input.shift_up {
-                ai_car.shift_up();
+                self.ai_cars[i].shift_up();
             }
             if ai_input.shift_down {
-                ai_car.shift_down();
+                self.ai_cars[i].shift_down();
             }
 
             // Update AI car physics
-            ai_car.update(delta_time);
+            self.ai_cars[i].update(delta_time);
 
             // Apply collision detection for AI cars
             if let Some(collision_detector) = &self.track_collision {
-                let collision_result = collision_detector.check_collision(ai_car.body.position);
-                ai_car.apply_surface_grip(collision_result.grip_multiplier);
-                ai_car.on_track = collision_result.on_track;
+                let collision_result = collision_detector.check_collision(self.ai_cars[i].body.position);
+                self.ai_cars[i].apply_surface_grip(collision_result.grip_multiplier);
+                self.ai_cars[i].on_track = collision_result.on_track;
             }
         }
     }

@@ -5,7 +5,23 @@
 use crate::ai::racing_line::RacingLineFollower;
 use crate::game::input::CarInput;
 use crate::physics::CarPhysics;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
+
+/// Information about a nearby car for AI decision making
+#[derive(Debug, Clone)]
+pub struct NearbyCarInfo {
+    /// Position of the car
+    pub position: Vec3,
+
+    /// Velocity of the car
+    pub velocity: Vec3,
+
+    /// Distance to this car
+    pub distance: f32,
+
+    /// Whether this car is ahead (true) or behind (false)
+    pub is_ahead: bool,
+}
 
 /// AI driver personality/skill parameters
 #[derive(Debug, Clone, Copy)]
@@ -124,6 +140,15 @@ pub struct AIDriver {
     current_throttle: f32,
     current_brake: f32,
     current_steering: f32,
+
+    /// Lateral offset from racing line for overtaking/defending (meters)
+    lateral_offset: f32,
+
+    /// Target lateral offset (smoothly interpolated)
+    target_lateral_offset: f32,
+
+    /// Time spent in current state (for state transitions)
+    state_timer: f32,
 }
 
 impl AIDriver {
@@ -139,6 +164,9 @@ impl AIDriver {
             current_throttle: 0.0,
             current_brake: 0.0,
             current_steering: 0.0,
+            lateral_offset: 0.0,
+            target_lateral_offset: 0.0,
+            state_timer: 0.0,
         }
     }
 
@@ -148,23 +176,39 @@ impl AIDriver {
     }
 
     /// Update AI and compute inputs for the car
-    pub fn update(&mut self, car: &CarPhysics, delta_time: f32) -> CarInput {
+    pub fn update(&mut self, car: &CarPhysics, nearby_cars: &[NearbyCarInfo], delta_time: f32) -> CarInput {
         // If no racing line, return neutral inputs
-        let Some(ref racing_line) = self.racing_line else {
+        if self.racing_line.is_none() {
             return CarInput::default();
-        };
+        }
+
+        // Update state timer
+        self.state_timer += delta_time;
+
+        // Update AI state based on nearby cars
+        self.update_ai_state(car, nearby_cars);
 
         // Get target point and speed from racing line
-        let target_speed = racing_line.get_target_speed(car.body.position);
+        let target_speed = self.racing_line.as_ref().unwrap().get_target_speed(car.body.position);
 
         // Apply skill modifier to target speed
         let adjusted_target_speed = target_speed * (0.7 + self.personality.skill * 0.3);
 
-        // Calculate steering using racing line
-        // Get car forward direction in 2D (XZ plane)
+        // Adjust target speed based on state and nearby cars
+        let final_target_speed = self.adjust_target_speed(adjusted_target_speed, car, nearby_cars);
+
+        // Calculate steering using racing line with lateral offset
         let forward_3d = car.body.orientation * glam::Vec3::X;
         let car_forward = Vec2::new(forward_3d.x, forward_3d.z);
-        let target_steering = racing_line.calculate_steering(car.body.position, car_forward);
+
+        // Smooth lateral offset transitions
+        let offset_smoothness = 0.05;
+        self.lateral_offset += (self.target_lateral_offset - self.lateral_offset) * offset_smoothness;
+
+        let target_steering = self.calculate_steering_with_offset(
+            car.body.position,
+            car_forward,
+        );
 
         // Smooth steering (add human-like imperfection)
         let steering_smoothness = 0.1 + self.personality.skill * 0.1;
@@ -178,7 +222,7 @@ impl AIDriver {
         // Calculate throttle and brake using PID controller
         let (throttle, brake) = self.calculate_speed_control(
             car.speed,
-            adjusted_target_speed,
+            final_target_speed,
             delta_time,
         );
 
@@ -194,6 +238,149 @@ impl AIDriver {
             shift_up: false,  // TODO: Implement automatic shifting
             shift_down: false,
         }
+    }
+
+    /// Update AI state based on nearby cars
+    fn update_ai_state(&mut self, car: &CarPhysics, nearby_cars: &[NearbyCarInfo]) {
+        // Find closest car ahead and behind
+        let car_ahead = nearby_cars.iter()
+            .filter(|c| c.is_ahead && c.distance < 50.0)
+            .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+        let car_behind = nearby_cars.iter()
+            .filter(|c| !c.is_ahead && c.distance < 30.0)
+            .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+
+        // State machine logic
+        match self.state {
+            AIState::Racing => {
+                // Check if we should start overtaking
+                if let Some(ahead) = car_ahead {
+                    if ahead.distance < 20.0 {
+                        // Car is close ahead, check if we're faster
+                        let ahead_speed = ahead.velocity.length();
+                        if car.speed > ahead_speed * 1.05 {
+                            // We're significantly faster, attempt overtake
+                            if fastrand::f32() < self.personality.aggression {
+                                self.state = AIState::Overtaking;
+                                self.state_timer = 0.0;
+                                // Choose overtaking side (prefer inside of next corner)
+                                self.target_lateral_offset = if fastrand::bool() { 4.0 } else { -4.0 };
+                            }
+                        }
+                    }
+                }
+
+                // Check if we should start defending
+                if let Some(behind) = car_behind {
+                    if behind.distance < 15.0 {
+                        let behind_speed = behind.velocity.length();
+                        if behind_speed > car.speed * 1.05 {
+                            // Car behind is faster, defend if aggressive
+                            if fastrand::f32() < self.personality.aggression * 0.7 {
+                                self.state = AIState::Defending;
+                                self.state_timer = 0.0;
+                                // Block racing line
+                                self.target_lateral_offset = 0.0;
+                            }
+                        }
+                    }
+                }
+            }
+
+            AIState::Overtaking => {
+                // Check if overtake is complete
+                if car_ahead.is_none() || car_ahead.map(|c| c.distance).unwrap_or(100.0) > 25.0 {
+                    // Overtake complete, return to racing line
+                    self.state = AIState::Racing;
+                    self.target_lateral_offset = 0.0;
+                } else if self.state_timer > 5.0 {
+                    // Overtake taking too long, give up
+                    self.state = AIState::Racing;
+                    self.target_lateral_offset = 0.0;
+                }
+            }
+
+            AIState::Defending => {
+                // Check if we're still being chased
+                if car_behind.is_none() || car_behind.map(|c| c.distance).unwrap_or(100.0) > 25.0 {
+                    // No longer being pressured
+                    self.state = AIState::Racing;
+                    self.target_lateral_offset = 0.0;
+                } else if self.state_timer > 3.0 {
+                    // Defend for limited time, then race normally
+                    self.state = AIState::Racing;
+                    self.target_lateral_offset = 0.0;
+                }
+            }
+
+            AIState::Recovering => {
+                // Return to racing after some time
+                if self.state_timer > 2.0 && car.on_track {
+                    self.state = AIState::Racing;
+                    self.target_lateral_offset = 0.0;
+                }
+            }
+
+            AIState::Pitting => {
+                // TODO: Implement pit lane logic
+            }
+        }
+    }
+
+    /// Adjust target speed based on nearby cars (collision avoidance)
+    fn adjust_target_speed(&self, base_speed: f32, car: &CarPhysics, nearby_cars: &[NearbyCarInfo]) -> f32 {
+        let mut speed = base_speed;
+
+        // Find closest car directly ahead (within 30 degrees)
+        let forward_3d = car.body.orientation * glam::Vec3::X;
+        let car_forward = Vec2::new(forward_3d.x, forward_3d.z).normalize();
+
+        for nearby in nearby_cars {
+            if !nearby.is_ahead {
+                continue;
+            }
+
+            // Check if car is in front of us
+            let to_car = nearby.position - car.body.position;
+            let to_car_2d = Vec2::new(to_car.x, to_car.z);
+            let dot = to_car_2d.normalize().dot(car_forward);
+
+            // Only consider cars ahead of us (dot > 0.866 = ~30 degrees)
+            if dot > 0.866 && nearby.distance < 25.0 {
+                // Reduce speed based on distance
+                let speed_reduction = (1.0 - (nearby.distance / 25.0)) * 0.5;
+                let nearby_speed = nearby.velocity.length();
+                speed = speed.min(nearby_speed - speed_reduction * 10.0);
+            }
+        }
+
+        // In overtaking mode, push harder
+        if self.state == AIState::Overtaking {
+            speed *= 1.05;
+        }
+
+        speed.max(5.0) // Never go below 5 m/s
+    }
+
+    /// Calculate steering with lateral offset from racing line
+    fn calculate_steering_with_offset(
+        &self,
+        position: Vec3,
+        car_forward: Vec2,
+    ) -> f32 {
+        // Get base steering from racing line
+        let base_steering = if let Some(ref racing_line) = self.racing_line {
+            racing_line.calculate_steering(position, car_forward)
+        } else {
+            0.0
+        };
+
+        // Apply lateral offset (simplified - just add to steering)
+        // Positive offset = right, negative = left
+        let offset_steering = self.lateral_offset * 0.1;
+
+        (base_steering + offset_steering).clamp(-1.0, 1.0)
     }
 
     /// Calculate throttle and brake using PID controller
