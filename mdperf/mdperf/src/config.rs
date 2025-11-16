@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::runtime::RuntimeStrategy;
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(default)]
 pub struct BenchConfig {
     pub general: GeneralConfig,
@@ -113,7 +113,7 @@ impl CpuConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CpuOperation {
     #[default]
@@ -122,7 +122,7 @@ pub enum CpuOperation {
     Hash,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ThreadSelector {
     #[default]

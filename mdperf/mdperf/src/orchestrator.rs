@@ -16,7 +16,7 @@ use crate::{
     ui::{SubTestResult, UiMessage, UiSender, UiStatus},
 };
 
-type ParallelResults = Arc<Mutex<Vec<(Vec<TestReport>, Vec<String>)>>>;
+type ThreadResults = Arc<Mutex<Vec<(Vec<TestReport>, Vec<String>)>>>;
 
 pub struct Orchestrator {
     config: BenchConfig,
@@ -296,7 +296,7 @@ fn run_modules_parallel(
     tests: &mut Vec<TestReport>,
     warnings: &mut Vec<String>,
 ) {
-    let results: ParallelResults = Arc::new(Mutex::new(Vec::new()));
+    let results: ThreadResults = Arc::new(Mutex::new(Vec::new()));
     let mut handles = Vec::new();
 
     for mut entry in modules {

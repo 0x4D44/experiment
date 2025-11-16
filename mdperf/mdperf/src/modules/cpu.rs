@@ -235,7 +235,7 @@ fn run_per_core_test(ctx: &ModuleContext, operations: &[CpuOperation]) {
             core_id,
             core_type,
             gops,
-            operation: operation.label().to_string(),
+            _operation: operation.label().to_string(),
         };
 
         // Send chart update to UI
