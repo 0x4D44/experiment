@@ -7,6 +7,42 @@ use serde::{Deserialize, Serialize};
 use glam::Vec3;
 use super::objects::ObjectShape;
 
+/// Offsets into the track file
+/// These offsets are stored at 0x1000 and point to various data sections
+#[derive(Debug, Clone)]
+pub struct TrackOffsets {
+    pub base_offset: i16,
+    pub unknown2: i16,
+    pub unknown3: i16,
+    pub unknown4: i16,
+    /// Position of file checksum (adjusted by +0x1010)
+    pub checksum_position: i16,
+    /// Position of object data (adjusted by +0x1010)
+    pub object_data: i16,
+    /// Position of track section header and data (adjusted by +0x1010)
+    pub track_data: i16,
+}
+
+/// Track section header that precedes the section data
+/// Source: ArgData TrackSectionHeader.cs
+#[derive(Debug, Clone)]
+pub struct TrackSectionHeader {
+    pub first_section_angle: u16,
+    pub first_section_height: i16,
+    pub track_center_x: i16,
+    pub track_center_z: i16,
+    pub track_center_y: i16,
+    pub start_width: i16,
+    pub pole_side: i16,
+    pub pits_side: u8,
+    pub surrounding_area: u8,
+    pub right_verge_start_width: u8,
+    pub left_verge_start_width: u8,
+    pub kerb_type: u8,
+    // Additional bytes vary by kerb type
+    // Minimum header size: 19 bytes
+}
+
 /// A complete F1GP track
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Track {
