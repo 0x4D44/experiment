@@ -503,6 +503,7 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     ];
 
     let mut best_skip = 0;
+    let mut best_length = f32::MAX;
     for &skip in &test_skips {
         parser.seek(track_data_offset + skip);
         if let Ok(sections) = parse_track_sections(&mut parser) {
@@ -511,11 +512,14 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
                         name, skip, sections.len(), total_len as i32,
                         if total_len > 2500.0 && total_len < 8000.0 { "VALID" } else { "rejected" });
 
-            if sections.len() > best_sections.len() {
-                // Reasonable track length: 2.5km - 8km
-                if total_len > 2500.0 && total_len < 8000.0 {
+            // Select the skip offset that gives us the SHORTEST valid track length
+            // This should give us the actual track sections without extra data
+            // Require at least 30 sections to avoid picking incomplete data
+            if sections.len() >= 30 && total_len > 2500.0 && total_len < 8000.0 {
+                if total_len < best_length {
                     best_sections = sections;
                     best_skip = skip;
+                    best_length = total_len;
                 }
             }
         }
