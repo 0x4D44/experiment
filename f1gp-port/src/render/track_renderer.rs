@@ -43,12 +43,10 @@ impl TrackRenderer {
     }
 
     /// Generate visual points from racing line
-    fn generate_racing_line_points(racing_line: &RacingLine) -> Vec<Vec2> {
-        racing_line
-            .points
-            .iter()
-            .map(|point| Vec2::new(point.position.x, point.position.y))
-            .collect()
+    fn generate_racing_line_points(_racing_line: &RacingLine) -> Vec<Vec2> {
+        // TODO: Convert racing line segments to 3D points once coordinate calculation is implemented
+        // For now, return empty - racing line will be calculated from track sections
+        Vec::new()
     }
 
     /// Calculate bounding box for all track points
