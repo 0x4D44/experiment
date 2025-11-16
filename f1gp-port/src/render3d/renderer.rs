@@ -72,10 +72,10 @@ struct LightUniforms {
 impl LightUniforms {
     fn new() -> Self {
         Self {
-            direction: [0.5, -1.0, 0.3],  // Sun from top-right
+            direction: [0.4, -0.8, 0.5],  // Sun from upper-right, more downward for better shadows
             _padding: 0.0,
-            color: [1.0, 1.0, 0.95],      // Slightly warm white
-            ambient: 0.3,                  // 30% ambient light
+            color: [1.0, 0.98, 0.92],     // Warmer sunlight (slightly orange-tinted)
+            ambient: 0.4,                  // 40% ambient light for better visibility
         }
     }
 }

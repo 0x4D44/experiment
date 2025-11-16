@@ -40,14 +40,30 @@ fn vs_main(in: VertexInput) -> VertexOutput {
 fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let dir = normalize(in.direction);
 
-    // Sky gradient: blue at top, lighter blue at horizon
-    let sky_top = vec3<f32>(0.3, 0.6, 0.95);     // Deeper blue
-    let sky_horizon = vec3<f32>(0.7, 0.85, 0.95); // Lighter blue
+    // Enhanced sky gradient with atmospheric perspective
+    let sky_top = vec3<f32>(0.2, 0.5, 0.9);      // Deeper blue at zenith
+    let sky_mid = vec3<f32>(0.4, 0.7, 0.95);     // Mid-sky blue
+    let sky_horizon = vec3<f32>(0.75, 0.85, 0.92); // Lighter blue-white at horizon
+    let horizon_glow = vec3<f32>(0.95, 0.92, 0.85); // Warm glow near horizon
 
-    // Blend based on vertical direction (-1 to 1)
-    // At horizon (y=0), factor = 0.5; at top (y=1), factor = 0; at bottom (y=-1), factor = 1
-    let t = (1.0 - dir.y) * 0.5;
-    let sky_color = mix(sky_top, sky_horizon, t);
+    // Vertical blend factor (0 = top, 1 = bottom)
+    let vertical_t = (1.0 - dir.y) * 0.5;
+
+    // Enhanced horizon glow (exponential falloff)
+    let horizon_factor = pow(1.0 - abs(dir.y), 3.0);
+
+    // Blend sky colors
+    var sky_color: vec3<f32>;
+    if (dir.y > 0.0) {
+        // Upper hemisphere: top to mid
+        sky_color = mix(sky_top, sky_mid, vertical_t * 2.0);
+    } else {
+        // Lower hemisphere: mid to horizon
+        sky_color = mix(sky_mid, sky_horizon, (vertical_t - 0.5) * 2.0);
+    }
+
+    // Add horizon glow
+    sky_color = mix(sky_color, horizon_glow, horizon_factor * 0.3);
 
     return vec4<f32>(sky_color, 1.0);
 }
