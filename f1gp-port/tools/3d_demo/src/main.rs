@@ -173,16 +173,27 @@ impl App {
         queue.submit(std::iter::once(encoder.finish()));
         output.present();
 
-        // Print FPS
+        // Print enhanced stats every second
         self.frame_count += 1;
         if self.last_fps_print.elapsed().as_secs() >= 1 {
             let fps = self.frame_count as f64 / self.last_fps_print.elapsed().as_secs_f64();
+            let player_car = game.player_car();
+            let on_track = if player_car.on_track { "✓" } else { "✗" };
+            let camera_mode = self
+                .renderer_3d
+                .as_ref()
+                .map(|r| format!("{:?}", r.camera.mode))
+                .unwrap_or_else(|| "Unknown".to_string());
+
             log::info!(
-                "Speed: {:.1} km/h | Gear: {} | RPM: {:.0} | FPS: {:.1}",
+                "FPS: {:.1} | Speed: {:.0} km/h | Gear: {} | RPM: {:.0} | Track: {} | Camera: {} | AI: {}",
+                fps,
                 game.get_speed_kmh(),
                 game.get_gear(),
                 game.get_rpm(),
-                fps
+                on_track,
+                camera_mode,
+                game.ai_cars().len()
             );
             self.last_fps_print = Instant::now();
             self.frame_count = 0;
@@ -322,17 +333,26 @@ impl ApplicationHandler for App {
 fn main() -> Result<()> {
     env_logger::init();
 
-    log::info!("F1GP 3D Demo Starting");
-    log::info!("Window size: {}x{}", WINDOW_WIDTH, WINDOW_HEIGHT);
+    log::info!("═══════════════════════════════════════════");
+    log::info!("  F1GP 3D Demo - Enhanced Edition");
+    log::info!("═══════════════════════════════════════════");
+    log::info!("Window: {}x{} | Target: 60 FPS", WINDOW_WIDTH, WINDOW_HEIGHT);
+    log::info!("");
+    log::info!("Features:");
+    log::info!("  ✓ 3D Rendering (wgpu 27.0)");
+    log::info!("  ✓ Real-time Physics");
+    log::info!("  ✓ AI Opponents (3 cars)");
+    log::info!("  ✓ Multiple Camera Modes");
+    log::info!("  ✓ Performance Metrics");
     log::info!("");
     log::info!("Controls:");
     log::info!("  Arrow Keys / WASD - Steer, Throttle, Brake");
-    log::info!("  Z - Shift Down");
-    log::info!("  X - Shift Up");
-    log::info!("  C - Cycle Camera Mode");
-    log::info!("  P - Pause");
-    log::info!("  R - Reset");
-    log::info!("  ESC - Quit");
+    log::info!("  Z / X             - Shift Down / Up");
+    log::info!("  C                 - Cycle Camera Mode");
+    log::info!("  P                 - Pause");
+    log::info!("  R                 - Reset");
+    log::info!("  ESC               - Quit");
+    log::info!("═══════════════════════════════════════════");
     log::info!("");
 
     let event_loop = EventLoop::new()?;
