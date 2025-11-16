@@ -15,6 +15,8 @@ pub enum CameraMode {
     TVCamera,
     /// Overhead following
     Helicopter,
+    /// Free camera (manual control)
+    Free,
 }
 
 /// Camera shake parameters
@@ -96,6 +98,12 @@ pub struct Camera3D {
     // TV Camera state
     tv_camera_index: usize,
     tv_camera_positions: Vec<Vec3>,
+
+    // Free camera state
+    free_yaw: f32,       // Rotation around Y axis (radians)
+    free_pitch: f32,     // Rotation around X axis (radians)
+    free_zoom: f32,      // Zoom factor (1.0 = normal)
+    mouse_sensitivity: f32,
 }
 
 impl Camera3D {
@@ -128,6 +136,10 @@ impl Camera3D {
             shake: CameraShake::new(),
             tv_camera_index: 0,
             tv_camera_positions,
+            free_yaw: 0.0,
+            free_pitch: 0.0,
+            free_zoom: 1.0,
+            mouse_sensitivity: 0.002,
         }
     }
 
@@ -217,6 +229,23 @@ impl Camera3D {
                 self.position_smoothing = 0.92;
                 self.target_smoothing = 0.88;
             }
+            CameraMode::Free => {
+                // Free camera mode - manually controlled
+                // Calculate target from orientation
+                let yaw_quat = glam::Quat::from_rotation_y(self.free_yaw);
+                let pitch_quat = glam::Quat::from_rotation_x(self.free_pitch);
+                let rotation = yaw_quat * pitch_quat;
+
+                let forward = rotation * Vec3::NEG_Z;
+                let distance = 10.0 * self.free_zoom;
+
+                self.desired_target = self.desired_position + forward * distance;
+                self.up = Vec3::Y;
+
+                // Free camera has minimal smoothing for responsiveness
+                self.position_smoothing = 0.2;
+                self.target_smoothing = 0.2;
+            }
         }
 
         // Apply smooth interpolation
@@ -273,8 +302,77 @@ impl Camera3D {
             CameraMode::Cockpit => CameraMode::Chase,
             CameraMode::Chase => CameraMode::TVCamera,
             CameraMode::TVCamera => CameraMode::Helicopter,
-            CameraMode::Helicopter => CameraMode::Cockpit,
+            CameraMode::Helicopter => CameraMode::Free,
+            CameraMode::Free => CameraMode::Cockpit,
         };
+    }
+
+    /// Toggle free camera mode
+    pub fn toggle_free_mode(&mut self) {
+        self.mode = if self.mode == CameraMode::Free {
+            CameraMode::Chase // Return to chase when leaving free mode
+        } else {
+            // Initialize free camera from current position
+            let forward = self.forward();
+            self.free_yaw = forward.x.atan2(forward.z);
+            self.free_pitch = (-forward.y).asin();
+            CameraMode::Free
+        };
+    }
+
+    /// Reset camera to default chase mode
+    pub fn reset(&mut self) {
+        self.mode = CameraMode::Chase;
+        self.free_yaw = 0.0;
+        self.free_pitch = 0.0;
+        self.free_zoom = 1.0;
+    }
+
+    /// Handle mouse motion for free camera
+    pub fn handle_mouse_motion(&mut self, delta_x: f64, delta_y: f64) {
+        if self.mode != CameraMode::Free {
+            return;
+        }
+
+        // Apply mouse sensitivity
+        self.free_yaw -= delta_x as f32 * self.mouse_sensitivity;
+        self.free_pitch -= delta_y as f32 * self.mouse_sensitivity;
+
+        // Clamp pitch to avoid gimbal lock
+        self.free_pitch = self.free_pitch.clamp(-1.5, 1.5); // ~86 degrees
+    }
+
+    /// Handle zoom for free camera
+    pub fn handle_zoom(&mut self, delta: f32) {
+        if self.mode != CameraMode::Free {
+            return;
+        }
+
+        // Adjust zoom (0.5x to 3.0x range)
+        self.free_zoom = (self.free_zoom + delta * 0.1).clamp(0.5, 3.0);
+    }
+
+    /// Move free camera (delta in camera-space)
+    pub fn move_free_camera(&mut self, forward: f32, right: f32, up: f32, delta_time: f32) {
+        if self.mode != CameraMode::Free {
+            return;
+        }
+
+        let speed = 10.0 * delta_time; // 10 units per second base speed
+
+        // Calculate movement vectors from current orientation
+        let yaw_quat = glam::Quat::from_rotation_y(self.free_yaw);
+        let pitch_quat = glam::Quat::from_rotation_x(self.free_pitch);
+        let rotation = yaw_quat * pitch_quat;
+
+        let camera_forward = rotation * Vec3::NEG_Z;
+        let camera_right = rotation * Vec3::X;
+        let camera_up = Vec3::Y; // Always move up in world space
+
+        // Apply movement
+        self.desired_position += camera_forward * forward * speed;
+        self.desired_position += camera_right * right * speed;
+        self.desired_position += camera_up * up * speed;
     }
 
     /// Set aspect ratio (for window resize)
@@ -383,6 +481,9 @@ mod tests {
 
         camera.next_mode();
         assert_eq!(camera.mode, CameraMode::Helicopter);
+
+        camera.next_mode();
+        assert_eq!(camera.mode, CameraMode::Free);
 
         camera.next_mode();
         assert_eq!(camera.mode, CameraMode::Cockpit);
