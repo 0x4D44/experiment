@@ -1,0 +1,13 @@
+[package]
+name = "graphics_test"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+f1gp-port = { path = "../.." }
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+glam.workspace = true

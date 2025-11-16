@@ -6,8 +6,10 @@ pub mod track;
 pub mod objects;
 pub mod loader;
 pub mod parser;
+pub mod car;
 
 pub use track::*;
 pub use objects::*;
 pub use loader::*;
 pub use parser::*;
+pub use car::*;

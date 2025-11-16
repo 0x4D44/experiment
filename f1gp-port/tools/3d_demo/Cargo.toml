@@ -1,0 +1,21 @@
+[package]
+name = "demo_3d"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+f1gp-port = { path = "../.." }
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+glam.workspace = true
+wgpu.workspace = true
+pollster.workspace = true
+winit.workspace = true
+sdl2 = { version = "0.37", features = ["bundled"] }
+
+[features]
+default = []
+audio = ["f1gp-port/audio"]
