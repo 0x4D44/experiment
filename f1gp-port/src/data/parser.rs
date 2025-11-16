@@ -8,6 +8,7 @@
 use anyhow::{Context, Result, bail};
 use std::io::{Cursor, Read};
 use byteorder::{LittleEndian, ReadBytesExt};
+use glam::Vec3;
 use super::objects::*;
 use super::track::*;
 
@@ -464,6 +465,60 @@ pub fn parse_track_section_header(parser: &mut TrackParser) -> Result<TrackSecti
     })
 }
 
+/// Calculate 3D positions for all track sections
+///
+/// Walks through sections applying curvature and length to build track geometry
+fn calculate_section_positions(sections: &mut [TrackSection]) {
+    use std::f32::consts::PI;
+
+    if sections.is_empty() {
+        return;
+    }
+
+    let mut position = glam::Vec3::ZERO;
+    let mut heading: f32 = 0.0; // Angle in radians, 0 = +X direction
+    let mut elevation: f32 = 0.0;
+
+    for section in sections.iter_mut() {
+        // Store current position
+        section.position = position;
+        section.elevation = elevation;
+
+        // Calculate curvature effect
+        // Curvature is stored as i16, higher values = tighter turns
+        // Positive = right turn, negative = left turn
+        // Scale factor determined empirically to match track geometry
+        let curvature_radians = if section.curvature != 0 {
+            // Convert curvature value to actual angle change
+            // Formula based on ArgData interpretation
+            (section.curvature as f32) / 1000.0 * section.length / 100.0
+        } else {
+            0.0
+        };
+
+        // Update heading (positive curvature = turn right = clockwise = subtract angle)
+        heading -= curvature_radians;
+
+        // Calculate direction vector
+        let dir_x = heading.cos();
+        let dir_z = heading.sin();
+
+        // Move forward by section length
+        position.x += dir_x * section.length;
+        position.z += dir_z * section.length;
+
+        // Apply height change
+        // Height is stored as i16, scale to reasonable values
+        // Using 0.001 factor - height values are very large in binary format
+        let height_change = (section.height as f32) * 0.001; // Scale factor
+        elevation += height_change;
+        position.y = elevation;
+    }
+
+    log::debug!("Track geometry: start (0,0,0), end ({:.1}, {:.1}, {:.1}), total elevation change: {:.1}m",
+                position.x, position.y, position.z, elevation);
+}
+
 /// Parse a complete track file
 ///
 /// This is the main entry point for parsing .DAT files
@@ -525,7 +580,10 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
         }
     }
 
-    let sections = best_sections;
+    let mut sections = best_sections;
+
+    // Calculate 3D positions for each section
+    calculate_section_positions(&mut sections);
 
     let track_length: f32 = sections.iter().map(|s| s.length).sum();
 
