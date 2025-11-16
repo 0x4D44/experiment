@@ -271,14 +271,23 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
 
 /// Parse a track section command
 fn parse_track_command(parser: &mut TrackParser, command_id: u8, first_arg: u8) -> Result<TrackSectionCommand> {
-    // Commands have variable number of int16 arguments
-    // For now, read a fixed number (we'll refine this based on command ID later)
+    // Commands have variable number of int16 arguments based on command ID
+    // Source: ArgData TrackSectionCommandFactory.cs
     let mut args = vec![first_arg as i16];
 
-    // Most commands have 0-3 additional arguments
-    // TODO: Implement command-specific arg counts from TrackSectionCommandFactory
     let arg_count = match command_id {
-        _ => 2,  // Default: read 2 more int16 args
+        0x80 | 0x81 | 0x82 => 2,
+        0x83 | 0x84 | 0x86 | 0x87 => 1,
+        0x85 => 3,
+        0x88 | 0x89 | 0x8c | 0x8d | 0x90..=0x95 | 0x98 | 0x99 | 0xa9 => 2,
+        0x8a | 0x8b => 6,
+        0x8e | 0x8f | 0x9a | 0xa6 | 0xa7 | 0xab => 3,
+        0x96 | 0x97 | 0x9b..=0xa5 | 0xa8 => 1,
+        0xaa => 4,
+        0xac => 5,
+        // Commands below 0x80 are not documented in ArgData
+        // Default to 0 additional args (just the first_arg)
+        _ => 0,
     };
 
     for _ in 0..arg_count {
@@ -404,23 +413,62 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     }
 
     // TODO: Parse offsets section at 0x1000 to find section locations
-    // For now, we'll need to determine offsets through trial and error
-    // or extract from ArgData source
+    // For now, try several candidate offsets and pick the one that works best
+    // Different tracks seem to have sections at different offsets
 
-    // Parse object shapes (at 0x100E typically)
-    // let object_shapes = parse_object_shapes(&mut parser)?;
+    // Try a wide range of offsets since different tracks have sections at different positions
+    let candidate_offsets = vec![
+        0x4000, 0x3C00, 0x3800, 0x3400, 0x3000, 0x2C00, 0x2800,
+        0x3200, 0x3600, 0x3A00, 0x3E00, 0x4200, 0x4400, 0x4600,
+        0x4800, 0x4A00, 0x4C00, 0x2400, 0x2000, 0x2200, 0x2600,
+    ];
+    let mut best_sections = Vec::new();
+    let mut best_total_length = 0.0;
 
-    // For now, create a minimal track structure
-    // We'll enhance this as we implement each parser component
+    for &offset in &candidate_offsets {
+        if offset >= parser.file_size {
+            continue;
+        }
+
+        parser.seek(offset as u64);
+
+        // Try to parse sections from this offset
+        match parse_track_sections(&mut parser) {
+            Ok(sections) if !sections.is_empty() => {
+                let total_length: f32 = sections.iter().map(|s| s.length).sum();
+
+                // Monaco should be ~3340m, other tracks 3000-7000m range
+                // Prefer results that give reasonable track lengths
+                if total_length > 2000.0 && total_length < 8000.0 {
+                    if sections.len() > best_sections.len() {
+                        log::info!("Found {} sections at offset 0x{:04X}, total length: {:.0}m",
+                                   sections.len(), offset, total_length);
+                        best_sections = sections;
+                        best_total_length = total_length;
+                    }
+                }
+            }
+            _ => continue,
+        }
+    }
+
+    let sections = best_sections;
+    let track_length = best_total_length;
+
+    log::info!("Parsed track '{}': {} sections, {:.2}km", name, sections.len(), track_length / 1000.0);
+
+    // For now, skip racing line parsing (need to find its offset)
+    let racing_line = RacingLine {
+        displacement: 0,
+        segments: Vec::new(),
+    };
+
     let track = Track {
         name,
-        length: 0.0,
+        length: track_length,
         object_shapes: Vec::new(),
-        sections: Vec::new(),
-        racing_line: RacingLine {
-            displacement: 0,
-            segments: Vec::new(),
-        },
+        sections,
+        racing_line,
         ai_behavior: AIBehavior::default(),
         pit_lane: Vec::new(),
         cameras: Vec::new(),
