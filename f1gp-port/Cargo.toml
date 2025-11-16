@@ -4,6 +4,9 @@ members = [
     "tools/extract_iso",
     "tools/track_viewer",
     "tools/track_inspector",
+    "tools/graphics_test",
+    "tools/playable_demo",
+    "tools/3d_demo",
 ]
 
 [workspace.package]
@@ -30,6 +33,14 @@ serde_json = "1.0"
 # Data structures
 bytemuck = { version = "1.14", features = ["derive"] }
 memmap2 = "0.9"
+
+# 3D Graphics
+wgpu = "27.0"
+pollster = "0.3"
+winit = "0.30"
+
+# Audio
+rodio = "0.17"
 
 # Development
 criterion = "0.5"
@@ -61,8 +72,23 @@ serde_json.workspace = true
 bytemuck.workspace = true
 memmap2.workspace = true
 
-# Graphics (SDL2) - will add later
-# sdl2 = "0.37"
+# Graphics (SDL2)
+sdl2 = { version = "0.37", features = ["bundled"] }
+
+# 3D Graphics
+wgpu.workspace = true
+pollster.workspace = true
+winit.workspace = true
+
+# Audio (optional due to platform dependencies)
+rodio = { workspace = true, optional = true }
+
+# Random number generation
+fastrand = "2.0"
+
+[features]
+default = []
+audio = ["rodio"]
 
 [dev-dependencies]
 criterion.workspace = true

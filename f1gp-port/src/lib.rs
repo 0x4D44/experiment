@@ -12,10 +12,12 @@ pub mod physics;
 pub mod ai;
 pub mod game;
 pub mod render;
+pub mod render3d;  // Phase 6: 3D rendering
 pub mod audio;
 pub mod platform;
+pub mod ui;
 pub mod utils;
 
 // Re-exports for convenience
 pub use data::*;
-pub use physics::*;
+// pub use physics::*;  // Commented out until physics module is implemented
