@@ -41,23 +41,83 @@ pub struct Track {
 /// Track section representing a segment of the circuit
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TrackSection {
-    /// Position in 3D space
+    /// Position in 3D space (calculated from curvature/length)
     pub position: Vec3,
 
-    /// Track width at this section (meters)
-    pub width: f32,
+    /// Length of this section in meters (converted from raw byte)
+    pub length: f32,
 
-    /// Banking angle (radians, positive = banking right)
-    pub banking: f32,
+    /// Curvature/turn radius (raw i16 from file, + = right, - = left, 0 = straight)
+    pub curvature: i16,
 
-    /// Elevation change from previous section
-    pub elevation: f32,
+    /// Height/elevation change (raw i16 from file)
+    pub height: i16,
 
-    /// Surface type (asphalt, grass, gravel, etc.)
+    /// Flags bitfield (raw u16 from file)
+    pub flags: u16,
+
+    /// Right shoulder width (raw byte)
+    pub right_verge_width: u8,
+
+    /// Left shoulder width (raw byte)
+    pub left_verge_width: u8,
+
+    /// Commands associated with this section
+    pub commands: Vec<TrackSectionCommand>,
+
+    // Parsed flag fields
+    /// Has left kerb
+    pub has_left_kerb: bool,
+
+    /// Has right kerb
+    pub has_right_kerb: bool,
+
+    /// Kerb height type
+    pub kerb_height: KerbHeight,
+
+    /// Pit lane entrance
+    pub pit_lane_entrance: bool,
+
+    /// Pit lane exit
+    pub pit_lane_exit: bool,
+
+    /// Road signs (300/200/100m markers)
+    pub road_signs: bool,
+
+    /// Road sign arrow
+    pub road_sign_arrow: bool,
+
+    /// Surface type (derived from flags or default)
     pub surface: SurfaceType,
 
-    /// Length of this section (meters)
-    pub length: f32,
+    /// Track width at this section (meters, from track header)
+    pub width: f32,
+
+    /// Banking angle (calculated from flags, radians)
+    pub banking: f32,
+
+    /// Elevation in world space (calculated)
+    pub elevation: f32,
+}
+
+/// Track section command (embedded in track data)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrackSectionCommand {
+    /// Command ID
+    pub command_id: u8,
+
+    /// Arguments
+    pub args: Vec<i16>,
+}
+
+/// Kerb height type
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KerbHeight {
+    /// Low kerb, can be driven over
+    Low,
+
+    /// High kerb that upsets vehicle
+    High,
 }
 
 /// Surface type for track sections
@@ -85,21 +145,34 @@ pub enum SurfaceType {
 /// Racing line for AI drivers
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RacingLine {
-    /// Points defining the optimal line
-    pub points: Vec<RacingLinePoint>,
+    /// Initial displacement/offset
+    pub displacement: i16,
+
+    /// Racing line segments
+    pub segments: Vec<RacingLineSegment>,
 }
 
-/// A point on the racing line
+/// A segment of the racing line
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RacingLinePoint {
-    /// Position on track
-    pub position: Vec3,
+pub struct RacingLineSegment {
+    /// Segment length (raw byte)
+    pub length: u8,
 
-    /// Target speed at this point (m/s)
-    pub speed: f32,
+    /// Steering correction value
+    pub correction: i16,
 
-    /// Braking zone flag
-    pub is_braking_zone: bool,
+    /// Segment type (normal or wide radius)
+    pub segment_type: SegmentType,
+}
+
+/// Type of racing line segment
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SegmentType {
+    /// Normal segment with single radius
+    Normal { radius: i16 },
+
+    /// Wide radius segment with dual radii for complex curves
+    WideRadius { high_radius: i16, low_radius: i16 },
 }
 
 /// AI behavior and setup for this track
@@ -152,7 +225,10 @@ impl Track {
             length: 0.0,
             object_shapes: Vec::new(),
             sections: Vec::new(),
-            racing_line: RacingLine { points: Vec::new() },
+            racing_line: RacingLine {
+                displacement: 0,
+                segments: Vec::new(),
+            },
             ai_behavior: AIBehavior::default(),
             pit_lane: Vec::new(),
             cameras: Vec::new(),
@@ -195,6 +271,43 @@ impl Default for CarSetup {
     }
 }
 
+impl Default for TrackSection {
+    fn default() -> Self {
+        Self {
+            position: Vec3::ZERO,
+            length: 0.0,
+            curvature: 0,
+            height: 0,
+            flags: 0,
+            right_verge_width: 0,
+            left_verge_width: 0,
+            commands: Vec::new(),
+            has_left_kerb: false,
+            has_right_kerb: false,
+            kerb_height: KerbHeight::Low,
+            pit_lane_entrance: false,
+            pit_lane_exit: false,
+            road_signs: false,
+            road_sign_arrow: false,
+            surface: SurfaceType::Track,
+            width: 10.0,
+            banking: 0.0,
+            elevation: 0.0,
+        }
+    }
+}
+
+impl TrackSection {
+    /// Create a simple straight section for testing
+    pub fn straight(length_meters: f32) -> Self {
+        Self {
+            length: length_meters,
+            curvature: 0,  // Straight
+            ..Default::default()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -214,14 +327,7 @@ mod tests {
         assert!(track.validate().is_err());
 
         // Add a section
-        track.sections.push(TrackSection {
-            position: Vec3::ZERO,
-            width: 10.0,
-            banking: 0.0,
-            elevation: 0.0,
-            surface: SurfaceType::Track,
-            length: 100.0,
-        });
+        track.sections.push(TrackSection::straight(100.0));
         track.length = 100.0;
 
         // Should now pass
