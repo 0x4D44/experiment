@@ -24,17 +24,12 @@ impl RacingLineFollower {
         let mut line_points = Vec::new();
         let mut target_speeds = Vec::new();
 
-        // Use track racing line if available
-        if !track.racing_line.points.is_empty() {
-            for point in &track.racing_line.points {
-                line_points.push(Vec2::new(point.position.x, point.position.z));
-                target_speeds.push(point.speed);
-            }
-        } else {
-            // Fallback: use track sections as racing line
+        // TODO: Convert racing line segments to 3D points once coordinate calculation is implemented
+        // For now, use track sections as racing line
+        if !track.sections.is_empty() {
             for section in &track.sections {
                 line_points.push(Vec2::new(section.position.x, section.position.z));
-                target_speeds.push(50.0); // Default speed
+                target_speeds.push(50.0); // Default speed (will be calculated from curvature)
             }
         }
 

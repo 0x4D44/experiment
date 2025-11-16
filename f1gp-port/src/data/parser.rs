@@ -2,11 +2,24 @@
 //!
 //! This module implements parsing logic for the F1GP track file format (.DAT files).
 //! The format is a complex binary structure with variable-length elements.
+//!
+//! Based on ArgData .NET library: https://github.com/codemeyer/ArgData
 
 use anyhow::{Context, Result, bail};
 use std::io::{Cursor, Read};
+use byteorder::{LittleEndian, ReadBytesExt};
 use super::objects::*;
 use super::track::*;
+
+// Unit conversion constants (from ArgData)
+/// Track section length: 1 unit = 16 feet ≈ 4.87 meters
+const UNIT_TO_METERS: f32 = 4.87;
+
+/// Track section terminator bytes
+const SECTION_TERMINATOR: [u8; 2] = [0xFF, 0xFF];
+
+/// Wide radius segment marker
+const WIDE_RADIUS_MARKER: u8 = 0x40;
 
 /// Binary cursor with helper methods for F1GP format
 pub struct TrackParser {
@@ -197,6 +210,167 @@ pub fn parse_graphical_element(parser: &mut TrackParser) -> Result<GraphicalElem
     }
 }
 
+/// Parse track sections from binary data
+///
+/// Sections are read sequentially until terminator (0xFF 0xFF)
+/// Based on ArgData TrackSectionReader.cs
+pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection>> {
+    let mut sections = Vec::new();
+    let mut pending_commands = Vec::new();
+
+    loop {
+        let byte1 = parser.read_u8()?;
+        let byte2 = parser.read_u8()?;
+
+        // Check for terminator
+        if byte1 == SECTION_TERMINATOR[0] && byte2 == SECTION_TERMINATOR[1] {
+            break;
+        }
+
+        if byte2 > 0 {
+            // Command: byte2 is command ID, byte1 is first arg
+            let command = parse_track_command(parser, byte2, byte1)?;
+            pending_commands.push(command);
+        } else {
+            // Section data: byte2 == 0, byte1 is length
+            let length_raw = byte1;
+            let curvature = parser.read_i16()?;
+            let height = parser.read_i16()?;
+            let flags = parser.read_u16()?;
+            let right_verge_width = parser.read_u8()?;
+            let left_verge_width = parser.read_u8()?;
+
+            // Parse flags bitfield
+            let (has_left_kerb, has_right_kerb, kerb_height, pit_lane_entrance,
+                 pit_lane_exit, road_signs, road_sign_arrow) = parse_section_flags(flags);
+
+            let section = TrackSection {
+                length: length_raw as f32 * UNIT_TO_METERS,
+                curvature,
+                height,
+                flags,
+                right_verge_width,
+                left_verge_width,
+                commands: std::mem::take(&mut pending_commands),
+                has_left_kerb,
+                has_right_kerb,
+                kerb_height,
+                pit_lane_entrance,
+                pit_lane_exit,
+                road_signs,
+                road_sign_arrow,
+                ..Default::default()
+            };
+
+            sections.push(section);
+        }
+    }
+
+    Ok(sections)
+}
+
+/// Parse a track section command
+fn parse_track_command(parser: &mut TrackParser, command_id: u8, first_arg: u8) -> Result<TrackSectionCommand> {
+    // Commands have variable number of int16 arguments
+    // For now, read a fixed number (we'll refine this based on command ID later)
+    let mut args = vec![first_arg as i16];
+
+    // Most commands have 0-3 additional arguments
+    // TODO: Implement command-specific arg counts from TrackSectionCommandFactory
+    let arg_count = match command_id {
+        _ => 2,  // Default: read 2 more int16 args
+    };
+
+    for _ in 0..arg_count {
+        args.push(parser.read_i16()?);
+    }
+
+    Ok(TrackSectionCommand {
+        command_id,
+        args,
+    })
+}
+
+/// Parse section flags bitfield
+///
+/// TODO: Determine exact bit positions for each flag
+/// This is a placeholder that needs refinement
+fn parse_section_flags(flags: u16) -> (bool, bool, KerbHeight, bool, bool, bool, bool) {
+    // Bit positions (to be determined from real data or ArgData source)
+    let has_left_kerb = (flags & 0x0001) != 0;
+    let has_right_kerb = (flags & 0x0002) != 0;
+    let kerb_height_high = (flags & 0x0004) != 0;
+    let pit_lane_entrance = (flags & 0x0008) != 0;
+    let pit_lane_exit = (flags & 0x0010) != 0;
+    let road_signs = (flags & 0x0020) != 0;
+    let road_sign_arrow = (flags & 0x0040) != 0;
+
+    let kerb_height = if kerb_height_high {
+        KerbHeight::High
+    } else {
+        KerbHeight::Low
+    };
+
+    (has_left_kerb, has_right_kerb, kerb_height, pit_lane_entrance,
+     pit_lane_exit, road_signs, road_sign_arrow)
+}
+
+/// Parse racing line from binary data
+///
+/// Based on ArgData ComputerCarLineReader.cs
+pub fn parse_racing_line(parser: &mut TrackParser) -> Result<RacingLine> {
+    // First segment has special format
+    let first_length = parser.read_u8()?;
+    let displacement = parser.read_i16()?;
+    let correction = parser.read_i16()?;
+    let radius = parser.read_i16()?;
+
+    let mut segments = vec![RacingLineSegment {
+        length: first_length,
+        correction,
+        segment_type: SegmentType::Normal { radius },
+    }];
+
+    // Subsequent segments
+    loop {
+        let length = parser.read_u8()?;
+        let type_byte = parser.read_u8()?;
+        let correction = parser.read_i16()?;
+
+        let segment_type = if type_byte == WIDE_RADIUS_MARKER {
+            // Wide radius segment
+            let high_radius = parser.read_i16()?;
+            let low_radius = parser.read_i16()?;
+            SegmentType::WideRadius { high_radius, low_radius }
+        } else {
+            // Normal segment
+            let radius = parser.read_i16()?;
+            SegmentType::Normal { radius }
+        };
+
+        segments.push(RacingLineSegment {
+            length,
+            correction,
+            segment_type,
+        });
+
+        // Check for terminator (int16 == 0)
+        let pos = parser.position();
+        let next = parser.read_i16()?;
+        if next == 0 {
+            break;  // End of racing line
+        } else {
+            // Rewind and continue
+            parser.seek(pos);
+        }
+    }
+
+    Ok(RacingLine {
+        displacement,
+        segments,
+    })
+}
+
 /// Parse object shapes from the track file
 ///
 /// According to ArgDocs, object shapes directory starts at 0x100E
@@ -207,6 +381,8 @@ pub fn parse_object_shapes(_parser: &mut TrackParser) -> Result<Vec<ObjectShape>
 }
 
 /// Parse a complete track file
+///
+/// This is the main entry point for parsing .DAT files
 pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     let mut parser = TrackParser::new(data);
 
@@ -219,14 +395,32 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     parser.seek((parser.file_size - 4) as u64);
     let checksum = parser.read_u32()?;
 
-    // TODO: Parse actual track data
+    // Reset to beginning
+    parser.seek(0);
+
+    // Skip first 4096 bytes (unused padding)
+    if parser.file_size > 4096 {
+        parser.seek(4096);
+    }
+
+    // TODO: Parse offsets section at 0x1000 to find section locations
+    // For now, we'll need to determine offsets through trial and error
+    // or extract from ArgData source
+
+    // Parse object shapes (at 0x100E typically)
+    // let object_shapes = parse_object_shapes(&mut parser)?;
+
     // For now, create a minimal track structure
+    // We'll enhance this as we implement each parser component
     let track = Track {
         name,
         length: 0.0,
         object_shapes: Vec::new(),
         sections: Vec::new(),
-        racing_line: RacingLine { points: Vec::new() },
+        racing_line: RacingLine {
+            displacement: 0,
+            segments: Vec::new(),
+        },
         ai_behavior: AIBehavior::default(),
         pit_lane: Vec::new(),
         cameras: Vec::new(),
