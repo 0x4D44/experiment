@@ -224,11 +224,13 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
 
         // Check for terminator
         if byte1 == SECTION_TERMINATOR[0] && byte2 == SECTION_TERMINATOR[1] {
+            log::debug!("Hit section terminator after {} sections", sections.len());
             break;
         }
 
         if byte2 > 0 {
             // Command: byte2 is command ID, byte1 is first arg
+            // Only valid commands are 0x80-0xAC, but we'll let parse_track_command handle validation
             let command = parse_track_command(parser, byte2, byte1)?;
             pending_commands.push(command);
         } else {
@@ -497,16 +499,23 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     let test_skips = [
         0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950,
         1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
+        2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000,
     ];
 
+    let mut best_skip = 0;
     for &skip in &test_skips {
         parser.seek(track_data_offset + skip);
         if let Ok(sections) = parse_track_sections(&mut parser) {
+            let total_len: f32 = sections.iter().map(|s| s.length).sum();
+            log::debug!("Track '{}': skip {} -> {} sections, {}m ({})",
+                        name, skip, sections.len(), total_len as i32,
+                        if total_len > 2500.0 && total_len < 8000.0 { "VALID" } else { "rejected" });
+
             if sections.len() > best_sections.len() {
-                let total_len: f32 = sections.iter().map(|s| s.length).sum();
                 // Reasonable track length: 2.5km - 8km
                 if total_len > 2500.0 && total_len < 8000.0 {
                     best_sections = sections;
+                    best_skip = skip;
                 }
             }
         }
@@ -516,7 +525,12 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
 
     let track_length: f32 = sections.iter().map(|s| s.length).sum();
 
-    log::info!("Parsed track '{}': {} sections, {:.2}km", name, sections.len(), track_length / 1000.0);
+    if sections.is_empty() {
+        log::warn!("Track '{}': No valid sections found", name);
+    } else {
+        log::info!("Parsed track '{}': {} sections, {:.2}km (skip={})",
+                   name, sections.len(), track_length / 1000.0, best_skip);
+    }
 
     // For now, skip racing line parsing (need to find its offset)
     let racing_line = RacingLine {
