@@ -16,8 +16,9 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout},
     style::{Color, Modifier, Style},
+    symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table},
+    widgets::{Axis, Block, Borders, Cell, Chart, Dataset, GraphType, Paragraph, Row, Table},
 };
 
 #[derive(Clone, Debug)]
@@ -597,85 +598,83 @@ impl UiApp {
             return;
         }
 
-        // Find max bandwidth for scaling
+        // Convert data to line chart format
+        let copy_data: Vec<(f64, f64)> = self
+            .memory_bandwidth_data
+            .iter()
+            .map(|p| (p.buffer_size_kb as f64, p.copy_gbps))
+            .collect();
+
+        let scale_data: Vec<(f64, f64)> = self
+            .memory_bandwidth_data
+            .iter()
+            .map(|p| (p.buffer_size_kb as f64, p.scale_gbps))
+            .collect();
+
+        let triad_data: Vec<(f64, f64)> = self
+            .memory_bandwidth_data
+            .iter()
+            .map(|p| (p.buffer_size_kb as f64, p.triad_gbps))
+            .collect();
+
+        // Find min/max for axis bounds
+        let min_size = self
+            .memory_bandwidth_data
+            .iter()
+            .map(|p| p.buffer_size_kb as f64)
+            .fold(f64::INFINITY, |acc, v| acc.min(v));
+        let max_size = self
+            .memory_bandwidth_data
+            .iter()
+            .map(|p| p.buffer_size_kb as f64)
+            .fold(0.0f64, |acc, v| acc.max(v));
         let max_bandwidth = self
             .memory_bandwidth_data
             .iter()
             .flat_map(|p| [p.copy_gbps, p.scale_gbps, p.triad_gbps])
             .fold(0.0f64, |acc, v| acc.max(v));
 
-        // Bar chart width (leave space for labels)
-        let chart_width = area.width.saturating_sub(20) as usize;
-        let bar_width = chart_width.saturating_sub(10);
+        let datasets = vec![
+            Dataset::default()
+                .name("Copy")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(Color::Cyan))
+                .data(&copy_data),
+            Dataset::default()
+                .name("Scale")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(Color::Green))
+                .data(&scale_data),
+            Dataset::default()
+                .name("Triad")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(Color::Magenta))
+                .data(&triad_data),
+        ];
 
-        let mut lines = vec![];
-        lines.push(Line::from(vec![
-            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::styled("█ Copy", Style::default().fg(Color::Cyan)),
-            Span::raw("  "),
-            Span::styled("█ Scale", Style::default().fg(Color::Green)),
-            Span::raw("  "),
-            Span::styled("█ Triad", Style::default().fg(Color::Magenta)),
-        ]));
-        lines.push(Line::from(
-            "─".repeat(area.width.saturating_sub(4) as usize),
-        ));
+        // Create axis labels
+        let x_axis = Axis::default()
+            .title("Buffer Size (KB)")
+            .style(Style::default().fg(Color::Gray))
+            .bounds([min_size, max_size]);
 
-        for point in &self.memory_bandwidth_data {
-            let size_str = if point.buffer_size_kb < 1024 {
-                format!("{:>6} KB", point.buffer_size_kb)
-            } else {
-                format!("{:>6} MB", point.buffer_size_kb / 1024)
-            };
+        let y_axis = Axis::default()
+            .title("Bandwidth (GB/s)")
+            .style(Style::default().fg(Color::Gray))
+            .bounds([0.0, max_bandwidth * 1.1]);
 
-            // Copy operation bar
-            let copy_bar_len = if max_bandwidth > 0.0 {
-                ((point.copy_gbps / max_bandwidth) * bar_width as f64) as usize
-            } else {
-                0
-            };
-            lines.push(Line::from(vec![
-                Span::raw(format!("{:>8} ", size_str)),
-                Span::styled("█".repeat(copy_bar_len), Style::default().fg(Color::Cyan)),
-                Span::raw(format!(" {:.1} GB/s", point.copy_gbps)),
-            ]));
-
-            // Scale operation bar
-            let scale_bar_len = if max_bandwidth > 0.0 {
-                ((point.scale_gbps / max_bandwidth) * bar_width as f64) as usize
-            } else {
-                0
-            };
-            lines.push(Line::from(vec![
-                Span::raw("         "),
-                Span::styled("█".repeat(scale_bar_len), Style::default().fg(Color::Green)),
-                Span::raw(format!(" {:.1} GB/s", point.scale_gbps)),
-            ]));
-
-            // Triad operation bar
-            let triad_bar_len = if max_bandwidth > 0.0 {
-                ((point.triad_gbps / max_bandwidth) * bar_width as f64) as usize
-            } else {
-                0
-            };
-            lines.push(Line::from(vec![
-                Span::raw("         "),
-                Span::styled(
-                    "█".repeat(triad_bar_len),
-                    Style::default().fg(Color::Magenta),
-                ),
-                Span::raw(format!(" {:.1} GB/s", point.triad_gbps)),
-            ]));
-
-            lines.push(Line::from("")); // Spacing between buffer sizes
-        }
-
-        let chart = Paragraph::new(lines).block(
-            Block::default()
-                .title("Memory Bandwidth by Buffer Size (Cache Hierarchy)")
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(self.theme.table_border)),
-        );
+        let chart = Chart::new(datasets)
+            .block(
+                Block::default()
+                    .title("Memory Bandwidth by Buffer Size (Cache Hierarchy)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(self.theme.table_border)),
+            )
+            .x_axis(x_axis)
+            .y_axis(y_axis);
 
         f.render_widget(chart, area);
     }
@@ -694,66 +693,100 @@ impl UiApp {
             return;
         }
 
-        // Find max GOPS for scaling
+        // Separate P-cores and E-cores for different line colors
+        let p_core_data: Vec<(f64, f64)> = self
+            .cpu_per_core_data
+            .iter()
+            .filter(|p| p.core_type == CoreType::Performance)
+            .map(|p| (p.core_id as f64, p.gops))
+            .collect();
+
+        let e_core_data: Vec<(f64, f64)> = self
+            .cpu_per_core_data
+            .iter()
+            .filter(|p| p.core_type == CoreType::Efficient)
+            .map(|p| (p.core_id as f64, p.gops))
+            .collect();
+
+        let unknown_data: Vec<(f64, f64)> = self
+            .cpu_per_core_data
+            .iter()
+            .filter(|p| p.core_type == CoreType::Unknown)
+            .map(|p| (p.core_id as f64, p.gops))
+            .collect();
+
+        // Find min/max for axis bounds
+        let min_core = self
+            .cpu_per_core_data
+            .iter()
+            .map(|p| p.core_id as f64)
+            .fold(f64::INFINITY, |acc, v| acc.min(v));
+        let max_core = self
+            .cpu_per_core_data
+            .iter()
+            .map(|p| p.core_id as f64)
+            .fold(0.0f64, |acc, v| acc.max(v));
         let max_gops = self
             .cpu_per_core_data
             .iter()
             .map(|p| p.gops)
             .fold(0.0f64, |acc, v| acc.max(v));
 
-        // Bar chart width (leave space for labels)
-        let chart_width = area.width.saturating_sub(20) as usize;
-        let bar_width = chart_width.saturating_sub(10);
+        let mut datasets = vec![];
 
-        let mut lines = vec![];
-        lines.push(Line::from(vec![
-            Span::styled("Legend: ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::styled("█ P-core", Style::default().fg(Color::Cyan)),
-            Span::raw("  "),
-            Span::styled("█ E-core", Style::default().fg(Color::Green)),
-        ]));
-        lines.push(Line::from(
-            "─".repeat(area.width.saturating_sub(4) as usize),
-        ));
-
-        for point in &self.cpu_per_core_data {
-            let core_type_str = match point.core_type {
-                CoreType::Performance => "P",
-                CoreType::Efficient => "E",
-                CoreType::Unknown => " ",
-            };
-
-            let color = match point.core_type {
-                CoreType::Performance => Color::Cyan,
-                CoreType::Efficient => Color::Green,
-                CoreType::Unknown => Color::Gray,
-            };
-
-            // Calculate bar length
-            let bar_len = if max_gops > 0.0 {
-                ((point.gops / max_gops) * bar_width as f64) as usize
-            } else {
-                0
-            };
-
-            lines.push(Line::from(vec![
-                Span::raw(format!("Core {:>2} ", point.core_id)),
-                Span::styled(
-                    format!("[{}]", core_type_str),
-                    Style::default().fg(color).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" "),
-                Span::styled("█".repeat(bar_len), Style::default().fg(color)),
-                Span::raw(format!(" {:.2} GOPS", point.gops)),
-            ]));
+        if !p_core_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("P-core")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(Style::default().fg(Color::Cyan))
+                    .data(&p_core_data),
+            );
         }
 
-        let chart = Paragraph::new(lines).block(
-            Block::default()
-                .title("CPU Performance by Core (E-core vs P-core)")
-                .borders(Borders::ALL)
-                .border_style(Style::default().fg(self.theme.table_border)),
-        );
+        if !e_core_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("E-core")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(Style::default().fg(Color::Green))
+                    .data(&e_core_data),
+            );
+        }
+
+        if !unknown_data.is_empty() {
+            datasets.push(
+                Dataset::default()
+                    .name("Unknown")
+                    .marker(symbols::Marker::Braille)
+                    .graph_type(GraphType::Line)
+                    .style(Style::default().fg(Color::Gray))
+                    .data(&unknown_data),
+            );
+        }
+
+        // Create axis labels
+        let x_axis = Axis::default()
+            .title("Core ID")
+            .style(Style::default().fg(Color::Gray))
+            .bounds([min_core, max_core]);
+
+        let y_axis = Axis::default()
+            .title("Performance (GOPS)")
+            .style(Style::default().fg(Color::Gray))
+            .bounds([0.0, max_gops * 1.1]);
+
+        let chart = Chart::new(datasets)
+            .block(
+                Block::default()
+                    .title("CPU Performance by Core (E-core vs P-core)")
+                    .borders(Borders::ALL)
+                    .border_style(Style::default().fg(self.theme.table_border)),
+            )
+            .x_axis(x_axis)
+            .y_axis(y_axis);
 
         f.render_widget(chart, area);
     }
