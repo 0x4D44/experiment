@@ -5,7 +5,7 @@
 use anyhow::Result;
 use f1gp_port::data::track::{Track, TrackSection, RacingLine, AIBehavior, SurfaceType};
 use f1gp_port::game::GameState;
-use f1gp_port::render3d::Renderer3D;
+use f1gp_port::render3d::{Renderer3D, HudRenderer};
 use glam::Vec3;
 use std::sync::Arc;
 use std::time::Instant;
@@ -28,10 +28,12 @@ struct App {
     queue: Option<wgpu::Queue>,
     config: Option<wgpu::SurfaceConfiguration>,
     renderer_3d: Option<Renderer3D>,
+    hud: Option<HudRenderer>,
     game: Option<GameState>,
     last_frame: Instant,
     frame_count: u64,
     last_fps_print: Instant,
+    fps: f64,
 }
 
 impl App {
@@ -43,10 +45,12 @@ impl App {
             queue: None,
             config: None,
             renderer_3d: None,
+            hud: None,
             game: None,
             last_frame: Instant::now(),
             frame_count: 0,
             last_fps_print: Instant::now(),
+            fps: 0.0,
         }
     }
 
@@ -99,6 +103,10 @@ impl App {
         let renderer_3d = Renderer3D::new(&device, &config)?;
         log::info!("3D renderer created");
 
+        // Create HUD renderer
+        let hud = HudRenderer::new(&device, &queue, &config)?;
+        log::info!("HUD renderer created");
+
         // Create game state
         let mut game = GameState::new(WINDOW_WIDTH, WINDOW_HEIGHT);
         log::info!("Game state created");
@@ -127,6 +135,7 @@ impl App {
         self.device = Some(device);
         self.queue = Some(queue);
         self.config = Some(config);
+        self.hud = Some(hud);
         self.game = Some(game);
 
         Ok(())
@@ -169,6 +178,120 @@ impl App {
         // Render cars
         renderer_3d.render_cars(device, &mut encoder, &view, game, queue)?;
 
+        // Render HUD overlay
+        if let Some(hud) = &mut self.hud {
+            let player_car = game.player_car();
+            let on_track_icon = if player_car.on_track { "ON" } else { "OFF" };
+            let camera_mode = self
+                .renderer_3d
+                .as_ref()
+                .map(|r| format!("{:?}", r.camera.mode))
+                .unwrap_or_else(|| "Unknown".to_string());
+
+            // Build HUD text lines (text, x, y, scale, color)
+            let hud_lines = vec![
+                // Top-left: Telemetry
+                (
+                    format!("FPS: {:.1}", self.fps),
+                    10.0,
+                    10.0,
+                    1.5,
+                    [0.0, 1.0, 0.0, 1.0], // Green
+                ),
+                (
+                    format!("Speed: {:.0} km/h", game.get_speed_kmh()),
+                    10.0,
+                    34.0,
+                    1.5,
+                    [1.0, 1.0, 1.0, 1.0], // White
+                ),
+                (
+                    format!("Gear: {}", game.get_gear()),
+                    10.0,
+                    58.0,
+                    1.5,
+                    [1.0, 1.0, 1.0, 1.0],
+                ),
+                (
+                    format!("RPM: {:.0}", game.get_rpm()),
+                    10.0,
+                    82.0,
+                    1.5,
+                    [1.0, 1.0, 1.0, 1.0],
+                ),
+                (
+                    format!("Track: {}", on_track_icon),
+                    10.0,
+                    106.0,
+                    1.5,
+                    if player_car.on_track {
+                        [0.0, 1.0, 0.0, 1.0] // Green
+                    } else {
+                        [1.0, 0.0, 0.0, 1.0] // Red
+                    },
+                ),
+                (
+                    format!("Camera: {}", camera_mode),
+                    10.0,
+                    130.0,
+                    1.5,
+                    [0.5, 0.5, 1.0, 1.0], // Light blue
+                ),
+                (
+                    format!("AI Opponents: {}", game.ai_cars().len()),
+                    10.0,
+                    154.0,
+                    1.5,
+                    [1.0, 1.0, 0.0, 1.0], // Yellow
+                ),
+                // Top-right: Controls
+                (
+                    "Controls:".to_string(),
+                    920.0,
+                    10.0,
+                    1.5,
+                    [1.0, 1.0, 1.0, 1.0],
+                ),
+                (
+                    "Arrows/WASD: Drive".to_string(),
+                    920.0,
+                    34.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+                (
+                    "C: Camera Mode".to_string(),
+                    920.0,
+                    50.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+                (
+                    "P: Pause".to_string(),
+                    920.0,
+                    66.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+                (
+                    "R: Reset".to_string(),
+                    920.0,
+                    82.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+                (
+                    "ESC: Exit".to_string(),
+                    920.0,
+                    98.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+            ];
+
+            hud.render(device, queue, &mut encoder, &view, &hud_lines);
+        }
+
         // Submit commands and present
         queue.submit(std::iter::once(encoder.finish()));
         output.present();
@@ -176,7 +299,7 @@ impl App {
         // Print enhanced stats every second
         self.frame_count += 1;
         if self.last_fps_print.elapsed().as_secs() >= 1 {
-            let fps = self.frame_count as f64 / self.last_fps_print.elapsed().as_secs_f64();
+            self.fps = self.frame_count as f64 / self.last_fps_print.elapsed().as_secs_f64();
             let player_car = game.player_car();
             let on_track = if player_car.on_track { "✓" } else { "✗" };
             let camera_mode = self
@@ -187,7 +310,7 @@ impl App {
 
             log::info!(
                 "FPS: {:.1} | Speed: {:.0} km/h | Gear: {} | RPM: {:.0} | Track: {} | Camera: {} | AI: {}",
-                fps,
+                self.fps,
                 game.get_speed_kmh(),
                 game.get_gear(),
                 game.get_rpm(),
@@ -295,11 +418,12 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::Resized(physical_size) => {
-                if let (Some(config), Some(surface), Some(device), Some(renderer_3d), Some(game)) = (
+                if let (Some(config), Some(surface), Some(device), Some(renderer_3d), Some(hud), Some(game)) = (
                     &mut self.config,
                     &self.surface,
                     &self.device,
                     &mut self.renderer_3d,
+                    &mut self.hud,
                     &mut self.game,
                 ) {
                     config.width = physical_size.width;
@@ -311,6 +435,9 @@ impl ApplicationHandler for App {
 
                     // Resize renderer depth buffer
                     renderer_3d.resize(device, physical_size.width, physical_size.height);
+
+                    // Resize HUD
+                    hud.resize(physical_size.width, physical_size.height);
                 }
             }
 
