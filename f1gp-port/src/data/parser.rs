@@ -389,6 +389,79 @@ pub fn parse_object_shapes(_parser: &mut TrackParser) -> Result<Vec<ObjectShape>
     Ok(Vec::new())
 }
 
+/// Parse the offset table from the track file
+///
+/// The offset table is located at 0x1000 and contains 7 int16 values
+/// that point to various data sections within the file.
+/// Source: ArgData OffsetReader.cs
+pub fn parse_offsets(parser: &mut TrackParser) -> Result<TrackOffsets> {
+    // Offset table is at 0x1000 (after 4096 bytes of horizon data)
+    parser.seek(0x1000);
+
+    // Read 7 int16 values
+    let base_offset = parser.read_i16()?;
+    let unknown2 = parser.read_i16()?;
+    let unknown3 = parser.read_i16()?;
+    let unknown4 = parser.read_i16()?;
+
+    // These last 3 values need +0x1010 adjustment
+    let checksum_position = parser.read_i16()?;
+    let object_data = parser.read_i16()?;
+    let track_data = parser.read_i16()?;
+
+    Ok(TrackOffsets {
+        base_offset,
+        unknown2,
+        unknown3,
+        unknown4,
+        checksum_position,
+        object_data,
+        track_data,
+    })
+}
+
+/// Parse the track section header
+///
+/// The header contains initial track properties like start position, width, etc.
+/// It precedes the actual track sections.
+/// Source: ArgData TrackSectionHeaderReader.cs
+pub fn parse_track_section_header(parser: &mut TrackParser) -> Result<TrackSectionHeader> {
+    let first_section_angle = parser.read_u16()?;
+    let first_section_height = parser.read_i16()?;
+    let track_center_x = parser.read_i16()?;
+    let track_center_z = parser.read_i16()?;
+    let track_center_y = parser.read_i16()?;
+    let start_width = parser.read_i16()?;
+    let pole_side = parser.read_i16()?;
+    let pits_side = parser.read_u8()?;
+    let surrounding_area = parser.read_u8()?;
+    let right_verge_start_width = parser.read_u8()?;
+    let left_verge_start_width = parser.read_u8()?;
+    let kerb_type = parser.read_u8()?;
+
+    // At this point we've read 19 bytes total (the main header fields)
+    // According to ArgData, there are additional kerb color bytes at specific offsets
+    // Skip to byte 25 to be past all kerb data
+    for _ in 0..6 {
+        let _ = parser.read_u8();
+    }
+
+    Ok(TrackSectionHeader {
+        first_section_angle,
+        first_section_height,
+        track_center_x,
+        track_center_z,
+        track_center_y,
+        start_width,
+        pole_side,
+        pits_side,
+        surrounding_area,
+        right_verge_start_width,
+        left_verge_start_width,
+        kerb_type,
+    })
+}
+
 /// Parse a complete track file
 ///
 /// This is the main entry point for parsing .DAT files
@@ -404,56 +477,25 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     parser.seek((parser.file_size - 4) as u64);
     let checksum = parser.read_u32()?;
 
-    // Reset to beginning
-    parser.seek(0);
+    // Parse offset table at 0x1000 to find data section locations
+    let offsets = parse_offsets(&mut parser)?;
 
-    // Skip first 4096 bytes (unused padding)
-    if parser.file_size > 4096 {
-        parser.seek(4096);
-    }
+    // Calculate actual offset to track data (offset value + 0x1010)
+    let track_data_offset = (offsets.track_data as i32 + 0x1010) as u64;
 
-    // TODO: Parse offsets section at 0x1000 to find section locations
-    // For now, try several candidate offsets and pick the one that works best
-    // Different tracks seem to have sections at different offsets
+    log::debug!("Track offsets: base={}, track_data={} (-> 0x{:04X})",
+                offsets.base_offset, offsets.track_data, track_data_offset);
 
-    // Try a wide range of offsets since different tracks have sections at different positions
-    let candidate_offsets = vec![
-        0x4000, 0x3C00, 0x3800, 0x3400, 0x3000, 0x2C00, 0x2800,
-        0x3200, 0x3600, 0x3A00, 0x3E00, 0x4200, 0x4400, 0x4600,
-        0x4800, 0x4A00, 0x4C00, 0x2400, 0x2000, 0x2200, 0x2600,
-    ];
-    let mut best_sections = Vec::new();
-    let mut best_total_length = 0.0;
+    // Seek to track data section and parse header
+    parser.seek(track_data_offset);
+    let _header = parse_track_section_header(&mut parser)
+        .context("Failed to parse track section header")?;
 
-    for &offset in &candidate_offsets {
-        if offset >= parser.file_size {
-            continue;
-        }
+    // Now at the start of actual track sections
+    let sections = parse_track_sections(&mut parser)
+        .context("Failed to parse track sections")?;
 
-        parser.seek(offset as u64);
-
-        // Try to parse sections from this offset
-        match parse_track_sections(&mut parser) {
-            Ok(sections) if !sections.is_empty() => {
-                let total_length: f32 = sections.iter().map(|s| s.length).sum();
-
-                // Monaco should be ~3340m, other tracks 3000-7000m range
-                // Prefer results that give reasonable track lengths
-                if total_length > 2000.0 && total_length < 8000.0 {
-                    if sections.len() > best_sections.len() {
-                        log::info!("Found {} sections at offset 0x{:04X}, total length: {:.0}m",
-                                   sections.len(), offset, total_length);
-                        best_sections = sections;
-                        best_total_length = total_length;
-                    }
-                }
-            }
-            _ => continue,
-        }
-    }
-
-    let sections = best_sections;
-    let track_length = best_total_length;
+    let track_length: f32 = sections.iter().map(|s| s.length).sum();
 
     log::info!("Parsed track '{}': {} sections, {:.2}km", name, sections.len(), track_length / 1000.0);
 
