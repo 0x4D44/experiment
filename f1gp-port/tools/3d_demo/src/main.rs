@@ -2,11 +2,11 @@
 //!
 //! A demo of the F1GP Modern Port with 3D rendering using wgpu.
 
+mod track_generator;
+
 use anyhow::Result;
-use f1gp_port::data::track::{Track, TrackSection, RacingLine, AIBehavior, SurfaceType};
 use f1gp_port::game::GameState;
 use f1gp_port::render3d::{Renderer3D, HudRenderer};
-use glam::Vec3;
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
@@ -36,6 +36,7 @@ struct App {
     last_fps_print: Instant,
     fps: f64,
     pressed_keys: HashSet<KeyCode>,
+    current_track_index: usize,
 }
 
 impl App {
@@ -54,6 +55,7 @@ impl App {
             last_fps_print: Instant::now(),
             fps: 0.0,
             pressed_keys: HashSet::new(),
+            current_track_index: 0,
         }
     }
 
@@ -114,10 +116,11 @@ impl App {
         let mut game = GameState::new(WINDOW_WIDTH, WINDOW_HEIGHT);
         log::info!("Game state created");
 
-        // Create a test track
-        let test_track = create_test_track();
-        game.load_track(test_track);
-        log::info!("Test track loaded");
+        // Load initial track
+        let track = track_generator::get_track(self.current_track_index).unwrap();
+        log::info!("Loading track: {}", track.name);
+        game.load_track(track);
+        log::info!("Track loaded");
 
         // Load track mesh into renderer
         if let Some(track) = game.track() {
@@ -142,6 +145,36 @@ impl App {
         self.game = Some(game);
 
         Ok(())
+    }
+
+    fn switch_track(&mut self, track_index: usize) {
+        if track_index >= track_generator::get_track_count() {
+            log::warn!("Invalid track index: {}", track_index);
+            return;
+        }
+
+        self.current_track_index = track_index;
+
+        if let (Some(game), Some(device), Some(renderer_3d)) = (
+            &mut self.game,
+            &self.device,
+            &mut self.renderer_3d,
+        ) {
+            // Load new track
+            if let Some(track) = track_generator::get_track(track_index) {
+                log::info!("Switching to track: {}", track.name);
+                game.load_track(track);
+
+                // Reload track mesh into renderer
+                if let Some(track) = game.track() {
+                    renderer_3d.load_track(device, track);
+                    log::info!("Track mesh reloaded");
+                }
+
+                // Reset game
+                game.reset();
+            }
+        }
     }
 
     fn render(&mut self) -> Result<()> {
@@ -285,6 +318,13 @@ impl App {
                     1.5,
                     [1.0, 1.0, 0.0, 1.0], // Yellow
                 ),
+                (
+                    format!("Track: {}", game.track().map(|t| t.name.as_str()).unwrap_or("Unknown")),
+                    10.0,
+                    178.0,
+                    1.5,
+                    [0.0, 1.0, 1.0, 1.0], // Cyan
+                ),
                 // Top-right: Controls
                 (
                     "Controls:".to_string(),
@@ -322,9 +362,16 @@ impl App {
                     [0.8, 0.8, 0.8, 1.0],
                 ),
                 (
-                    "ESC: Exit".to_string(),
+                    "1-5: Change Track".to_string(),
                     920.0,
                     98.0,
+                    1.0,
+                    [0.8, 0.8, 0.8, 1.0],
+                ),
+                (
+                    "ESC: Exit".to_string(),
+                    920.0,
+                    114.0,
                     1.0,
                     [0.8, 0.8, 0.8, 1.0],
                 ),
@@ -448,6 +495,12 @@ impl ApplicationHandler for App {
                             log::info!("Game reset");
                         }
                     }
+                    // Track selection (number keys 1-5)
+                    KeyCode::Digit1 => self.switch_track(0),
+                    KeyCode::Digit2 => self.switch_track(1),
+                    KeyCode::Digit3 => self.switch_track(2),
+                    KeyCode::Digit4 => self.switch_track(3),
+                    KeyCode::Digit5 => self.switch_track(4),
                     _ => {
                         // Handle game input
                         if let Some(game) = &mut self.game {
@@ -553,10 +606,17 @@ fn main() -> Result<()> {
     log::info!("  ✓ Multiple Camera Modes");
     log::info!("  ✓ Performance Metrics");
     log::info!("");
+    log::info!("Available Tracks:");
+    for (i, track) in track_generator::get_all_tracks().iter().enumerate() {
+        log::info!("  {} - {}", i + 1, track.name);
+    }
+    log::info!("");
     log::info!("Controls:");
     log::info!("  Arrow Keys / WASD - Steer, Throttle, Brake");
     log::info!("  Z / X             - Shift Down / Up");
     log::info!("  C                 - Cycle Camera Mode");
+    log::info!("  F                 - Toggle Free Camera");
+    log::info!("  1-5               - Select Track");
     log::info!("  P                 - Pause");
     log::info!("  R                 - Reset");
     log::info!("  ESC               - Quit");
@@ -588,46 +648,5 @@ fn winit_to_sdl_keycode(key: KeyCode) -> Option<sdl2::keyboard::Keycode> {
         KeyCode::KeyZ => Some(Keycode::Z),
         KeyCode::KeyX => Some(Keycode::X),
         _ => None,
-    }
-}
-
-/// Create a simple test track for the demo
-fn create_test_track() -> Track {
-    // Create a circular test track with some elevation and banking
-    let mut sections = Vec::new();
-    let radius = 500.0;
-    let num_segments = 64;
-
-    for i in 0..num_segments {
-        let angle = (i as f32) * 2.0 * std::f32::consts::PI / (num_segments as f32);
-        let x = angle.cos() * radius;
-        let z = angle.sin() * radius;
-
-        // Add some elevation variation (sine wave)
-        let elevation = (angle * 2.0).sin() * 10.0;
-
-        // Add banking in corners (higher at 90, 180, 270 degrees)
-        let banking_angle = (angle * 4.0).sin().abs() * 0.3; // Up to ~17 degrees
-
-        sections.push(TrackSection {
-            position: Vec3::new(x, elevation, z),
-            width: 15.0,
-            banking: banking_angle,
-            elevation,
-            surface: SurfaceType::Track,
-            length: 2.0 * std::f32::consts::PI * radius / (num_segments as f32),
-        });
-    }
-
-    Track {
-        name: "Test Circuit".to_string(),
-        length: 2.0 * std::f32::consts::PI * radius,
-        object_shapes: vec![],
-        sections,
-        racing_line: RacingLine { points: vec![] },
-        ai_behavior: AIBehavior::default(),
-        pit_lane: vec![],
-        cameras: vec![],
-        checksum: 0,
     }
 }
