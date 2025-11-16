@@ -486,14 +486,33 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     log::debug!("Track offsets: base={}, track_data={} (-> 0x{:04X})",
                 offsets.base_offset, offsets.track_data, track_data_offset);
 
-    // Seek to track data section and parse header
+    // Seek to track data section
+    // NOTE: track_data offset points to header + other data, NOT directly to sections
+    // Empirical analysis shows sections start ~400-950 bytes after track_data offset
+    // For now, try multiple potential header sizes to find sections
     parser.seek(track_data_offset);
-    let _header = parse_track_section_header(&mut parser)
-        .context("Failed to parse track section header")?;
 
-    // Now at the start of actual track sections
-    let sections = parse_track_sections(&mut parser)
-        .context("Failed to parse track sections")?;
+    // Try to find sections by testing different skip sizes
+    let mut best_sections = Vec::new();
+    let test_skips = [
+        0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950,
+        1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
+    ];
+
+    for &skip in &test_skips {
+        parser.seek(track_data_offset + skip);
+        if let Ok(sections) = parse_track_sections(&mut parser) {
+            if sections.len() > best_sections.len() {
+                let total_len: f32 = sections.iter().map(|s| s.length).sum();
+                // Reasonable track length: 2.5km - 8km
+                if total_len > 2500.0 && total_len < 8000.0 {
+                    best_sections = sections;
+                }
+            }
+        }
+    }
+
+    let sections = best_sections;
 
     let track_length: f32 = sections.iter().map(|s| s.length).sum();
 
