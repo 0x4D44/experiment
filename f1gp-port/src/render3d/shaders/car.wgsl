@@ -85,11 +85,11 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     // Apply lighting to car color
     var lit_color = in.color.rgb * light.color * lighting;
 
-    // Fog effect (distance-based)
-    let fog_color = vec3<f32>(0.53, 0.81, 0.92); // Sky blue
+    // Fog effect (distance-based) - matches enhanced skybox horizon
+    let fog_color = vec3<f32>(0.75, 0.85, 0.92); // Lighter horizon color
     let distance = length(camera.camera_pos - in.world_position);
-    let fog_start = 100.0;
-    let fog_end = 500.0;
+    let fog_start = 80.0;  // Start fog sooner
+    let fog_end = 300.0;   // Closer fog for more atmospheric depth
     let fog_factor = clamp((distance - fog_start) / (fog_end - fog_start), 0.0, 1.0);
     lit_color = mix(lit_color, fog_color, fog_factor);
 
