@@ -47,8 +47,7 @@ pub struct CpuPerformancePoint {
     pub core_id: usize,
     pub core_type: CoreType,
     pub gops: f64,
-    #[allow(dead_code)]
-    pub operation: String,
+    pub _operation: String,
 }
 
 #[derive(Clone, Debug)]

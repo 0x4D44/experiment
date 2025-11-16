@@ -1,0 +1,6 @@
+# jrnrvw build artifacts
+jrnrvw/target/
+jrnrvw/lcov.info
+
+# coding challenge build dirs
+coding-challenge-01/**/target/

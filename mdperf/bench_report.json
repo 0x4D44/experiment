@@ -1,13 +1,13 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-11-14T17:33:08.216342444Z",
+  "generated_at": "2025-11-14T21:41:12.962020759Z",
   "host": {
-    "hostname": "runsc",
+    "hostname": "Forge",
     "os_version": "Linux 24.04 Ubuntu",
-    "kernel_version": "4.4.0",
-    "total_memory_mb": 13631488,
-    "cpu_physical_cores": 16,
-    "cpu_threads": 16
+    "kernel_version": "6.6.87.2-microsoft-standard-WSL2",
+    "total_memory_mb": 65562740,
+    "cpu_physical_cores": 24,
+    "cpu_threads": 24
   },
   "execution": {
     "mode": "sequential",
@@ -19,24 +19,24 @@
       "name": "cpu",
       "status": "succeeded",
       "metrics": {
-        "duration_secs": 2.0,
+        "duration_secs": 30.0,
         "operations": [
           {
-            "approx_gops": 0.11802,
-            "iterations_per_sec": 118020000.0,
-            "iterations_total": 236040000,
+            "approx_gops": 1.7795036666666668,
+            "iterations_per_sec": 1779503666.6666667,
+            "iterations_total": 53385110000,
             "name": "int"
           },
           {
-            "approx_gops": 0.11802,
-            "iterations_per_sec": 118020000.0,
-            "iterations_total": 236040000,
+            "approx_gops": 1.7795036666666668,
+            "iterations_per_sec": 1779503666.6666667,
+            "iterations_total": 53385110000,
             "name": "float"
           }
         ],
-        "threads": 4
+        "threads": 24
       },
-      "summary": "0.12 GOPS float across 4 threads",
+      "summary": "1.78 GOPS float across 24 threads",
       "warnings": [],
       "resources": [
         "cpu"
@@ -46,33 +46,33 @@
       "name": "memory",
       "status": "succeeded",
       "metrics": {
-        "buffer_mb": 64,
-        "duration_secs": 2.0,
+        "buffer_mb": 512,
+        "duration_secs": 30.0,
         "kernels": [
           {
-            "mean_gbps": 23.658127999999994,
+            "mean_gbps": 40.30937531068766,
             "name": "copy",
-            "p95_gbps": 24.895,
-            "p99_gbps": 25.087,
-            "samples": 375
+            "p95_gbps": 41.503,
+            "p99_gbps": 41.631,
+            "samples": 1207
           },
           {
-            "mean_gbps": 1.3209545454545455,
+            "mean_gbps": 21.51304186046511,
             "name": "scale",
-            "p95_gbps": 1.341,
-            "p99_gbps": 1.344,
-            "samples": 22
+            "p95_gbps": 22.095,
+            "p99_gbps": 22.159,
+            "samples": 645
           },
           {
-            "mean_gbps": 0.8654,
+            "mean_gbps": 8.542842105263157,
             "name": "triad",
-            "p95_gbps": 0.908,
-            "p99_gbps": 0.908,
-            "samples": 10
+            "p95_gbps": 8.759,
+            "p99_gbps": 8.903,
+            "samples": 171
           }
         ]
       },
-      "summary": "23.66 GB/s copy (buffer 64 MB)",
+      "summary": "40.31 GB/s copy (buffer 512 MB)",
       "warnings": [],
       "resources": [
         "memory"
@@ -82,21 +82,21 @@
       "name": "disk",
       "status": "succeeded",
       "metrics": {
-        "file_size_mb": 128,
+        "file_size_mb": 1024,
         "fsync": false,
         "patterns": [
           {
-            "mb_per_sec": 1571.0331146901183,
+            "mb_per_sec": 3614.854328854425,
             "pattern": "seq_write"
           },
           {
-            "mb_per_sec": 4349.509896885013,
+            "mb_per_sec": 12642.36628552525,
             "pattern": "seq_read"
           }
         ],
-        "temp_file": "/tmp/.tmpV5V5pP/benchctl-disk-0.dat"
+        "temp_file": "/tmp/.tmpfh88cl/benchctl-disk-0.dat"
       },
-      "summary": "seq_write 1571.0 MB/s, seq_read 4349.5 MB/s",
+      "summary": "seq_write 3614.9 MB/s, seq_read 12642.4 MB/s",
       "warnings": [
         "fsync disabled; throughput results may be optimistic"
       ],
@@ -109,11 +109,11 @@
       "status": "succeeded",
       "metrics": {
         "addr": "127.0.0.1:4000",
-        "duration_secs": 30.000047133,
-        "mb_per_sec": 727.6884400620252,
+        "duration_secs": 30.000032196,
+        "mb_per_sec": 1394.236003705921,
         "payload_kb": 64
       },
-      "summary": "loopback 727.69 MB/s",
+      "summary": "loopback 1394.24 MB/s",
       "warnings": [],
       "resources": [
         "network"
