@@ -3,6 +3,7 @@
 //! A modern reimplementation of Formula 1 Grand Prix (1991) by Geoff Crammond
 
 use anyhow::Result;
+use f1gp_port::audio::SoundEngine;
 use f1gp_port::data::Track;
 use f1gp_port::game::GameState;
 use f1gp_port::platform::{Color, Renderer, SdlRenderer};
@@ -89,13 +90,33 @@ fn main() -> Result<()> {
     log::info!("  Game: Arrow Keys/WASD Drive, Z/X Shift, P Pause, R Reset");
     log::info!("");
 
+    // Initialize SDL2 context
+    let sdl_context = sdl2::init()
+        .map_err(|e| anyhow::anyhow!("Failed to initialize SDL2: {}", e))?;
+
     // Initialize SDL2 renderer
     let mut renderer = SdlRenderer::new("F1GP Modern Port", WINDOW_WIDTH, WINDOW_HEIGHT)?;
     log::info!("SDL2 initialized");
 
+    // Initialize audio subsystem
+    let audio_subsystem = sdl_context.audio()
+        .map_err(|e| anyhow::anyhow!("Failed to initialize audio subsystem: {}", e))?;
+    let sound_engine = match SoundEngine::new(&audio_subsystem) {
+        Ok(engine) => {
+            log::info!("Audio system initialized");
+            Some(engine)
+        }
+        Err(e) => {
+            log::warn!("Failed to initialize audio: {}", e);
+            log::warn!("Continuing without sound");
+            None
+        }
+    };
+
     // Create application state
     let mut app = App::new();
     let mut game: Option<GameState> = None;
+    let mut last_gear = 1;
 
     // Main loop
     let start_time = Instant::now();
@@ -115,8 +136,14 @@ fn main() -> Result<()> {
             match event {
                 Event::Quit { .. } => break 'main,
                 Event::KeyDown { keycode: Some(keycode), .. } => {
+                    // Global audio mute toggle
+                    if keycode == Keycode::M {
+                        if let Some(ref audio) = sound_engine {
+                            audio.toggle_mute();
+                        }
+                    }
                     // Global quit
-                    if keycode == Keycode::Escape {
+                    else if keycode == Keycode::Escape {
                         match app.screen {
                             Screen::MainMenu => break 'main,
                             Screen::TrackSelect => app.screen = Screen::MainMenu,
@@ -126,8 +153,8 @@ fn main() -> Result<()> {
                     } else {
                         // Handle screen-specific input
                         match &mut app.screen {
-                            Screen::MainMenu => handle_main_menu(&mut app, keycode),
-                            Screen::TrackSelect => handle_track_select(&mut app, keycode),
+                            Screen::MainMenu => handle_main_menu(&mut app, keycode, sound_engine.as_ref()),
+                            Screen::TrackSelect => handle_track_select(&mut app, keycode, sound_engine.as_ref()),
                             Screen::Racing => {
                                 if let Some(ref mut g) = game {
                                     if keycode == Keycode::P {
@@ -183,6 +210,19 @@ fn main() -> Result<()> {
         if let Screen::Racing = app.screen {
             if let Some(ref mut g) = game {
                 g.update(delta_time);
+
+                // Update audio with engine RPM
+                if let Some(ref audio) = sound_engine {
+                    let rpm = g.get_player_rpm();
+                    audio.set_rpm(rpm);
+
+                    // Detect gear shifts
+                    let current_gear = g.get_player_gear();
+                    if current_gear != last_gear {
+                        audio.play_gear_shift();
+                        last_gear = current_gear;
+                    }
+                }
             }
         }
 
@@ -245,19 +285,28 @@ fn main() -> Result<()> {
 }
 
 /// Handle main menu input
-fn handle_main_menu(app: &mut App, keycode: Keycode) {
+fn handle_main_menu(app: &mut App, keycode: Keycode, audio: Option<&SoundEngine>) {
     match keycode {
         Keycode::Up => {
             if app.menu_selection > 0 {
                 app.menu_selection -= 1;
+                if let Some(audio) = audio {
+                    audio.play_menu_beep();
+                }
             }
         }
         Keycode::Down => {
             if app.menu_selection < 2 {
                 app.menu_selection += 1;
+                if let Some(audio) = audio {
+                    audio.play_menu_beep();
+                }
             }
         }
         Keycode::Return => {
+            if let Some(audio) = audio {
+                audio.play_menu_beep();
+            }
             match app.menu_selection {
                 0 => app.screen = Screen::TrackSelect, // Start Race
                 1 => {}, // Options (not implemented yet)
@@ -270,20 +319,29 @@ fn handle_main_menu(app: &mut App, keycode: Keycode) {
 }
 
 /// Handle track selection input
-fn handle_track_select(app: &mut App, keycode: Keycode) {
+fn handle_track_select(app: &mut App, keycode: Keycode, audio: Option<&SoundEngine>) {
     match keycode {
         Keycode::Up => {
             if app.selected_track > 0 {
                 app.selected_track -= 1;
+                if let Some(audio) = audio {
+                    audio.play_menu_beep();
+                }
             }
         }
         Keycode::Down => {
             if app.selected_track < TRACKS.len() - 1 {
                 app.selected_track += 1;
+                if let Some(audio) = audio {
+                    audio.play_menu_beep();
+                }
             }
         }
         Keycode::Return => {
             // Request track load
+            if let Some(audio) = audio {
+                audio.play_menu_beep();
+            }
             log::info!("Loading track: {}", TRACKS[app.selected_track].name);
             app.load_track_request = Some(app.selected_track);
         }
