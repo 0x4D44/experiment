@@ -184,21 +184,22 @@ mod tests {
                 TrackSection {
                     position: Vec3::new(0.0, 0.0, 0.0),
                     width: 15.0,
-                    banking: 0.0,
-                    elevation: 0.0,
                     surface: SurfaceType::Track,
                     length: 100.0,
+                    ..TrackSection::default()
                 },
                 TrackSection {
                     position: Vec3::new(100.0, 0.0, 0.0),
                     width: 15.0,
-                    banking: 0.0,
-                    elevation: 0.0,
                     surface: SurfaceType::Track,
                     length: 100.0,
+                    ..TrackSection::default()
                 },
             ],
-            racing_line: RacingLine { points: vec![] },
+            racing_line: RacingLine {
+                displacement: 0,
+                segments: Vec::new(),
+            },
             ai_behavior: AIBehavior::default(),
             pit_lane: vec![],
             cameras: vec![],
