@@ -864,6 +864,16 @@ impl GameState {
     pub fn track(&self) -> Option<&Track> {
         self.track.as_ref()
     }
+
+    /// Get player car RPM (for audio)
+    pub fn get_player_rpm(&self) -> f32 {
+        self.player_car.engine_rpm
+    }
+
+    /// Get player car gear (for audio)
+    pub fn get_player_gear(&self) -> i32 {
+        self.player_car.gear as i32
+    }
 }
 
 #[cfg(test)]
