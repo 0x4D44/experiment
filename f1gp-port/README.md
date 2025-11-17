@@ -6,9 +6,9 @@ A modern reimplementation of the classic **Formula 1 Grand Prix** racing simulat
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Tests](https://img.shields.io/badge/tests-87%20passing-success)
 
-## 🏁 Project Status: **PLAYABLE** (~85% toward v1.0)
+## 🏁 Project Status: **PLAYABLE** (~95% toward v1.0)
 
-This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, authentic isometric 2.5D rendering, and 15 authentic F1GP tracks!
+This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, authentic isometric 2.5D rendering, real-time audio synthesis, and 15 authentic F1GP tracks!
 
 ## ✨ Features
 
@@ -50,6 +50,14 @@ This is a **fully functional F1 racing game** with complete physics, AI opponent
 - ✅ Color-coded UI elements
 - ✅ 60 FPS stable performance
 
+### Audio System
+- ✅ **Real-time audio synthesis** (no audio files needed)
+- ✅ RPM-based engine sound (1000-13000 RPM range)
+- ✅ Gear shift sound effects
+- ✅ Menu navigation sounds
+- ✅ Volume control and mute toggle (M key)
+- ✅ SDL2 audio backend
+
 ### Data Systems
 - ✅ Complete track data parser (F1GP original format)
 - ✅ Car database with 1991 F1 season specs
@@ -75,6 +83,7 @@ This is a **fully functional F1 racing game** with complete physics, AI opponent
 - **ESC**: Pause
 - **R**: Reset car
 - **P**: Pause (alternative)
+- **M**: Mute/Unmute audio
 
 ## 🚀 Quick Start
 
@@ -285,14 +294,14 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 
 ## 🐛 Known Limitations
 
-- ✗ Audio system not implemented (module exists but is stub)
 - ✗ Weather effects not implemented
 - ✗ Pit stops not implemented
 - ✗ 1 track has parser issues (Montreal - F1CT05.DAT)
+- ✗ Tire squeal and collision sounds not yet implemented
 
 ## 🛣️ Future Enhancements
 
-- [ ] Sound effects and music (engine sounds, tire squeal, menu audio)
+- [ ] Additional sound effects (tire squeal, collisions, ambient sounds)
 - [ ] Fix Montreal track parser (F1CT05.DAT)
 - [ ] Weather conditions (wet track physics ready)
 - [ ] Pit stops and tire wear
