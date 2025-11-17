@@ -6,9 +6,9 @@ A modern reimplementation of the classic **Formula 1 Grand Prix** racing simulat
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Tests](https://img.shields.io/badge/tests-87%20passing-success)
 
-## 🏁 Project Status: **PLAYABLE** (95% Complete)
+## 🏁 Project Status: **PLAYABLE** (~60% toward v1.0)
 
-This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, and professional UI!
+This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, and 15 authentic F1GP tracks!
 
 ## ✨ Features
 
@@ -93,21 +93,27 @@ brew install sdl2
 # Download from https://www.libsdl.org/download-2.0.php
 ```
 
-### Building
+### Building and Running
 
 ```bash
 # Navigate to project directory
 cd f1gp-port
 
-# Build release version
+# Build release version (creates 3.0 MB binary)
 cargo build --release
 
-# Run the game (NOT YET IMPLEMENTED - needs main.rs integration)
+# Run the game
 cargo run --release
+# OR run the binary directly
+./target/release/f1gp
 
 # Run tests
 cargo test
 ```
+
+The game will launch with a main menu where you can:
+1. **Start Race** - Select from 15 authentic F1GP tracks
+2. **Quit** - Exit the game
 
 ## 📊 Project Statistics
 
@@ -208,6 +214,28 @@ Each AI driver has unique characteristics:
 | **Average** | 0.70 | 0.50 | 0.70 | 0.60 | 0.12s |
 | **Rookie** | 0.50 | 0.40 | 0.50 | 0.40 | 0.15s |
 
+## 🏁 Available Tracks (15 Circuits)
+
+The game includes 15 authentic Formula 1 circuits from the 1991 season:
+
+1. **Phoenix** (USA)
+2. **Interlagos** (Brazil)
+3. **Imola** (San Marino)
+4. **Monaco** (Monte Carlo)
+5. **Mexico** (Mexico City)
+6. **Magny-Cours** (France)
+7. **Silverstone** (Great Britain)
+8. **Hockenheim** (Germany)
+9. **Hungaroring** (Hungary)
+10. **Spa-Francorchamps** (Belgium)
+11. **Monza** (Italy)
+12. **Estoril** (Portugal)
+13. **Barcelona** (Spain)
+14. **Suzuka** (Japan)
+15. **Adelaide** (Australia)
+
+*Note: Montreal (Canada) has parser issues and is not currently available.*
+
 ## 📈 Performance
 
 - **Target FPS**: 60
@@ -253,18 +281,16 @@ Each AI driver has unique characteristics:
 ## 🐛 Known Limitations
 
 - ✗ Audio system not implemented (module exists but is stub)
-- ✗ Only 2D top-down view (3D not implemented)
-- ✗ Single track available (more can be added)
+- ✗ Only 2D top-down view (isometric 2.5D not yet implemented)
 - ✗ Weather effects not implemented
 - ✗ Pit stops not implemented
-- ✗ Main.rs integration incomplete (game runs via tests)
+- ✗ 1 track has parser issues (Montreal - F1CT05.DAT)
 
 ## 🛣️ Future Enhancements
 
-- [ ] Complete main.rs integration for standalone executable
-- [ ] Multiple tracks (16 circuits from original game)
-- [ ] 3D graphics renderer
+- [ ] Isometric 2.5D graphics renderer (currently 2D top-down)
 - [ ] Sound effects and music
+- [ ] Fix Montreal track parser (F1CT05.DAT)
 - [ ] Weather conditions (wet track physics ready)
 - [ ] Pit stops and tire wear
 - [ ] Championship mode
