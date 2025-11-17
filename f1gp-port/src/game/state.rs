@@ -184,6 +184,9 @@ impl GameState {
         // Fit camera to track bounds
         self.camera.fit_bounds(track_renderer.bounds);
 
+        // Enable isometric 2.5D view (like original F1GP)
+        self.camera.set_isometric();
+
         // Create track collision detector
         let track_collision = TrackCollision::new(track.clone());
 
@@ -595,28 +598,40 @@ impl GameState {
                     track_renderer.render(renderer, &self.camera)?;
                 }
 
-                // Render player car
-                let car_state = CarState {
+                // Collect all cars for depth-sorted rendering (important for isometric view)
+                let mut all_cars: Vec<CarState> = Vec::with_capacity(1 + self.ai_cars.len());
+
+                // Add player car
+                all_cars.push(CarState {
                     position: self.player_car.body.position,
                     rotation: self.get_car_rotation(self.player_car.body.orientation),
                     velocity: self.player_car.body.velocity.truncate(),
                     spec: self.player_car.spec.clone(),
                     driver_name: "Player".to_string(),
-                };
+                });
 
-                self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
-
-                // Render AI opponent cars
+                // Add AI opponent cars
                 for (ai_car, ai_driver) in self.ai_cars.iter().zip(self.ai_drivers.iter()) {
-                    let ai_car_state = CarState {
+                    all_cars.push(CarState {
                         position: ai_car.body.position,
                         rotation: self.get_car_rotation(ai_car.body.orientation),
                         velocity: ai_car.body.velocity.truncate(),
                         spec: ai_car.spec.clone(),
                         driver_name: ai_driver.name.clone(),
-                    };
+                    });
+                }
 
-                    self.car_renderer.render_car(renderer, &ai_car_state, &self.camera)?;
+                // Sort cars by Y coordinate for proper depth rendering in isometric view
+                // Cars with lower Y (further "back" in isometric) are drawn first
+                if self.camera.is_isometric() {
+                    all_cars.sort_by(|a, b| {
+                        a.position.y.partial_cmp(&b.position.y).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                }
+
+                // Render all cars in sorted order
+                for car_state in &all_cars {
+                    self.car_renderer.render_car(renderer, car_state, &self.camera)?;
                 }
 
                 // Render HUD
