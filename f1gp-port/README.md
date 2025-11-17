@@ -6,9 +6,9 @@ A modern reimplementation of the classic **Formula 1 Grand Prix** racing simulat
 ![Language](https://img.shields.io/badge/language-Rust-orange)
 ![Tests](https://img.shields.io/badge/tests-87%20passing-success)
 
-## 🏁 Project Status: **PLAYABLE** (~60% toward v1.0)
+## 🏁 Project Status: **PLAYABLE** (~85% toward v1.0)
 
-This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, and 15 authentic F1GP tracks!
+This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, authentic isometric 2.5D rendering, and 15 authentic F1GP tracks!
 
 ## ✨ Features
 
@@ -42,9 +42,10 @@ This is a **fully functional F1 racing game** with complete physics, AI opponent
   - Real-time HUD with telemetry (speed, RPM, gear, lap times)
 
 ### Graphics & Rendering
-- ✅ Track rendering with centerline visualization
-- ✅ 2D top-down camera system with pan/zoom
-- ✅ Car sprites with realistic rotation
+- ✅ **Isometric 2.5D view** (authentic F1GP 1991 style)
+- ✅ Track rendering with isometric projection
+- ✅ Camera system with pan/zoom support
+- ✅ Car sprites with depth sorting (back-to-front)
 - ✅ Pixel-based text rendering (no external fonts needed)
 - ✅ Color-coded UI elements
 - ✅ 60 FPS stable performance
@@ -265,6 +266,10 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 - Personality-driven behaviors
 
 ### Rendering
+- **Isometric 2.5D projection** (authentic F1GP 1991 style)
+  - 30° camera angle with proper depth perception
+  - Automatic depth sorting for cars (back-to-front)
+  - Efficient 2D rendering with 3D appearance
 - Efficient batch rendering
 - Visibility culling
 - Camera-relative coordinate system
@@ -281,21 +286,20 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 ## 🐛 Known Limitations
 
 - ✗ Audio system not implemented (module exists but is stub)
-- ✗ Only 2D top-down view (isometric 2.5D not yet implemented)
 - ✗ Weather effects not implemented
 - ✗ Pit stops not implemented
 - ✗ 1 track has parser issues (Montreal - F1CT05.DAT)
 
 ## 🛣️ Future Enhancements
 
-- [ ] Isometric 2.5D graphics renderer (currently 2D top-down)
-- [ ] Sound effects and music
+- [ ] Sound effects and music (engine sounds, tire squeal, menu audio)
 - [ ] Fix Montreal track parser (F1CT05.DAT)
 - [ ] Weather conditions (wet track physics ready)
 - [ ] Pit stops and tire wear
 - [ ] Championship mode
 - [ ] Replays
 - [ ] Multiplayer
+- [ ] Enhanced isometric sprites (more angles, better detail)
 
 ## 📝 Development Timeline
 
