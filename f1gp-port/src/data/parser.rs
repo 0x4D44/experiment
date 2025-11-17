@@ -8,6 +8,7 @@
 use anyhow::{Context, Result, bail};
 use std::io::{Cursor, Read};
 use byteorder::{LittleEndian, ReadBytesExt};
+use glam::Vec3;
 use super::objects::*;
 use super::track::*;
 
@@ -224,11 +225,13 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
 
         // Check for terminator
         if byte1 == SECTION_TERMINATOR[0] && byte2 == SECTION_TERMINATOR[1] {
+            log::debug!("Hit section terminator after {} sections", sections.len());
             break;
         }
 
         if byte2 > 0 {
             // Command: byte2 is command ID, byte1 is first arg
+            // Only valid commands are 0x80-0xAC, but we'll let parse_track_command handle validation
             let command = parse_track_command(parser, byte2, byte1)?;
             pending_commands.push(command);
         } else {
@@ -271,14 +274,23 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
 
 /// Parse a track section command
 fn parse_track_command(parser: &mut TrackParser, command_id: u8, first_arg: u8) -> Result<TrackSectionCommand> {
-    // Commands have variable number of int16 arguments
-    // For now, read a fixed number (we'll refine this based on command ID later)
+    // Commands have variable number of int16 arguments based on command ID
+    // Source: ArgData TrackSectionCommandFactory.cs
     let mut args = vec![first_arg as i16];
 
-    // Most commands have 0-3 additional arguments
-    // TODO: Implement command-specific arg counts from TrackSectionCommandFactory
     let arg_count = match command_id {
-        _ => 2,  // Default: read 2 more int16 args
+        0x80 | 0x81 | 0x82 => 2,
+        0x83 | 0x84 | 0x86 | 0x87 => 1,
+        0x85 => 3,
+        0x88 | 0x89 | 0x8c | 0x8d | 0x90..=0x95 | 0x98 | 0x99 | 0xa9 => 2,
+        0x8a | 0x8b => 6,
+        0x8e | 0x8f | 0x9a | 0xa6 | 0xa7 | 0xab => 3,
+        0x96 | 0x97 | 0x9b..=0xa5 | 0xa8 => 1,
+        0xaa => 4,
+        0xac => 5,
+        // Commands below 0x80 are not documented in ArgData
+        // Default to 0 additional args (just the first_arg)
+        _ => 0,
     };
 
     for _ in 0..arg_count {
@@ -380,6 +392,133 @@ pub fn parse_object_shapes(_parser: &mut TrackParser) -> Result<Vec<ObjectShape>
     Ok(Vec::new())
 }
 
+/// Parse the offset table from the track file
+///
+/// The offset table is located at 0x1000 and contains 7 int16 values
+/// that point to various data sections within the file.
+/// Source: ArgData OffsetReader.cs
+pub fn parse_offsets(parser: &mut TrackParser) -> Result<TrackOffsets> {
+    // Offset table is at 0x1000 (after 4096 bytes of horizon data)
+    parser.seek(0x1000);
+
+    // Read 7 int16 values
+    let base_offset = parser.read_i16()?;
+    let unknown2 = parser.read_i16()?;
+    let unknown3 = parser.read_i16()?;
+    let unknown4 = parser.read_i16()?;
+
+    // These last 3 values need +0x1010 adjustment
+    let checksum_position = parser.read_i16()?;
+    let object_data = parser.read_i16()?;
+    let track_data = parser.read_i16()?;
+
+    Ok(TrackOffsets {
+        base_offset,
+        unknown2,
+        unknown3,
+        unknown4,
+        checksum_position,
+        object_data,
+        track_data,
+    })
+}
+
+/// Parse the track section header
+///
+/// The header contains initial track properties like start position, width, etc.
+/// It precedes the actual track sections.
+/// Source: ArgData TrackSectionHeaderReader.cs
+pub fn parse_track_section_header(parser: &mut TrackParser) -> Result<TrackSectionHeader> {
+    let first_section_angle = parser.read_u16()?;
+    let first_section_height = parser.read_i16()?;
+    let track_center_x = parser.read_i16()?;
+    let track_center_z = parser.read_i16()?;
+    let track_center_y = parser.read_i16()?;
+    let start_width = parser.read_i16()?;
+    let pole_side = parser.read_i16()?;
+    let pits_side = parser.read_u8()?;
+    let surrounding_area = parser.read_u8()?;
+    let right_verge_start_width = parser.read_u8()?;
+    let left_verge_start_width = parser.read_u8()?;
+    let kerb_type = parser.read_u8()?;
+
+    // At this point we've read 19 bytes total (the main header fields)
+    // According to ArgData, there are additional kerb color bytes at specific offsets
+    // Skip to byte 25 to be past all kerb data
+    for _ in 0..6 {
+        let _ = parser.read_u8();
+    }
+
+    Ok(TrackSectionHeader {
+        first_section_angle,
+        first_section_height,
+        track_center_x,
+        track_center_z,
+        track_center_y,
+        start_width,
+        pole_side,
+        pits_side,
+        surrounding_area,
+        right_verge_start_width,
+        left_verge_start_width,
+        kerb_type,
+    })
+}
+
+/// Calculate 3D positions for all track sections
+///
+/// Walks through sections applying curvature and length to build track geometry
+fn calculate_section_positions(sections: &mut [TrackSection]) {
+    use std::f32::consts::PI;
+
+    if sections.is_empty() {
+        return;
+    }
+
+    let mut position = glam::Vec3::ZERO;
+    let mut heading: f32 = 0.0; // Angle in radians, 0 = +X direction
+    let mut elevation: f32 = 0.0;
+
+    for section in sections.iter_mut() {
+        // Store current position
+        section.position = position;
+        section.elevation = elevation;
+
+        // Calculate curvature effect
+        // Curvature is stored as i16, higher values = tighter turns
+        // Positive = right turn, negative = left turn
+        // Scale factor determined empirically to match track geometry
+        let curvature_radians = if section.curvature != 0 {
+            // Convert curvature value to actual angle change
+            // Formula based on ArgData interpretation
+            (section.curvature as f32) / 1000.0 * section.length / 100.0
+        } else {
+            0.0
+        };
+
+        // Update heading (positive curvature = turn right = clockwise = subtract angle)
+        heading -= curvature_radians;
+
+        // Calculate direction vector
+        let dir_x = heading.cos();
+        let dir_z = heading.sin();
+
+        // Move forward by section length
+        position.x += dir_x * section.length;
+        position.z += dir_z * section.length;
+
+        // Apply height change
+        // Height is stored as i16, scale to reasonable values
+        // Using 0.001 factor - height values are very large in binary format
+        let height_change = (section.height as f32) * 0.001; // Scale factor
+        elevation += height_change;
+        position.y = elevation;
+    }
+
+    log::debug!("Track geometry: start (0,0,0), end ({:.1}, {:.1}, {:.1}), total elevation change: {:.1}m",
+                position.x, position.y, position.z, elevation);
+}
+
 /// Parse a complete track file
 ///
 /// This is the main entry point for parsing .DAT files
@@ -395,32 +534,78 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     parser.seek((parser.file_size - 4) as u64);
     let checksum = parser.read_u32()?;
 
-    // Reset to beginning
-    parser.seek(0);
+    // Parse offset table at 0x1000 to find data section locations
+    let offsets = parse_offsets(&mut parser)?;
 
-    // Skip first 4096 bytes (unused padding)
-    if parser.file_size > 4096 {
-        parser.seek(4096);
+    // Calculate actual offset to track data (offset value + 0x1010)
+    let track_data_offset = (offsets.track_data as i32 + 0x1010) as u64;
+
+    log::debug!("Track offsets: base={}, track_data={} (-> 0x{:04X})",
+                offsets.base_offset, offsets.track_data, track_data_offset);
+
+    // Seek to track data section
+    // NOTE: track_data offset points to header + other data, NOT directly to sections
+    // Empirical analysis shows sections start ~400-950 bytes after track_data offset
+    // For now, try multiple potential header sizes to find sections
+    parser.seek(track_data_offset);
+
+    // Try to find sections by testing different skip sizes
+    let mut best_sections = Vec::new();
+    let test_skips = [
+        0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950,
+        1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
+        2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000,
+    ];
+
+    let mut best_skip = 0;
+    let mut best_length = f32::MAX;
+    for &skip in &test_skips {
+        parser.seek(track_data_offset + skip);
+        if let Ok(sections) = parse_track_sections(&mut parser) {
+            let total_len: f32 = sections.iter().map(|s| s.length).sum();
+            log::debug!("Track '{}': skip {} -> {} sections, {}m ({})",
+                        name, skip, sections.len(), total_len as i32,
+                        if total_len > 2500.0 && total_len < 8000.0 { "VALID" } else { "rejected" });
+
+            // Select the skip offset that gives us the SHORTEST valid track length
+            // This should give us the actual track sections without extra data
+            // Require at least 15 sections to avoid picking incomplete data
+            if sections.len() >= 15 && total_len > 2500.0 && total_len < 8000.0 {
+                if total_len < best_length {
+                    best_sections = sections;
+                    best_skip = skip;
+                    best_length = total_len;
+                }
+            }
+        }
     }
 
-    // TODO: Parse offsets section at 0x1000 to find section locations
-    // For now, we'll need to determine offsets through trial and error
-    // or extract from ArgData source
+    let mut sections = best_sections;
 
-    // Parse object shapes (at 0x100E typically)
-    // let object_shapes = parse_object_shapes(&mut parser)?;
+    // Calculate 3D positions for each section
+    calculate_section_positions(&mut sections);
 
-    // For now, create a minimal track structure
-    // We'll enhance this as we implement each parser component
+    let track_length: f32 = sections.iter().map(|s| s.length).sum();
+
+    if sections.is_empty() {
+        log::warn!("Track '{}': No valid sections found", name);
+    } else {
+        log::info!("Parsed track '{}': {} sections, {:.2}km (skip={})",
+                   name, sections.len(), track_length / 1000.0, best_skip);
+    }
+
+    // For now, skip racing line parsing (need to find its offset)
+    let racing_line = RacingLine {
+        displacement: 0,
+        segments: Vec::new(),
+    };
+
     let track = Track {
         name,
-        length: 0.0,
+        length: track_length,
         object_shapes: Vec::new(),
-        sections: Vec::new(),
-        racing_line: RacingLine {
-            displacement: 0,
-            segments: Vec::new(),
-        },
+        sections,
+        racing_line,
         ai_behavior: AIBehavior::default(),
         pit_lane: Vec::new(),
         cameras: Vec::new(),
