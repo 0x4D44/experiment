@@ -710,13 +710,57 @@ mod tests {
 
     #[test]
     fn test_parse_track_basic() {
-        // Minimal valid track file (just checksum at end)
-        let mut data = vec![0; 100];
-        data.extend_from_slice(&[0xAA, 0xBB, 0xCC, 0xDD]);  // Checksum
+        const TRACK_DATA_OFFSET: usize = 0x1100;
+        const SECTION_COUNT: usize = 15;
+        const SECTION_BYTES: usize = 10; // length + padding + section fields
+
+        let section_block_size = SECTION_COUNT * SECTION_BYTES + 2; // + terminator
+        let total_size = TRACK_DATA_OFFSET + section_block_size + 4;
+        let mut data = vec![0u8; total_size];
+
+        // Write checksum at end (little endian)
+        let checksum: u32 = 0xDDCCBBAA;
+        let checksum_bytes = checksum.to_le_bytes();
+        let len = data.len();
+        data[len - 4..].copy_from_slice(&checksum_bytes);
+
+        // Populate offset table at 0x1000
+        let track_data_relative = (TRACK_DATA_OFFSET as i32 - 0x1010) as i16;
+        let mut cursor = 0x1000;
+        for value in [
+            0i16, 0i16, 0i16, 0i16, 0i16, 0i16, track_data_relative,
+        ] {
+            let bytes = value.to_le_bytes();
+            data[cursor..cursor + 2].copy_from_slice(&bytes);
+            cursor += 2;
+        }
+
+        // Write synthetic track sections at TRACK_DATA_OFFSET
+        let mut section_cursor = TRACK_DATA_OFFSET;
+        for _ in 0..SECTION_COUNT {
+            data[section_cursor] = 50; // length byte
+            data[section_cursor + 1] = 0; // indicates section data
+            // curvature (i16)
+            data[section_cursor + 2..section_cursor + 4].copy_from_slice(&0i16.to_le_bytes());
+            // height (i16)
+            data[section_cursor + 4..section_cursor + 6].copy_from_slice(&0i16.to_le_bytes());
+            // flags (u16)
+            data[section_cursor + 6..section_cursor + 8].copy_from_slice(&0u16.to_le_bytes());
+            // verge widths
+            data[section_cursor + 8] = 0;
+            data[section_cursor + 9] = 0;
+            section_cursor += SECTION_BYTES;
+        }
+
+        // Terminator
+        data[section_cursor] = 0xFF;
+        data[section_cursor + 1] = 0xFF;
 
         let track = parse_track(data, "Test Track".to_string()).unwrap();
 
         assert_eq!(track.name, "Test Track");
-        assert_eq!(track.checksum, 0xDDCCBBAA);
+        assert_eq!(track.checksum, checksum);
+        assert_eq!(track.sections.len(), SECTION_COUNT);
+        assert!(track.length > 2500.0);
     }
 }

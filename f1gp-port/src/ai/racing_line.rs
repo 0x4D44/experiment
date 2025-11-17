@@ -152,12 +152,11 @@ impl RacingLineFollower {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::track::{TrackSection, SurfaceType, RacingLinePoint};
+    use crate::data::track::{TrackSection, SurfaceType};
 
     fn create_test_track() -> Track {
         // Create a simple circular track for testing
         let mut sections = Vec::new();
-        let mut racing_line_points = Vec::new();
         let num_sections = 8;
         let radius = 200.0;
 
@@ -170,15 +169,8 @@ mod tests {
                 position: Vec3::new(x, 0.0, z),
                 width: 15.0,
                 length: 50.0,
-                banking: 0.0,
-                elevation: 0.0,
                 surface: SurfaceType::Track,
-            });
-
-            racing_line_points.push(RacingLinePoint {
-                position: Vec3::new(x, 0.0, z),
-                speed: 50.0,
-                is_braking_zone: false,
+                ..TrackSection::default()
             });
         }
 
@@ -188,7 +180,8 @@ mod tests {
             object_shapes: Vec::new(),
             sections,
             racing_line: crate::data::track::RacingLine {
-                points: racing_line_points,
+                displacement: 0,
+                segments: Vec::new(),
             },
             ai_behavior: crate::data::track::AIBehavior {
                 aggression: 0.5,

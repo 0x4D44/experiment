@@ -301,6 +301,30 @@ impl TrackMesh {
 mod tests {
     use super::*;
 
+    fn make_section(z: f32) -> TrackSection {
+        TrackSection {
+            position: Vec3::new(0.0, 0.0, z),
+            length: 10.0,
+            curvature: 0,
+            height: 0,
+            flags: 0,
+            right_verge_width: 1,
+            left_verge_width: 1,
+            commands: Vec::new(),
+            has_left_kerb: false,
+            has_right_kerb: false,
+            kerb_height: crate::data::KerbHeight::Low,
+            pit_lane_entrance: false,
+            pit_lane_exit: false,
+            road_signs: false,
+            road_sign_arrow: false,
+            surface: SurfaceType::Track,
+            width: 12.0,
+            banking: 0.0,
+            elevation: 0.0,
+        }
+    }
+
     #[test]
     fn test_track_mesh_creation() {
         // Create simple test track
@@ -308,25 +332,11 @@ mod tests {
             name: "Test Track".to_string(),
             length: 100.0,
             object_shapes: vec![],
-            sections: vec![
-                TrackSection {
-                    position: Vec3::new(0.0, 0.0, 0.0),
-                    width: 12.0,
-                    banking: 0.0,
-                    elevation: 0.0,
-                    surface: SurfaceType::Track,
-                    length: 10.0,
-                },
-                TrackSection {
-                    position: Vec3::new(0.0, 0.0, 10.0),
-                    width: 12.0,
-                    banking: 0.0,
-                    elevation: 0.0,
-                    surface: SurfaceType::Track,
-                    length: 10.0,
-                },
-            ],
-            racing_line: crate::data::RacingLine { points: vec![] },
+            sections: vec![make_section(0.0), make_section(10.0)],
+            racing_line: crate::data::RacingLine {
+                displacement: 0,
+                segments: vec![],
+            },
             ai_behavior: crate::data::AIBehavior {
                 aggression: 0.5,
                 consistency: 0.8,
