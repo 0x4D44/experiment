@@ -223,6 +223,21 @@ mod tests {
     }
 
     #[test]
+    fn test_from_reqwest_error() {
+        // Create a reqwest error by building an invalid URL request
+        let err = reqwest::Client::new()
+            .get("ht!tp://invalid-url")
+            .build()
+            .unwrap_err();
+
+        let ebay_err: EbayMcpError = err.into();
+        match ebay_err {
+            EbayMcpError::Network(_) => (),
+            _ => panic!("Expected Network error"),
+        }
+    }
+
+    #[test]
     fn test_to_mcp_error_code_phrase_not_found() {
         let err = EbayMcpError::PhraseNotFound("test".to_string());
         assert_eq!(err.to_mcp_error_code(), -32602);
