@@ -247,7 +247,7 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 14. **Suzuka** (Japan)
 15. **Adelaide** (Australia)
 
-*Note: Montreal (Canada) has parser issues and is not currently available.*
+*Note: Montreal (Canada) track file (F1CT05.DAT) uses an incompatible file format and is not available. Extensive investigation confirmed the data structure differs fundamentally from other tracks. See `wrk_journals/2025.11.18 - Montreal Track Investigation.md` for technical details.*
 
 ## 📈 Performance
 
@@ -303,7 +303,7 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 
 ## 🛣️ Future Enhancements (v2.0)
 
-- [ ] Fix Montreal track parser (F1CT05.DAT) - complete 16-track roster
+- [ ] Montreal track support - requires understanding incompatible F1CT05.DAT format (see investigation journal)
 - [ ] Weather conditions (wet track physics ready)
 - [ ] Pit stops and tire wear
 - [ ] Championship mode (full season)
