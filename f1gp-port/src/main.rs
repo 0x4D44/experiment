@@ -222,6 +222,10 @@ fn main() -> Result<()> {
                         audio.play_gear_shift();
                         last_gear = current_gear;
                     }
+
+                    // Update tire squeal based on sliding
+                    let squeal_intensity = g.get_tire_squeal_intensity();
+                    audio.set_tire_squeal(squeal_intensity);
                 }
             }
         }
