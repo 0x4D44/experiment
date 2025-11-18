@@ -7,8 +7,6 @@
 
 use anyhow::{Context, Result, bail};
 use std::io::{Cursor, Read};
-use byteorder::{LittleEndian, ReadBytesExt};
-use glam::Vec3;
 use super::objects::*;
 use super::track::*;
 
@@ -469,8 +467,6 @@ pub fn parse_track_section_header(parser: &mut TrackParser) -> Result<TrackSecti
 ///
 /// Walks through sections applying curvature and length to build track geometry
 fn calculate_section_positions(sections: &mut [TrackSection]) {
-    use std::f32::consts::PI;
-
     if sections.is_empty() {
         return;
     }

@@ -69,7 +69,7 @@ impl AudioCallback for EngineAudioCallback {
 
     fn callback(&mut self, out: &mut [f32]) {
         // Copy state values to avoid holding lock during generation
-        let (rpm, volume, engine_volume, muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples) = {
+        let (rpm, volume, engine_volume, _muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples) = {
             let mut state = self.state.lock().unwrap();
 
             // If muted, output silence
@@ -271,7 +271,7 @@ impl EngineAudioCallback {
 
 /// Main audio engine
 pub struct SoundEngine {
-    device: AudioDevice<EngineAudioCallback>,
+    _device: AudioDevice<EngineAudioCallback>,
     state: Arc<Mutex<AudioState>>,
 }
 
@@ -304,7 +304,7 @@ impl SoundEngine {
 
         log::info!("Sound engine initialized successfully");
 
-        Ok(Self { device, state })
+        Ok(Self { _device: device, state })
     }
 
     /// Update engine RPM
