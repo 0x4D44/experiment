@@ -553,8 +553,13 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     let mut best_sections = Vec::new();
     let test_skips = [
         0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950,
-        1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000,
+        1000, 1050, 1100, 1150, 1200, 1210, 1220, 1230, 1240, 1250, 1260, 1270, 1280, 1290,
+        1300, 1310, 1320, 1330, 1340, 1350, 1360, 1370, 1380, 1390, 1400,
+        1410, 1420, 1430, 1440, 1450, 1460, 1470, 1480, 1490, 1500,
+        1600, 1700, 1800, 1900, 2000,
         2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000,
+        3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000,
+        4100, 4200, 4300, 4400, 4500, 4600, 4700, 4800, 4900, 5000,
     ];
 
     let mut best_skip = 0;
@@ -563,14 +568,16 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
         parser.seek(track_data_offset + skip);
         if let Ok(sections) = parse_track_sections(&mut parser) {
             let total_len: f32 = sections.iter().map(|s| s.length).sum();
+            let is_valid = total_len > 1500.0 && total_len < 8000.0;
             log::debug!("Track '{}': skip {} -> {} sections, {}m ({})",
                         name, skip, sections.len(), total_len as i32,
-                        if total_len > 2500.0 && total_len < 8000.0 { "VALID" } else { "rejected" });
+                        if is_valid { "VALID" } else { "rejected" });
 
             // Select the skip offset that gives us the SHORTEST valid track length
             // This should give us the actual track sections without extra data
-            // Require at least 15 sections to avoid picking incomplete data
-            if sections.len() >= 15 && total_len > 2500.0 && total_len < 8000.0 {
+            // Require at least 10 sections to avoid picking incomplete data
+            // (Montreal has fewer sections than other tracks)
+            if sections.len() >= 10 && total_len > 1500.0 && total_len < 8000.0 {
                 if total_len < best_length {
                     best_sections = sections;
                     best_skip = skip;
