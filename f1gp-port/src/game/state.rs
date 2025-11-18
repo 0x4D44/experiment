@@ -7,6 +7,7 @@ use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
 use crate::game::session::RaceSession;
+use crate::game::weather::WeatherSystem;
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
@@ -125,6 +126,9 @@ pub struct GameState {
     /// Viewport dimensions
     viewport_width: u32,
     viewport_height: u32,
+
+    /// Weather system
+    weather: WeatherSystem,
 }
 
 impl GameState {
@@ -173,6 +177,7 @@ impl GameState {
             num_opponents: 5,
             viewport_width,
             viewport_height,
+            weather: WeatherSystem::default(),
         }
     }
 
