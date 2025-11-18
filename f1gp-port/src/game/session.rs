@@ -2,8 +2,6 @@
 //!
 //! Handles race start sequences, flags, lap counting, and race completion.
 
-use glam::Vec3;
-
 /// Race session state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaceState {
@@ -79,7 +77,7 @@ pub struct RaceSession {
     pub total_laps: u32,
 
     /// Grid positions (driver index -> grid position)
-    grid_positions: Vec<usize>,
+    _grid_positions: Vec<usize>,
 
     /// Countdown timer (seconds)
     countdown_timer: f32,
@@ -110,7 +108,7 @@ impl RaceSession {
             state: RaceState::GridFormation,
             flag: RaceFlag::Green,
             total_laps,
-            grid_positions: (0..num_drivers).collect(),
+            _grid_positions: (0..num_drivers).collect(),
             countdown_timer: 0.0,
             red_lights: 0,
             race_time: 0.0,

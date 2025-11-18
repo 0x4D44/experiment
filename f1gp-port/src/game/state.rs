@@ -10,7 +10,7 @@ use crate::game::session::RaceSession;
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
-use crate::render3d::{Camera3D, CameraMode, Renderer3D};
+use crate::render3d::Renderer3D;
 use crate::ui::{Menu, MenuAction};
 use anyhow::Result;
 use glam::{Vec2, Vec3};
