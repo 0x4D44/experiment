@@ -27,6 +27,12 @@ pub struct AudioState {
     pub menu_beep_trigger: bool,
     /// Menu beep samples remaining
     pub menu_beep_samples: u32,
+    /// Tire squeal intensity (0.0 = no squeal, 1.0 = max squeal)
+    pub tire_squeal_intensity: f32,
+    /// Collision trigger
+    pub collision_trigger: bool,
+    /// Collision samples remaining
+    pub collision_samples: u32,
     /// Muted flag
     pub muted: bool,
 }
@@ -41,6 +47,9 @@ impl Default for AudioState {
             gear_shift_samples: 0,
             menu_beep_trigger: false,
             menu_beep_samples: 0,
+            tire_squeal_intensity: 0.0,
+            collision_trigger: false,
+            collision_samples: 0,
             muted: false,
         }
     }
@@ -60,7 +69,7 @@ impl AudioCallback for EngineAudioCallback {
 
     fn callback(&mut self, out: &mut [f32]) {
         // Copy state values to avoid holding lock during generation
-        let (rpm, volume, engine_volume, muted, mut gear_shift_samples, mut menu_beep_samples) = {
+        let (rpm, volume, engine_volume, muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples) = {
             let mut state = self.state.lock().unwrap();
 
             // If muted, output silence
@@ -85,6 +94,12 @@ impl AudioCallback for EngineAudioCallback {
                 self.menu_beep_phase = 0.0;
             }
 
+            // Check for new collision trigger
+            if state.collision_trigger {
+                state.collision_trigger = false;
+                state.collision_samples = (self.sample_rate * 0.15) as u32; // 150ms
+            }
+
             // Copy values we need
             (
                 state.rpm,
@@ -93,6 +108,8 @@ impl AudioCallback for EngineAudioCallback {
                 state.muted,
                 state.gear_shift_samples,
                 state.menu_beep_samples,
+                state.tire_squeal_intensity,
+                state.collision_samples,
             )
         }; // Lock is released here
 
@@ -118,6 +135,19 @@ impl AudioCallback for EngineAudioCallback {
                 menu_beep_samples = menu_beep_samples.saturating_sub(1);
             }
 
+            // 4. Tire squeal sound (continuous based on intensity)
+            if tire_squeal_intensity > 0.01 {
+                let squeal_sample = self.generate_tire_squeal();
+                sample += squeal_sample * tire_squeal_intensity * 0.4;
+            }
+
+            // 5. Collision sound (short burst)
+            if collision_samples > 0 {
+                let collision_sample = self.generate_collision();
+                sample += collision_sample * 0.6;
+                collision_samples = collision_samples.saturating_sub(1);
+            }
+
             // Apply master volume and output
             *x = (sample * volume).clamp(-1.0, 1.0);
         }
@@ -127,6 +157,7 @@ impl AudioCallback for EngineAudioCallback {
             let mut state = self.state.lock().unwrap();
             state.gear_shift_samples = gear_shift_samples;
             state.menu_beep_samples = menu_beep_samples;
+            state.collision_samples = collision_samples;
         }
     }
 }
@@ -204,6 +235,34 @@ impl EngineAudioCallback {
         wave * envelope
     }
 
+    /// Generate tire squeal sound
+    /// High-frequency filtered noise for realistic tire squeal
+    fn generate_tire_squeal(&mut self) -> f32 {
+        // Generate white noise
+        let noise = fastrand::f32() * 2.0 - 1.0;
+
+        // Apply high-pass filter (tire squeal is high frequency)
+        // Using a simple one-pole high-pass filter
+        // Tire squeal is typically 1-4 kHz range
+        let filtered = noise * 0.7; // Simplified filtering
+
+        filtered
+    }
+
+    /// Generate collision sound
+    /// Sharp impact sound with quick decay
+    fn generate_collision(&mut self) -> f32 {
+        // Generate noise with some low frequency component for "thud"
+        let noise = fastrand::f32() * 2.0 - 1.0;
+
+        // Mix with low frequency sine for impact "thump"
+        let thump_freq = 80.0;
+        let t = self.phase / self.sample_rate;
+        let thump = (2.0 * PI * thump_freq * t).sin() * 0.5;
+
+        noise * 0.7 + thump * 0.3
+    }
+
     /// Generate sawtooth wave
     fn sawtooth(&self, t: f32) -> f32 {
         2.0 * (t - (t + 0.5).floor())
@@ -266,6 +325,20 @@ impl SoundEngine {
     pub fn play_menu_beep(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.menu_beep_trigger = true;
+        }
+    }
+
+    /// Set tire squeal intensity (0.0 = no squeal, 1.0 = max squeal)
+    pub fn set_tire_squeal(&self, intensity: f32) {
+        if let Ok(mut state) = self.state.lock() {
+            state.tire_squeal_intensity = intensity.clamp(0.0, 1.0);
+        }
+    }
+
+    /// Trigger collision sound
+    pub fn play_collision(&self) {
+        if let Ok(mut state) = self.state.lock() {
+            state.collision_trigger = true;
         }
     }
 

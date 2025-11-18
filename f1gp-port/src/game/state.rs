@@ -874,6 +874,42 @@ impl GameState {
     pub fn get_player_gear(&self) -> i32 {
         self.player_car.gear as i32
     }
+
+    /// Get tire squeal intensity (0.0 to 1.0) based on car sliding
+    pub fn get_tire_squeal_intensity(&self) -> f32 {
+        // Calculate sliding by comparing velocity direction with car heading
+        let velocity = self.player_car.body.velocity;
+        let speed = velocity.length();
+
+        // No squeal if moving very slow
+        if speed < 5.0 {
+            return 0.0;
+        }
+
+        // Get car's forward direction
+        let forward = self.player_car.body.orientation * glam::Vec3::NEG_Z;
+
+        // Get velocity direction
+        let velocity_dir = velocity.normalize();
+
+        // Calculate angle between forward and velocity (lateral slip)
+        let dot = forward.dot(velocity_dir);
+        let angle = dot.acos().abs();
+
+        // Normalize angle to 0-1 range (0-90 degrees)
+        // Max squeal at 45 degrees
+        let normalized_angle = (angle / (std::f32::consts::PI / 4.0)).clamp(0.0, 2.0);
+        let slip_factor = if normalized_angle <= 1.0 {
+            normalized_angle
+        } else {
+            2.0 - normalized_angle
+        };
+
+        // Scale by speed (more squeal at higher speeds)
+        let speed_factor = (speed / 50.0).clamp(0.0, 1.0);
+
+        slip_factor * speed_factor
+    }
 }
 
 #[cfg(test)]
