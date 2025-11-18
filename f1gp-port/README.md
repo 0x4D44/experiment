@@ -4,7 +4,7 @@ A modern reimplementation of the classic **Formula 1 Grand Prix** racing simulat
 
 ![Project Status](https://img.shields.io/badge/status-v1.0%20COMPLETE-success)
 ![Language](https://img.shields.io/badge/language-Rust-orange)
-![Tests](https://img.shields.io/badge/tests-87%20passing-success)
+![Tests](https://img.shields.io/badge/tests-103%20passing-success)
 ![Version](https://img.shields.io/badge/version-1.0-blue)
 
 ## 🏁 Project Status: **v1.0 COMPLETE!** 🎉
@@ -132,7 +132,7 @@ The game will launch with a main menu where you can:
 
 - **Total Lines of Code**: ~8,500
 - **Modules**: 17
-- **Test Coverage**: 87 tests, 100% passing
+- **Test Coverage**: 103 tests, 100% passing
 - **Build Time**: ~2 seconds (release)
 - **Performance**: Stable 60 FPS
 - **Memory Usage**: < 100MB
@@ -157,7 +157,7 @@ f1gp-port/
 │   └── original/      # Original F1GP data files (254 files, 28 MB)
 ├── docs/              # Technical documentation
 ├── tools/             # Python extraction tool
-└── tests/             # 87 comprehensive tests
+└── tests/             # 103 comprehensive tests
 ```
 
 ### Key Technologies
@@ -256,7 +256,7 @@ The game includes 15 authentic Formula 1 circuits from the 1991 season:
 - **Typical Frame Time**: < 16ms
 - **Memory Usage**: < 100MB
 - **Zero allocations** in hot paths
-- **87/87 tests passing** (100% success rate)
+- **103/103 tests passing** (100% success rate)
 
 ## 🔧 Technical Highlights
 
@@ -355,7 +355,7 @@ cargo test --release
 - UI: 5 tests
 - HUD: 4 tests
 - Session: 6 tests
-- **Total: 87 tests, 100% passing**
+- **Total: 103 tests, 100% passing**
 
 ## 🙏 Acknowledgments
 
