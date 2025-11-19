@@ -7,7 +7,7 @@ use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
 use crate::game::session::RaceSession;
-use crate::game::weather::WeatherSystem;
+use crate::game::weather::{WeatherCondition, WeatherSystem};
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
@@ -434,6 +434,9 @@ impl GameState {
             }
         }
 
+        // Update weather system
+        self.weather.update(delta_time);
+
         // Update timers
         self.total_time += delta_time;
         self.lap_time += delta_time;
@@ -520,7 +523,12 @@ impl GameState {
             // Apply collision detection for AI cars
             if let Some(collision_detector) = &self.track_collision {
                 let collision_result = collision_detector.check_collision(self.ai_cars[i].body.position);
-                self.ai_cars[i].apply_surface_grip(collision_result.grip_multiplier);
+
+                // Calculate total grip (surface × weather)
+                let weather_grip = self.weather.effective_grip_multiplier();
+                let total_grip = collision_result.grip_multiplier * weather_grip;
+
+                self.ai_cars[i].apply_surface_grip(total_grip);
                 self.ai_cars[i].on_track = collision_result.on_track;
 
                 // Check for lap crossing (AI driver index = i + 1, since player is 0)
@@ -542,8 +550,12 @@ impl GameState {
         if let Some(collision_detector) = &self.track_collision {
             let collision_result = collision_detector.check_collision(self.player_car.body.position);
 
-            // Apply surface grip to car
-            self.player_car.apply_surface_grip(collision_result.grip_multiplier);
+            // Calculate total grip (surface × weather)
+            let weather_grip = self.weather.effective_grip_multiplier();
+            let total_grip = collision_result.grip_multiplier * weather_grip;
+
+            // Apply combined grip to car
+            self.player_car.apply_surface_grip(total_grip);
             self.player_car.on_track = collision_result.on_track;
 
             // Check for lap crossing
@@ -914,6 +926,31 @@ impl GameState {
         let speed_factor = (speed / 50.0).clamp(0.0, 1.0);
 
         slip_factor * speed_factor
+    }
+
+    /// Get current weather condition
+    pub fn get_weather_condition(&self) -> WeatherCondition {
+        self.weather.condition
+    }
+
+    /// Set weather condition
+    pub fn set_weather_condition(&mut self, condition: WeatherCondition) {
+        self.weather.condition = condition;
+    }
+
+    /// Get weather system reference
+    pub fn weather(&self) -> &WeatherSystem {
+        &self.weather
+    }
+
+    /// Get mutable weather system reference
+    pub fn weather_mut(&mut self) -> &mut WeatherSystem {
+        &mut self.weather
+    }
+
+    /// Get effective grip multiplier from weather
+    pub fn get_weather_grip_multiplier(&self) -> f32 {
+        self.weather.effective_grip_multiplier()
     }
 }
 
