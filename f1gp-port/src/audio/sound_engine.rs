@@ -33,6 +33,8 @@ pub struct AudioState {
     pub collision_trigger: bool,
     /// Collision samples remaining
     pub collision_samples: u32,
+    /// Rain intensity (0.0 = no rain, 1.0 = heavy rain)
+    pub rain_intensity: f32,
     /// Muted flag
     pub muted: bool,
 }
@@ -50,6 +52,7 @@ impl Default for AudioState {
             tire_squeal_intensity: 0.0,
             collision_trigger: false,
             collision_samples: 0,
+            rain_intensity: 0.0,
             muted: false,
         }
     }
@@ -69,7 +72,7 @@ impl AudioCallback for EngineAudioCallback {
 
     fn callback(&mut self, out: &mut [f32]) {
         // Copy state values to avoid holding lock during generation
-        let (rpm, volume, engine_volume, _muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples) = {
+        let (rpm, volume, engine_volume, _muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples, rain_intensity) = {
             let mut state = self.state.lock().unwrap();
 
             // If muted, output silence
@@ -110,6 +113,7 @@ impl AudioCallback for EngineAudioCallback {
                 state.menu_beep_samples,
                 state.tire_squeal_intensity,
                 state.collision_samples,
+                state.rain_intensity,
             )
         }; // Lock is released here
 
@@ -146,6 +150,12 @@ impl AudioCallback for EngineAudioCallback {
                 let collision_sample = self.generate_collision();
                 sample += collision_sample * 0.6;
                 collision_samples = collision_samples.saturating_sub(1);
+            }
+
+            // 6. Rain ambient sound (continuous based on intensity)
+            if rain_intensity > 0.01 {
+                let rain_sample = self.generate_rain_sound();
+                sample += rain_sample * rain_intensity * 0.2;
             }
 
             // Apply master volume and output
@@ -263,6 +273,28 @@ impl EngineAudioCallback {
         noise * 0.7 + thump * 0.3
     }
 
+    /// Generate rain ambient sound
+    /// Soft, continuous noise simulating rain hitting surfaces
+    fn generate_rain_sound(&mut self) -> f32 {
+        // Generate brown noise (low-pass filtered white noise)
+        // Rain is more bass-heavy than white noise
+        let white_noise = fastrand::f32() * 2.0 - 1.0;
+
+        // Simple low-pass filter for brown noise effect
+        // Rain sound is typically 200-2000 Hz
+        let brown_noise = white_noise * 0.5;
+
+        // Add subtle variation to simulate raindrops hitting different surfaces
+        let variation = if fastrand::f32() > 0.98 {
+            // Occasional "drip" sounds (2% of samples)
+            (fastrand::f32() - 0.5) * 0.3
+        } else {
+            0.0
+        };
+
+        brown_noise + variation
+    }
+
     /// Generate sawtooth wave
     fn sawtooth(&self, t: f32) -> f32 {
         2.0 * (t - (t + 0.5).floor())
@@ -339,6 +371,13 @@ impl SoundEngine {
     pub fn play_collision(&self) {
         if let Ok(mut state) = self.state.lock() {
             state.collision_trigger = true;
+        }
+    }
+
+    /// Set rain ambient sound intensity (0.0 = no rain, 1.0 = heavy rain)
+    pub fn set_rain_intensity(&self, intensity: f32) {
+        if let Ok(mut state) = self.state.lock() {
+            state.rain_intensity = intensity.clamp(0.0, 1.0);
         }
     }
 

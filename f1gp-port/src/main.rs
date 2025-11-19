@@ -226,6 +226,15 @@ fn main() -> Result<()> {
                     // Update tire squeal based on sliding
                     let squeal_intensity = g.get_tire_squeal_intensity();
                     audio.set_tire_squeal(squeal_intensity);
+
+                    // Update rain ambient sound based on weather
+                    use f1gp_port::game::weather::WeatherCondition;
+                    let rain_intensity = match g.get_weather_condition() {
+                        WeatherCondition::Dry => 0.0,
+                        WeatherCondition::LightRain => 0.5,
+                        WeatherCondition::HeavyRain => 1.0,
+                    };
+                    audio.set_rain_intensity(rain_intensity);
                 }
             }
         }
