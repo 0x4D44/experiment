@@ -7,10 +7,11 @@ use crate::data::car::CarDatabase;
 use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
 use crate::game::session::RaceSession;
+use crate::game::weather::{WeatherCondition, WeatherSystem};
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
-use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
-use crate::render3d::{Camera3D, CameraMode, Renderer3D};
+use crate::render::{Camera, CarRenderer, CarState, Hud, ParticleSystem, Telemetry, TrackRenderer};
+use crate::render3d::Renderer3D;
 use crate::ui::{Menu, MenuAction};
 use anyhow::Result;
 use glam::{Vec2, Vec3};
@@ -125,6 +126,12 @@ pub struct GameState {
     /// Viewport dimensions
     viewport_width: u32,
     viewport_height: u32,
+
+    /// Weather system
+    weather: WeatherSystem,
+
+    /// Particle system for visual effects
+    particle_system: ParticleSystem,
 }
 
 impl GameState {
@@ -173,6 +180,8 @@ impl GameState {
             num_opponents: 5,
             viewport_width,
             viewport_height,
+            weather: WeatherSystem::default(),
+            particle_system: ParticleSystem::new(viewport_width, viewport_height),
         }
     }
 
@@ -183,6 +192,9 @@ impl GameState {
 
         // Fit camera to track bounds
         self.camera.fit_bounds(track_renderer.bounds);
+
+        // Enable isometric 2.5D view (like original F1GP)
+        self.camera.set_isometric();
 
         // Create track collision detector
         let track_collision = TrackCollision::new(track.clone());
@@ -287,6 +299,7 @@ impl GameState {
                         self.viewport_width,
                         self.viewport_height,
                         self.num_opponents,
+                        self.weather.condition,
                     ));
                 }
             }
@@ -362,20 +375,62 @@ impl GameState {
                     }
                 }
                 sdl2::keyboard::Keycode::Left => {
-                    // Adjust number of opponents in race setup
-                    if self.screen == GameScreen::RaceSetup && self.num_opponents > 0 {
-                        self.num_opponents -= 1;
+                    // Adjust race setup options
+                    if self.screen == GameScreen::RaceSetup {
                         if let Some(ref mut menu) = self.menu {
-                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            let selected = menu.get_selected_index();
+
+                            // Item 0: Opponents
+                            if selected == 0 && self.num_opponents > 0 {
+                                self.num_opponents -= 1;
+                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            }
+
+                            // Item 1: Weather
+                            if selected == 1 {
+                                use WeatherCondition::*;
+                                self.weather.condition = match self.weather.condition {
+                                    HeavyRain => LightRain,
+                                    LightRain => Dry,
+                                    Dry => HeavyRain,
+                                };
+                                let weather_text = match self.weather.condition {
+                                    Dry => "DRY",
+                                    LightRain => "LIGHT RAIN",
+                                    HeavyRain => "HEAVY RAIN",
+                                };
+                                menu.update_item_text(1, format!("WEATHER: {}", weather_text));
+                            }
                         }
                     }
                 }
                 sdl2::keyboard::Keycode::Right => {
-                    // Adjust number of opponents in race setup
-                    if self.screen == GameScreen::RaceSetup && self.num_opponents < 5 {
-                        self.num_opponents += 1;
+                    // Adjust race setup options
+                    if self.screen == GameScreen::RaceSetup {
                         if let Some(ref mut menu) = self.menu {
-                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            let selected = menu.get_selected_index();
+
+                            // Item 0: Opponents
+                            if selected == 0 && self.num_opponents < 5 {
+                                self.num_opponents += 1;
+                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            }
+
+                            // Item 1: Weather
+                            if selected == 1 {
+                                use WeatherCondition::*;
+                                self.weather.condition = match self.weather.condition {
+                                    Dry => LightRain,
+                                    LightRain => HeavyRain,
+                                    HeavyRain => Dry,
+                                };
+                                let weather_text = match self.weather.condition {
+                                    Dry => "DRY",
+                                    LightRain => "LIGHT RAIN",
+                                    HeavyRain => "HEAVY RAIN",
+                                };
+                                menu.update_item_text(1, format!("WEATHER: {}", weather_text));
+                            }
                         }
                     }
                 }
@@ -425,6 +480,12 @@ impl GameState {
                 log::info!("Race finished!");
             }
         }
+
+        // Update weather system
+        self.weather.update(delta_time);
+
+        // Update particle system based on weather
+        self.particle_system.update(delta_time, self.weather.condition);
 
         // Update timers
         self.total_time += delta_time;
@@ -512,7 +573,12 @@ impl GameState {
             // Apply collision detection for AI cars
             if let Some(collision_detector) = &self.track_collision {
                 let collision_result = collision_detector.check_collision(self.ai_cars[i].body.position);
-                self.ai_cars[i].apply_surface_grip(collision_result.grip_multiplier);
+
+                // Calculate total grip (surface × weather)
+                let weather_grip = self.weather.effective_grip_multiplier();
+                let total_grip = collision_result.grip_multiplier * weather_grip;
+
+                self.ai_cars[i].apply_surface_grip(total_grip);
                 self.ai_cars[i].on_track = collision_result.on_track;
 
                 // Check for lap crossing (AI driver index = i + 1, since player is 0)
@@ -534,8 +600,12 @@ impl GameState {
         if let Some(collision_detector) = &self.track_collision {
             let collision_result = collision_detector.check_collision(self.player_car.body.position);
 
-            // Apply surface grip to car
-            self.player_car.apply_surface_grip(collision_result.grip_multiplier);
+            // Calculate total grip (surface × weather)
+            let weather_grip = self.weather.effective_grip_multiplier();
+            let total_grip = collision_result.grip_multiplier * weather_grip;
+
+            // Apply combined grip to car
+            self.player_car.apply_surface_grip(total_grip);
             self.player_car.on_track = collision_result.on_track;
 
             // Check for lap crossing
@@ -595,29 +665,44 @@ impl GameState {
                     track_renderer.render(renderer, &self.camera)?;
                 }
 
-                // Render player car
-                let car_state = CarState {
+                // Collect all cars for depth-sorted rendering (important for isometric view)
+                let mut all_cars: Vec<CarState> = Vec::with_capacity(1 + self.ai_cars.len());
+
+                // Add player car
+                all_cars.push(CarState {
                     position: self.player_car.body.position,
                     rotation: self.get_car_rotation(self.player_car.body.orientation),
                     velocity: self.player_car.body.velocity.truncate(),
                     spec: self.player_car.spec.clone(),
                     driver_name: "Player".to_string(),
-                };
+                });
 
-                self.car_renderer.render_car(renderer, &car_state, &self.camera)?;
-
-                // Render AI opponent cars
+                // Add AI opponent cars
                 for (ai_car, ai_driver) in self.ai_cars.iter().zip(self.ai_drivers.iter()) {
-                    let ai_car_state = CarState {
+                    all_cars.push(CarState {
                         position: ai_car.body.position,
                         rotation: self.get_car_rotation(ai_car.body.orientation),
                         velocity: ai_car.body.velocity.truncate(),
                         spec: ai_car.spec.clone(),
                         driver_name: ai_driver.name.clone(),
-                    };
-
-                    self.car_renderer.render_car(renderer, &ai_car_state, &self.camera)?;
+                    });
                 }
+
+                // Sort cars by Y coordinate for proper depth rendering in isometric view
+                // Cars with lower Y (further "back" in isometric) are drawn first
+                if self.camera.is_isometric() {
+                    all_cars.sort_by(|a, b| {
+                        a.position.y.partial_cmp(&b.position.y).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                }
+
+                // Render all cars in sorted order
+                for car_state in &all_cars {
+                    self.car_renderer.render_car(renderer, car_state, &self.camera)?;
+                }
+
+                // Render particle effects (rain)
+                self.particle_system.render(renderer)?;
 
                 // Render HUD
                 let telemetry = Telemetry {
@@ -629,6 +714,7 @@ impl GameState {
                     best_lap_time: self.best_lap,
                     delta_time: None, // TODO: Calculate delta vs best lap
                     on_track: self.player_car.on_track,
+                    weather_condition: self.weather.condition,
                 };
 
                 self.hud.render(renderer, &telemetry)?;
@@ -848,6 +934,77 @@ impl GameState {
     /// Get current track for 3D rendering
     pub fn track(&self) -> Option<&Track> {
         self.track.as_ref()
+    }
+
+    /// Get player car RPM (for audio)
+    pub fn get_player_rpm(&self) -> f32 {
+        self.player_car.engine_rpm
+    }
+
+    /// Get player car gear (for audio)
+    pub fn get_player_gear(&self) -> i32 {
+        self.player_car.gear as i32
+    }
+
+    /// Get tire squeal intensity (0.0 to 1.0) based on car sliding
+    pub fn get_tire_squeal_intensity(&self) -> f32 {
+        // Calculate sliding by comparing velocity direction with car heading
+        let velocity = self.player_car.body.velocity;
+        let speed = velocity.length();
+
+        // No squeal if moving very slow
+        if speed < 5.0 {
+            return 0.0;
+        }
+
+        // Get car's forward direction
+        let forward = self.player_car.body.orientation * glam::Vec3::NEG_Z;
+
+        // Get velocity direction
+        let velocity_dir = velocity.normalize();
+
+        // Calculate angle between forward and velocity (lateral slip)
+        let dot = forward.dot(velocity_dir);
+        let angle = dot.acos().abs();
+
+        // Normalize angle to 0-1 range (0-90 degrees)
+        // Max squeal at 45 degrees
+        let normalized_angle = (angle / (std::f32::consts::PI / 4.0)).clamp(0.0, 2.0);
+        let slip_factor = if normalized_angle <= 1.0 {
+            normalized_angle
+        } else {
+            2.0 - normalized_angle
+        };
+
+        // Scale by speed (more squeal at higher speeds)
+        let speed_factor = (speed / 50.0).clamp(0.0, 1.0);
+
+        slip_factor * speed_factor
+    }
+
+    /// Get current weather condition
+    pub fn get_weather_condition(&self) -> WeatherCondition {
+        self.weather.condition
+    }
+
+    /// Set weather condition
+    pub fn set_weather_condition(&mut self, condition: WeatherCondition) {
+        self.weather.condition = condition;
+    }
+
+    /// Get weather system reference
+    pub fn weather(&self) -> &WeatherSystem {
+        &self.weather
+    }
+
+    /// Get mutable weather system reference
+    pub fn weather_mut(&mut self) -> &mut WeatherSystem {
+        &mut self.weather
+    }
+
+    /// Get effective grip multiplier from weather
+    pub fn get_weather_grip_multiplier(&self) -> f32 {
+        self.weather.effective_grip_multiplier()
     }
 }
 

@@ -1,12 +1,13 @@
-//! Audio module - Stage 6.6
-//! Audio system using rodio for sound playback
+//! Audio module
 //!
-//! Note: Audio features require the "audio" feature to be enabled
+//! Provides audio playback for F1GP sound effects and engine sounds.
+//!
+//! Features:
+//! - Real-time engine sound synthesis (RPM-based)
+//! - Gear shift sounds
+//! - Menu sound effects
+//! - Volume control and muting
 
-#[cfg(feature = "audio")]
-pub mod engine;
-pub mod sound;
+pub mod sound_engine;
 
-#[cfg(feature = "audio")]
-pub use engine::AudioEngine;
-pub use sound::{SoundType, SoundSource};
+pub use sound_engine::SoundEngine;

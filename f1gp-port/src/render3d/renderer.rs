@@ -5,7 +5,7 @@
 use anyhow::Result;
 use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
-use glam::{Mat4, Vec3};
+use glam::Mat4;
 
 use crate::game::GameState;
 use crate::data::Track;
@@ -107,8 +107,8 @@ pub struct Renderer3D {
     camera_bind_group: wgpu::BindGroup,
 
     // Lighting
-    light_uniforms: LightUniforms,
-    light_buffer: wgpu::Buffer,
+    _light_uniforms: LightUniforms,
+    _light_buffer: wgpu::Buffer,
     light_bind_group: wgpu::BindGroup,
 
     // Depth buffer
@@ -122,13 +122,13 @@ pub struct Renderer3D {
     track_index_count: u32,
 
     // Test triangle (for basic testing)
-    basic_pipeline: wgpu::RenderPipeline,
-    test_vertex_buffer: wgpu::Buffer,
-    test_vertex_count: u32,
+    _basic_pipeline: wgpu::RenderPipeline,
+    _test_vertex_buffer: wgpu::Buffer,
+    _test_vertex_count: u32,
 
     // Car rendering
     car_pipeline: wgpu::RenderPipeline,
-    car_model: CarModel,
+    _car_model: CarModel,
     car_vertex_buffer: wgpu::Buffer,
     car_index_buffer: wgpu::Buffer,
     car_index_count: u32,
@@ -591,8 +591,8 @@ impl Renderer3D {
             camera_uniforms,
             camera_buffer,
             camera_bind_group,
-            light_uniforms,
-            light_buffer,
+            _light_uniforms: light_uniforms,
+            _light_buffer: light_buffer,
             light_bind_group,
             depth_texture,
             depth_view,
@@ -600,11 +600,11 @@ impl Renderer3D {
             track_vertex_buffer: None,
             track_index_buffer: None,
             track_index_count: 0,
-            basic_pipeline,
-            test_vertex_buffer,
-            test_vertex_count: test_vertices.len() as u32,
+            _basic_pipeline: basic_pipeline,
+            _test_vertex_buffer: test_vertex_buffer,
+            _test_vertex_count: test_vertices.len() as u32,
             car_pipeline,
-            car_model,
+            _car_model: car_model,
             car_vertex_buffer,
             car_index_buffer,
             car_index_count,

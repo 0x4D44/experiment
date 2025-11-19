@@ -2,13 +2,14 @@
 
 A modern reimplementation of the classic **Formula 1 Grand Prix** racing simulator by Geoff Crammond (MicroProse, 1991), built from scratch in Rust.
 
-![Project Status](https://img.shields.io/badge/status-playable-brightgreen)
+![Project Status](https://img.shields.io/badge/status-v1.0%20COMPLETE-success)
 ![Language](https://img.shields.io/badge/language-Rust-orange)
-![Tests](https://img.shields.io/badge/tests-87%20passing-success)
+![Tests](https://img.shields.io/badge/tests-103%20passing-success)
+![Version](https://img.shields.io/badge/version-1.0-blue)
 
-## 🏁 Project Status: **PLAYABLE** (95% Complete)
+## 🏁 Project Status: **v1.0 COMPLETE!** 🎉
 
-This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, and professional UI!
+This is a **fully functional F1 racing game** with complete physics, AI opponents, race management, menu system, authentic isometric 2.5D rendering, comprehensive audio system (engine, gears, tire squeal, collisions), and 15 authentic F1GP tracks!
 
 ## ✨ Features
 
@@ -42,12 +43,23 @@ This is a **fully functional F1 racing game** with complete physics, AI opponent
   - Real-time HUD with telemetry (speed, RPM, gear, lap times)
 
 ### Graphics & Rendering
-- ✅ Track rendering with centerline visualization
-- ✅ 2D top-down camera system with pan/zoom
-- ✅ Car sprites with realistic rotation
+- ✅ **Isometric 2.5D view** (authentic F1GP 1991 style)
+- ✅ Track rendering with isometric projection
+- ✅ Camera system with pan/zoom support
+- ✅ Car sprites with depth sorting (back-to-front)
 - ✅ Pixel-based text rendering (no external fonts needed)
 - ✅ Color-coded UI elements
 - ✅ 60 FPS stable performance
+
+### Audio System
+- ✅ **Real-time audio synthesis** (no audio files needed)
+- ✅ RPM-based engine sound (1000-13000 RPM range)
+- ✅ Gear shift sound effects
+- ✅ Tire squeal (dynamic intensity based on sliding)
+- ✅ Collision sound effects
+- ✅ Menu navigation sounds
+- ✅ Volume control and mute toggle (M key)
+- ✅ SDL2 audio backend
 
 ### Data Systems
 - ✅ Complete track data parser (F1GP original format)
@@ -74,6 +86,7 @@ This is a **fully functional F1 racing game** with complete physics, AI opponent
 - **ESC**: Pause
 - **R**: Reset car
 - **P**: Pause (alternative)
+- **M**: Mute/Unmute audio
 
 ## 🚀 Quick Start
 
@@ -93,27 +106,33 @@ brew install sdl2
 # Download from https://www.libsdl.org/download-2.0.php
 ```
 
-### Building
+### Building and Running
 
 ```bash
 # Navigate to project directory
 cd f1gp-port
 
-# Build release version
+# Build release version (creates 3.0 MB binary)
 cargo build --release
 
-# Run the game (NOT YET IMPLEMENTED - needs main.rs integration)
+# Run the game
 cargo run --release
+# OR run the binary directly
+./target/release/f1gp
 
 # Run tests
 cargo test
 ```
 
+The game will launch with a main menu where you can:
+1. **Start Race** - Select from 15 authentic F1GP tracks
+2. **Quit** - Exit the game
+
 ## 📊 Project Statistics
 
 - **Total Lines of Code**: ~8,500
 - **Modules**: 17
-- **Test Coverage**: 87 tests, 100% passing
+- **Test Coverage**: 103 tests, 100% passing
 - **Build Time**: ~2 seconds (release)
 - **Performance**: Stable 60 FPS
 - **Memory Usage**: < 100MB
@@ -138,7 +157,7 @@ f1gp-port/
 │   └── original/      # Original F1GP data files (254 files, 28 MB)
 ├── docs/              # Technical documentation
 ├── tools/             # Python extraction tool
-└── tests/             # 87 comprehensive tests
+└── tests/             # 103 comprehensive tests
 ```
 
 ### Key Technologies
@@ -208,6 +227,28 @@ Each AI driver has unique characteristics:
 | **Average** | 0.70 | 0.50 | 0.70 | 0.60 | 0.12s |
 | **Rookie** | 0.50 | 0.40 | 0.50 | 0.40 | 0.15s |
 
+## 🏁 Available Tracks (15 Circuits)
+
+The game includes 15 authentic Formula 1 circuits from the 1991 season:
+
+1. **Phoenix** (USA)
+2. **Interlagos** (Brazil)
+3. **Imola** (San Marino)
+4. **Monaco** (Monte Carlo)
+5. **Mexico** (Mexico City)
+6. **Magny-Cours** (France)
+7. **Silverstone** (Great Britain)
+8. **Hockenheim** (Germany)
+9. **Hungaroring** (Hungary)
+10. **Spa-Francorchamps** (Belgium)
+11. **Monza** (Italy)
+12. **Estoril** (Portugal)
+13. **Barcelona** (Spain)
+14. **Suzuka** (Japan)
+15. **Adelaide** (Australia)
+
+*Note: Montreal (Canada) track file (F1CT05.DAT) uses an incompatible file format and is not available. Extensive investigation confirmed the data structure differs fundamentally from other tracks. See `wrk_journals/2025.11.18 - Montreal Track Investigation.md` for technical details.*
+
 ## 📈 Performance
 
 - **Target FPS**: 60
@@ -215,7 +256,7 @@ Each AI driver has unique characteristics:
 - **Typical Frame Time**: < 16ms
 - **Memory Usage**: < 100MB
 - **Zero allocations** in hot paths
-- **87/87 tests passing** (100% success rate)
+- **103/103 tests passing** (100% success rate)
 
 ## 🔧 Technical Highlights
 
@@ -237,6 +278,10 @@ Each AI driver has unique characteristics:
 - Personality-driven behaviors
 
 ### Rendering
+- **Isometric 2.5D projection** (authentic F1GP 1991 style)
+  - 30° camera angle with proper depth perception
+  - Automatic depth sorting for cars (back-to-front)
+  - Efficient 2D rendering with 3D appearance
 - Efficient batch rendering
 - Visibility culling
 - Camera-relative coordinate system
@@ -252,33 +297,35 @@ Each AI driver has unique characteristics:
 
 ## 🐛 Known Limitations
 
-- ✗ Audio system not implemented (module exists but is stub)
-- ✗ Only 2D top-down view (3D not implemented)
-- ✗ Single track available (more can be added)
 - ✗ Weather effects not implemented
 - ✗ Pit stops not implemented
-- ✗ Main.rs integration incomplete (game runs via tests)
+- ✗ 1 track has parser issues (Montreal - F1CT05.DAT)
 
-## 🛣️ Future Enhancements
+## 🛣️ Future Enhancements (v2.0)
 
-- [ ] Complete main.rs integration for standalone executable
-- [ ] Multiple tracks (16 circuits from original game)
-- [ ] 3D graphics renderer
-- [ ] Sound effects and music
+- [ ] Montreal track support - requires understanding incompatible F1CT05.DAT format (see investigation journal)
 - [ ] Weather conditions (wet track physics ready)
 - [ ] Pit stops and tire wear
-- [ ] Championship mode
-- [ ] Replays
-- [ ] Multiplayer
+- [ ] Championship mode (full season)
+- [ ] Replays and ghost cars
+- [ ] Multiplayer (split-screen or online)
+- [ ] Enhanced isometric sprites (more angles, better detail)
+- [ ] Additional ambient sounds (crowd, wind)
+- [ ] Save/load game state
 
 ## 📝 Development Timeline
 
 - **Start Date**: November 14, 2025
-- **Completion Date**: November 15, 2025
-- **Total Development Time**: ~12 hours
-- **Stages Completed**: 19 out of 19 (100%)
-- **Lines of Code**: ~8,500
-- **Commits**: 12 major milestones
+- **v1.0 Completion Date**: November 18, 2025
+- **Total Development Time**: ~16 hours across 4 days
+- **Major Milestones**:
+  - Phase 1: Foundation & Physics (Nov 14-15)
+  - Phase 2: Isometric 2.5D Rendering (Nov 17)
+  - Phase 3: Sound System (Nov 17-18)
+  - Phase 4: Final Polish (Nov 18)
+- **Lines of Code**: ~9,000+
+- **Commits**: 20+ major milestones
+- **v1.0 Features**: Complete!
 
 ## 🧪 Testing
 
@@ -308,7 +355,7 @@ cargo test --release
 - UI: 5 tests
 - HUD: 4 tests
 - Session: 6 tests
-- **Total: 87 tests, 100% passing**
+- **Total: 103 tests, 100% passing**
 
 ## 🙏 Acknowledgments
 

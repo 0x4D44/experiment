@@ -2,7 +2,7 @@
 //!
 //! A demo of the F1GP Modern Port with 3D rendering using wgpu.
 
-mod track_generator;
+mod track_loader;
 
 use anyhow::Result;
 use f1gp_port::game::GameState;
@@ -117,7 +117,7 @@ impl App {
         log::info!("Game state created");
 
         // Load initial track
-        let track = track_generator::get_track(self.current_track_index).unwrap();
+        let track = track_loader::get_track(self.current_track_index).unwrap();
         log::info!("Loading track: {}", track.name);
         game.load_track(track);
         log::info!("Track loaded");
@@ -148,7 +148,7 @@ impl App {
     }
 
     fn switch_track(&mut self, track_index: usize) {
-        if track_index >= track_generator::get_track_count() {
+        if track_index >= track_loader::get_track_count() {
             log::warn!("Invalid track index: {}", track_index);
             return;
         }
@@ -161,7 +161,7 @@ impl App {
             &mut self.renderer_3d,
         ) {
             // Load new track
-            if let Some(track) = track_generator::get_track(track_index) {
+            if let Some(track) = track_loader::get_track(track_index) {
                 log::info!("Switching to track: {}", track.name);
                 game.load_track(track);
 
@@ -495,12 +495,20 @@ impl ApplicationHandler for App {
                             log::info!("Game reset");
                         }
                     }
-                    // Track selection (number keys 1-5)
-                    KeyCode::Digit1 => self.switch_track(0),
-                    KeyCode::Digit2 => self.switch_track(1),
-                    KeyCode::Digit3 => self.switch_track(2),
-                    KeyCode::Digit4 => self.switch_track(3),
-                    KeyCode::Digit5 => self.switch_track(4),
+                    // Track selection (all 16 F1GP tracks)
+                    KeyCode::Digit1 => self.switch_track(0),   // Phoenix
+                    KeyCode::Digit2 => self.switch_track(1),   // Interlagos
+                    KeyCode::Digit3 => self.switch_track(2),   // Imola
+                    KeyCode::Digit4 => self.switch_track(3),   // Monaco
+                    KeyCode::Digit5 => self.switch_track(4),   // Montreal
+                    KeyCode::Digit6 => self.switch_track(5),   // Mexico
+                    KeyCode::Digit7 => self.switch_track(6),   // Magny-Cours
+                    KeyCode::Digit8 => self.switch_track(7),   // Silverstone
+                    KeyCode::Digit9 => self.switch_track(8),   // Hockenheim
+                    KeyCode::Digit0 => self.switch_track(9),   // Hungaroring
+                    KeyCode::Minus => self.switch_track(10),   // Spa
+                    KeyCode::Equal => self.switch_track(11),   // Monza
+                    // Could add more but 12 tracks is plenty for now
                     _ => {
                         // Handle game input
                         if let Some(game) = &mut self.game {
@@ -606,9 +614,9 @@ fn main() -> Result<()> {
     log::info!("  ✓ Multiple Camera Modes");
     log::info!("  ✓ Performance Metrics");
     log::info!("");
-    log::info!("Available Tracks:");
-    for (i, track) in track_generator::get_all_tracks().iter().enumerate() {
-        log::info!("  {} - {}", i + 1, track.name);
+    log::info!("Available Tracks (Real F1GP Circuits):");
+    for (i, name) in track_loader::get_track_names().iter().enumerate() {
+        log::info!("  {:2} - {}", i + 1, name);
     }
     log::info!("");
     log::info!("Controls:");
@@ -616,7 +624,7 @@ fn main() -> Result<()> {
     log::info!("  Z / X             - Shift Down / Up");
     log::info!("  C                 - Cycle Camera Mode");
     log::info!("  F                 - Toggle Free Camera");
-    log::info!("  1-5               - Select Track");
+    log::info!("  1-9, 0, -, =      - Select Track (16 F1GP circuits)");
     log::info!("  P                 - Pause");
     log::info!("  R                 - Reset");
     log::info!("  ESC               - Quit");

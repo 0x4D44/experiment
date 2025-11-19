@@ -16,6 +16,8 @@ pub enum CameraMode {
     TopDown,
     /// Track overview (fits entire track)
     TrackOverview,
+    /// Isometric 2.5D view (like original F1GP)
+    Isometric,
 }
 
 /// 2D Camera for viewing the game world
@@ -79,9 +81,53 @@ impl Camera {
 
     /// Convert world coordinates to screen coordinates
     pub fn world_to_screen(&self, world_pos: Vec3) -> Vec2 {
+        // Use isometric projection if in isometric mode
+        if self.mode == CameraMode::Isometric {
+            return self.world_to_screen_isometric(world_pos);
+        }
+
+        // Standard orthographic (top-down) projection
         let centered_x = world_pos.x - self.position.x;
         let centered_y = world_pos.y - self.position.y;
 
+        let screen_x = (centered_x * self.zoom) + self.viewport.width / 2.0;
+        let screen_y = (centered_y * self.zoom) + self.viewport.height / 2.0;
+
+        Vec2::new(screen_x, screen_y)
+    }
+
+    /// Convert world coordinates to screen coordinates using isometric projection
+    ///
+    /// This creates a 2.5D isometric view similar to the original F1GP (1991).
+    /// The transformation creates a view at ~30° angle from horizontal.
+    pub fn world_to_screen_isometric(&self, world_pos: Vec3) -> Vec2 {
+        // Isometric projection formula (dimetric/isometric hybrid)
+        // Standard isometric:
+        //   screen_x = (world.x - world.z) * scale_x
+        //   screen_y = (world.x + world.z) * scale_y - world.y
+        //
+        // For F1GP style, we use:
+        //   - X and Z form the ground plane
+        //   - Y is "up" (elevation)
+        //   - Camera looks down at ~30-45 degrees
+
+        // Isometric transformation constants
+        const ISO_SCALE_X: f32 = 0.866; // cos(30°) - horizontal spacing
+        const ISO_SCALE_Y: f32 = 0.5;   // sin(30°) - vertical compression
+
+        // Transform to isometric coordinates
+        // Using (x, z) as ground plane, y as elevation
+        let iso_x = (world_pos.x - world_pos.z) * ISO_SCALE_X;
+        let iso_y = (world_pos.x + world_pos.z) * ISO_SCALE_Y - world_pos.y;
+
+        // Apply camera position (center on camera target)
+        let camera_iso_x = (self.position.x - self.position.z) * ISO_SCALE_X;
+        let camera_iso_y = (self.position.x + self.position.z) * ISO_SCALE_Y - self.position.y;
+
+        let centered_x = iso_x - camera_iso_x;
+        let centered_y = iso_y - camera_iso_y;
+
+        // Apply zoom and viewport centering
         let screen_x = (centered_x * self.zoom) + self.viewport.width / 2.0;
         let screen_y = (centered_y * self.zoom) + self.viewport.height / 2.0;
 
@@ -126,6 +172,16 @@ impl Camera {
     pub fn follow(&mut self, target: Vec3) {
         self.mode = CameraMode::Follow;
         self.target = target;
+    }
+
+    /// Enable isometric 2.5D view (like original F1GP)
+    pub fn set_isometric(&mut self) {
+        self.mode = CameraMode::Isometric;
+    }
+
+    /// Check if camera is in isometric mode
+    pub fn is_isometric(&self) -> bool {
+        self.mode == CameraMode::Isometric
     }
 
     /// Fit the camera to show a bounding box

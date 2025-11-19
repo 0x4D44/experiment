@@ -2,6 +2,7 @@
 //!
 //! Renders race information overlay including lap times, speed, gear, RPM, etc.
 
+use crate::game::weather::WeatherCondition;
 use crate::platform::{Color, Rect, Renderer};
 use anyhow::Result;
 use glam::Vec2;
@@ -31,6 +32,8 @@ pub struct Telemetry {
     pub delta_time: Option<f32>,
     /// Is car on track?
     pub on_track: bool,
+    /// Current weather condition
+    pub weather_condition: WeatherCondition,
 }
 
 impl Hud {
@@ -219,6 +222,36 @@ impl Hud {
 
     /// Draw status indicators (on/off track, etc.)
     fn draw_status_indicators(&self, renderer: &mut dyn Renderer, telemetry: &Telemetry) -> Result<()> {
+        // Weather indicator (top-left corner)
+        let weather_x = 10.0;
+        let weather_y = 10.0;
+        let weather_width = 150.0;
+        let weather_height = 40.0;
+
+        // Draw weather panel background
+        renderer.draw_filled_rect(
+            Rect::new(weather_x, weather_y, weather_width, weather_height),
+            Color::rgba(0, 0, 0, 180),
+        )?;
+        renderer.draw_rect(
+            Rect::new(weather_x, weather_y, weather_width, weather_height),
+            Color::rgb(200, 200, 200),
+        )?;
+
+        // Weather icon/text
+        let (weather_text, weather_color) = match telemetry.weather_condition {
+            WeatherCondition::Dry => ("DRY", Color::rgb(255, 220, 100)),
+            WeatherCondition::LightRain => ("LIGHT RAIN", Color::rgb(100, 150, 255)),
+            WeatherCondition::HeavyRain => ("HEAVY RAIN", Color::rgb(50, 100, 255)),
+        };
+
+        renderer.draw_text(
+            weather_text,
+            Vec2::new(weather_x + 10.0, weather_y + 8.0),
+            20.0,
+            weather_color,
+        )?;
+
         // Off-track warning
         if !telemetry.on_track {
             let warning_x = self.screen_width as f32 / 2.0 - 80.0;
@@ -285,8 +318,10 @@ mod tests {
             best_lap_time: Some(64.500),
             delta_time: Some(0.623),
             on_track: true,
+            weather_condition: WeatherCondition::Dry,
         };
         assert_eq!(telemetry.speed, 250.0);
         assert_eq!(telemetry.gear, 5);
+        assert_eq!(telemetry.weather_condition, WeatherCondition::Dry);
     }
 }
