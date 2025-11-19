@@ -661,6 +661,7 @@ impl GameState {
                     best_lap_time: self.best_lap,
                     delta_time: None, // TODO: Calculate delta vs best lap
                     on_track: self.player_car.on_track,
+                    weather_condition: self.weather.condition,
                 };
 
                 self.hud.render(renderer, &telemetry)?;
