@@ -2,6 +2,7 @@
 //!
 //! Provides menu UI for game navigation.
 
+use crate::game::weather::WeatherCondition;
 use crate::platform::{Color, Rect, Renderer};
 use anyhow::Result;
 use glam::Vec2;
@@ -123,9 +124,16 @@ impl Menu {
     }
 
     /// Create race setup menu
-    pub fn race_setup_menu(screen_width: u32, screen_height: u32, num_opponents: usize) -> Self {
+    pub fn race_setup_menu(screen_width: u32, screen_height: u32, num_opponents: usize, weather: WeatherCondition) -> Self {
+        let weather_text = match weather {
+            WeatherCondition::Dry => "DRY",
+            WeatherCondition::LightRain => "LIGHT RAIN",
+            WeatherCondition::HeavyRain => "HEAVY RAIN",
+        };
+
         let items = vec![
             MenuItem::new(format!("OPPONENTS: {}", num_opponents), MenuAction::None),
+            MenuItem::new(format!("WEATHER: {}", weather_text), MenuAction::None),
             MenuItem::new("START RACE", MenuAction::StartRace),
             MenuItem::new("BACK", MenuAction::MainMenu),
         ];
@@ -133,7 +141,7 @@ impl Menu {
         Self {
             menu_type: MenuType::RaceSetup,
             items,
-            selected_index: 1, // Default to "Start Race"
+            selected_index: 2, // Default to "Start Race"
             title: "RACE SETUP".to_string(),
             screen_width,
             screen_height,
@@ -217,6 +225,11 @@ impl Menu {
         if let Some(item) = self.items.get_mut(index) {
             item.text = text;
         }
+    }
+
+    /// Get currently selected menu item index
+    pub fn get_selected_index(&self) -> usize {
+        self.selected_index
     }
 
     /// Render the menu

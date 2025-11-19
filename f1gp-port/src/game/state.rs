@@ -295,6 +295,7 @@ impl GameState {
                         self.viewport_width,
                         self.viewport_height,
                         self.num_opponents,
+                        self.weather.condition,
                     ));
                 }
             }
@@ -370,20 +371,62 @@ impl GameState {
                     }
                 }
                 sdl2::keyboard::Keycode::Left => {
-                    // Adjust number of opponents in race setup
-                    if self.screen == GameScreen::RaceSetup && self.num_opponents > 0 {
-                        self.num_opponents -= 1;
+                    // Adjust race setup options
+                    if self.screen == GameScreen::RaceSetup {
                         if let Some(ref mut menu) = self.menu {
-                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            let selected = menu.get_selected_index();
+
+                            // Item 0: Opponents
+                            if selected == 0 && self.num_opponents > 0 {
+                                self.num_opponents -= 1;
+                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            }
+
+                            // Item 1: Weather
+                            if selected == 1 {
+                                use WeatherCondition::*;
+                                self.weather.condition = match self.weather.condition {
+                                    HeavyRain => LightRain,
+                                    LightRain => Dry,
+                                    Dry => HeavyRain,
+                                };
+                                let weather_text = match self.weather.condition {
+                                    Dry => "DRY",
+                                    LightRain => "LIGHT RAIN",
+                                    HeavyRain => "HEAVY RAIN",
+                                };
+                                menu.update_item_text(1, format!("WEATHER: {}", weather_text));
+                            }
                         }
                     }
                 }
                 sdl2::keyboard::Keycode::Right => {
-                    // Adjust number of opponents in race setup
-                    if self.screen == GameScreen::RaceSetup && self.num_opponents < 5 {
-                        self.num_opponents += 1;
+                    // Adjust race setup options
+                    if self.screen == GameScreen::RaceSetup {
                         if let Some(ref mut menu) = self.menu {
-                            menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            let selected = menu.get_selected_index();
+
+                            // Item 0: Opponents
+                            if selected == 0 && self.num_opponents < 5 {
+                                self.num_opponents += 1;
+                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                            }
+
+                            // Item 1: Weather
+                            if selected == 1 {
+                                use WeatherCondition::*;
+                                self.weather.condition = match self.weather.condition {
+                                    Dry => LightRain,
+                                    LightRain => HeavyRain,
+                                    HeavyRain => Dry,
+                                };
+                                let weather_text = match self.weather.condition {
+                                    Dry => "DRY",
+                                    LightRain => "LIGHT RAIN",
+                                    HeavyRain => "HEAVY RAIN",
+                                };
+                                menu.update_item_text(1, format!("WEATHER: {}", weather_text));
+                            }
                         }
                     }
                 }
