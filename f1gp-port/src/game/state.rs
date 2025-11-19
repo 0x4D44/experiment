@@ -10,7 +10,7 @@ use crate::game::session::RaceSession;
 use crate::game::weather::{WeatherCondition, WeatherSystem};
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
-use crate::render::{Camera, CarRenderer, CarState, Hud, Telemetry, TrackRenderer};
+use crate::render::{Camera, CarRenderer, CarState, Hud, ParticleSystem, Telemetry, TrackRenderer};
 use crate::render3d::Renderer3D;
 use crate::ui::{Menu, MenuAction};
 use anyhow::Result;
@@ -129,6 +129,9 @@ pub struct GameState {
 
     /// Weather system
     weather: WeatherSystem,
+
+    /// Particle system for visual effects
+    particle_system: ParticleSystem,
 }
 
 impl GameState {
@@ -178,6 +181,7 @@ impl GameState {
             viewport_width,
             viewport_height,
             weather: WeatherSystem::default(),
+            particle_system: ParticleSystem::new(viewport_width, viewport_height),
         }
     }
 
@@ -480,6 +484,9 @@ impl GameState {
         // Update weather system
         self.weather.update(delta_time);
 
+        // Update particle system based on weather
+        self.particle_system.update(delta_time, self.weather.condition);
+
         // Update timers
         self.total_time += delta_time;
         self.lap_time += delta_time;
@@ -693,6 +700,9 @@ impl GameState {
                 for car_state in &all_cars {
                     self.car_renderer.render_car(renderer, car_state, &self.camera)?;
                 }
+
+                // Render particle effects (rain)
+                self.particle_system.render(renderer)?;
 
                 // Render HUD
                 let telemetry = Telemetry {
