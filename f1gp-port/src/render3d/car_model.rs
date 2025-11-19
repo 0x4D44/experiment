@@ -1,7 +1,7 @@
 // Car Model Generator - Stage 6.3
 // Creates 3D car models for rendering
 
-use glam::{Mat4, Quat, Vec3};
+use glam::{Mat4, Vec3};
 use bytemuck::{Pod, Zeroable};
 use crate::physics::CarPhysics;
 
@@ -151,7 +151,7 @@ impl CarModel {
         size: Vec3,
         color: [f32; 4],
     ) {
-        let base_index = vertices.len() as u32;
+        let _base_index = vertices.len() as u32;
         let half_size = size * 0.5;
 
         // 8 vertices of the box

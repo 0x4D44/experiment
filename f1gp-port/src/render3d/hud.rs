@@ -121,9 +121,9 @@ pub struct HudRenderer {
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer,
-    font_texture: wgpu::Texture,
-    font_view: wgpu::TextureView,
-    font_sampler: wgpu::Sampler,
+    _font_texture: wgpu::Texture,
+    _font_view: wgpu::TextureView,
+    _font_sampler: wgpu::Sampler,
     bind_group: wgpu::BindGroup,
     num_indices: u32,
     screen_width: f32,
@@ -286,9 +286,9 @@ impl HudRenderer {
             render_pipeline,
             vertex_buffer,
             index_buffer,
-            font_texture,
-            font_view,
-            font_sampler,
+            _font_texture: font_texture,
+            _font_view: font_view,
+            _font_sampler: font_sampler,
             bind_group,
             num_indices: 0,
             screen_width: config.width as f32,
@@ -314,7 +314,7 @@ impl HudRenderer {
     ) -> (Vec<HudVertex>, Vec<u16>) {
         const CHAR_WIDTH: f32 = 8.0;
         const CHAR_HEIGHT: f32 = 16.0;
-        const CHARS_PER_ROW: f32 = 16.0;
+        const _CHARS_PER_ROW: f32 = 16.0;
         const ATLAS_WIDTH: f32 = 128.0;
         const ATLAS_HEIGHT: f32 = 96.0;
 
@@ -388,7 +388,7 @@ impl HudRenderer {
     pub fn render(
         &mut self,
         device: &wgpu::Device,
-        queue: &wgpu::Queue,
+        _queue: &wgpu::Queue,
         encoder: &mut wgpu::CommandEncoder,
         view: &wgpu::TextureView,
         lines: &[(String, f32, f32, f32, [f32; 4])], // (text, x, y, scale, color)

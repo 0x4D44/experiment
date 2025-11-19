@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     println!("======================\n");
 
     // Test Monaco (F1CT04.DAT)
-    let monaco_path = "assets/original/HARDDISK/F1CT04.DAT;1";
+    let monaco_path = "assets/original/F1CT04.DAT";
     println!("Loading Monaco track from: {}", monaco_path);
 
     let data = fs::read(monaco_path)?;
@@ -66,26 +66,26 @@ fn main() -> Result<()> {
     println!("\n\n=== Testing All 16 Tracks ===\n");
 
     let tracks = [
-        ("F1CT01.DAT;1", "Phoenix"),
-        ("F1CT02.DAT;1", "Interlagos"),
-        ("F1CT03.DAT;1", "Imola"),
-        ("F1CT04.DAT;1", "Monaco"),
-        ("F1CT05.DAT;1", "Montreal"),
-        ("F1CT06.DAT;1", "Mexico"),
-        ("F1CT07.DAT;1", "Magny-Cours"),
-        ("F1CT08.DAT;1", "Silverstone"),
-        ("F1CT09.DAT;1", "Hockenheim"),
-        ("F1CT10.DAT;1", "Hungaroring"),
-        ("F1CT11.DAT;1", "Spa-Francorchamps"),
-        ("F1CT12.DAT;1", "Monza"),
-        ("F1CT13.DAT;1", "Estoril"),
-        ("F1CT14.DAT;1", "Barcelona"),
-        ("F1CT15.DAT;1", "Suzuka"),
-        ("F1CT16.DAT;1", "Adelaide"),
+        ("F1CT01.DAT", "Phoenix"),
+        ("F1CT02.DAT", "Interlagos"),
+        ("F1CT03.DAT", "Imola"),
+        ("F1CT04.DAT", "Monaco"),
+        ("F1CT05.DAT", "Montreal"),
+        ("F1CT06.DAT", "Mexico"),
+        ("F1CT07.DAT", "Magny-Cours"),
+        ("F1CT08.DAT", "Silverstone"),
+        ("F1CT09.DAT", "Hockenheim"),
+        ("F1CT10.DAT", "Hungaroring"),
+        ("F1CT11.DAT", "Spa-Francorchamps"),
+        ("F1CT12.DAT", "Monza"),
+        ("F1CT13.DAT", "Estoril"),
+        ("F1CT14.DAT", "Barcelona"),
+        ("F1CT15.DAT", "Suzuka"),
+        ("F1CT16.DAT", "Adelaide"),
     ];
 
     for (filename, name) in tracks.iter() {
-        let path = format!("assets/original/HARDDISK/{}", filename);
+        let path = format!("assets/original/{}", filename);
         match fs::read(&path) {
             Ok(data) => {
                 let file_size = data.len();
