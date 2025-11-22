@@ -5,7 +5,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use env_logger;
-use f1gp_port::load_track;
+use f1gp_port::{load_file_bytes, parse_track_asset};
 use log::info;
 use serde_json;
 use std::fs;
@@ -40,25 +40,53 @@ fn main() -> Result<()> {
     info!("F1GP Track Inspector");
     info!("Loading track: {:?}", args.input);
 
-    // Load the track
-    let track = load_track(&args.input, args.name)
-        .with_context(|| format!("Failed to load track from {:?}", args.input))?;
+    let track_name = args.name.unwrap_or_else(|| {
+        args.input
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("Unknown")
+            .to_string()
+    });
+
+    let data = load_file_bytes(&args.input)
+        .with_context(|| format!("Failed to read track bytes from {:?}", args.input))?;
+
+    let asset = parse_track_asset(data, track_name.clone())
+        .with_context(|| format!("Failed to parse track asset from {:?}", args.input))?;
+
+    let track = asset.clone().into_track();
 
     info!("Successfully loaded track: {}", track.name);
-    info!("  Checksum: 0x{:08X}", track.checksum);
+    info!(
+        "  Checksum stored=0x{:08X} computed=0x{:08X}",
+        asset.checksum, asset.computed_checksum
+    );
+    info!(
+        "  Track data offset=0x{:04X} (skip={})",
+        asset.section_data_offset, asset.section_skip_hint
+    );
+    if let Some(header) = asset.header {
+        info!(
+            "  Header start_width={} first_angle={} kerb_type={}",
+            header.start_width, header.first_section_angle, header.kerb_type
+        );
+    } else {
+        info!("  Header: unavailable (parse failure)");
+    }
     info!("  Object shapes: {}", track.object_shapes.len());
     info!("  Track sections: {}", track.sections.len());
-    info!("  Racing line points: {}", track.racing_line.points.len());
+    info!(
+        "  Racing line segments: {}",
+        track.racing_line.segments.len()
+    );
     info!("  Pit lane sections: {}", track.pit_lane.len());
     info!("  Cameras: {}", track.cameras.len());
 
     // Serialize to JSON
     let json = if args.pretty {
-        serde_json::to_string_pretty(&track)
-            .context("Failed to serialize track to JSON")?
+        serde_json::to_string_pretty(&track).context("Failed to serialize track to JSON")?
     } else {
-        serde_json::to_string(&track)
-            .context("Failed to serialize track to JSON")?
+        serde_json::to_string(&track).context("Failed to serialize track to JSON")?
     };
 
     // Output

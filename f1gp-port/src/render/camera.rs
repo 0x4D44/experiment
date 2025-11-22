@@ -56,11 +56,7 @@ impl Camera {
     }
 
     /// Create a camera in track overview mode
-    pub fn track_overview(
-        viewport_width: u32,
-        viewport_height: u32,
-        track_bounds: Rect,
-    ) -> Self {
+    pub fn track_overview(viewport_width: u32, viewport_height: u32, track_bounds: Rect) -> Self {
         let mut camera = Self::new(viewport_width, viewport_height);
         camera.mode = CameraMode::TrackOverview;
         camera.fit_bounds(track_bounds);
@@ -113,7 +109,7 @@ impl Camera {
 
         // Isometric transformation constants
         const ISO_SCALE_X: f32 = 0.866; // cos(30°) - horizontal spacing
-        const ISO_SCALE_Y: f32 = 0.5;   // sin(30°) - vertical compression
+        const ISO_SCALE_Y: f32 = 0.5; // sin(30°) - vertical compression
 
         // Transform to isometric coordinates
         // Using (x, z) as ground plane, y as elevation

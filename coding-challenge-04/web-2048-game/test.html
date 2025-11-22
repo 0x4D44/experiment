@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #faf8ef;
+        }
+
+        h1 {
+            color: #776e65;
+            text-align: center;
+        }
+
+        .test-suite {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .test-suite h2 {
+            color: #776e65;
+            margin-top: 0;
+        }
+
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            border-left: 4px solid;
+        }
+
+        .test-result.pass {
+            background: #edf7ed;
+            border-color: #4caf50;
+            color: #2e7d32;
+        }
+
+        .test-result.fail {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+        }
+
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .test-error {
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 5px;
+            padding: 5px;
+            background: rgba(0,0,0,0.05);
+            border-radius: 3px;
+        }
+
+        .summary {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 30px;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary.pass {
+            color: #4caf50;
+        }
+
+        .summary.fail {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>2048 Game Test Suite</h1>
+    <div id="test-results"></div>
+    <div id="summary" class="summary"></div>
+
+    <script src="game.js"></script>
+    <script>
+        /**
+         * Simple test framework
+         */
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            assertEquals(actual, expected, message) {
+                if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                    throw new Error(message || `Expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+                }
+            }
+
+            assertTrue(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Expected condition to be true');
+                }
+            }
+
+            assertFalse(condition, message) {
+                if (condition) {
+                    throw new Error(message || 'Expected condition to be false');
+                }
+            }
+
+            assertNotNull(value, message) {
+                if (value === null || value === undefined) {
+                    throw new Error(message || 'Expected value to not be null');
+                }
+            }
+
+            run() {
+                const resultsContainer = document.getElementById('test-results');
+                const summaryContainer = document.getElementById('summary');
+
+                this.tests.forEach(test => {
+                    const suiteDiv = document.createElement('div');
+                    suiteDiv.className = 'test-suite';
+
+                    const title = document.createElement('h2');
+                    title.textContent = test.name;
+                    suiteDiv.appendChild(title);
+
+                    try {
+                        test.fn.call(this);
+                        this.passed++;
+
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'test-result pass';
+                        resultDiv.innerHTML = '<div class="test-name">PASS</div>';
+                        suiteDiv.appendChild(resultDiv);
+                    } catch (error) {
+                        this.failed++;
+
+                        const resultDiv = document.createElement('div');
+                        resultDiv.className = 'test-result fail';
+                        resultDiv.innerHTML = `
+                            <div class="test-name">FAIL</div>
+                            <div class="test-error">${error.message}</div>
+                        `;
+                        suiteDiv.appendChild(resultDiv);
+                    }
+
+                    resultsContainer.appendChild(suiteDiv);
+                });
+
+                // Display summary
+                const total = this.passed + this.failed;
+                summaryContainer.textContent = `${this.passed}/${total} tests passed`;
+                summaryContainer.className = `summary ${this.failed === 0 ? 'pass' : 'fail'}`;
+            }
+        }
+
+        /**
+         * Test suites
+         */
+        const runner = new TestRunner();
+
+        // Test: Game initialization
+        runner.test('Game Initialization', function() {
+            const game = new Game();
+
+            this.assertEquals(game.size, 4, 'Grid size should be 4');
+            this.assertEquals(game.score, 0, 'Initial score should be 0');
+            this.assertFalse(game.won, 'Game should not be won initially');
+            this.assertFalse(game.over, 'Game should not be over initially');
+        });
+
+        // Test: New game start
+        runner.test('New Game Start', function() {
+            const game = new Game();
+            game.startNewGame();
+
+            const tiles = game.getAllTiles();
+            this.assertEquals(tiles.length, 2, 'Should have 2 tiles after starting');
+
+            let hasTwo = false;
+            tiles.forEach(tile => {
+                if (tile.value === 2 || tile.value === 4) {
+                    hasTwo = true;
+                }
+            });
+            this.assertTrue(hasTwo, 'Tiles should be 2 or 4');
+        });
+
+        // Test: Empty cells detection
+        runner.test('Empty Cells Detection', function() {
+            const game = new Game();
+            game.startNewGame();
+
+            const emptyCells = game.getEmptyCells();
+            this.assertEquals(emptyCells.length, 14, 'Should have 14 empty cells after starting');
+        });
+
+        // Test: Tile movement - Left
+        runner.test('Tile Movement - Left', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 0, 2, 0],
+                [0, 0, 0, 2],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 2, 'First tile should be at position [0][0]');
+            this.assertEquals(game.grid[1][0], 2, 'Second tile should be at position [1][0]');
+            this.assertEquals(game.grid[2][0], 2, 'Third tile should be at position [2][0]');
+        });
+
+        // Test: Tile movement - Right
+        runner.test('Tile Movement - Right', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 0, 2, 0],
+                [0, 0, 0, 2],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('right');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][3], 2, 'First tile should be at position [0][3]');
+            this.assertEquals(game.grid[1][3], 2, 'Second tile should be at position [1][3]');
+            this.assertEquals(game.grid[2][3], 2, 'Third tile should be at position [2][3]');
+        });
+
+        // Test: Tile movement - Up
+        runner.test('Tile Movement - Up', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 2, 0, 0],
+                [0, 0, 2, 0],
+                [0, 0, 0, 2]
+            ];
+
+            const result = game.move('up');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 2, 'First tile should be at position [0][0]');
+            this.assertEquals(game.grid[0][1], 2, 'Second tile should be at position [0][1]');
+            this.assertEquals(game.grid[0][2], 2, 'Third tile should be at position [0][2]');
+            this.assertEquals(game.grid[0][3], 2, 'Fourth tile should be at position [0][3]');
+        });
+
+        // Test: Tile movement - Down
+        runner.test('Tile Movement - Down', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 2, 0, 0],
+                [0, 0, 2, 0],
+                [0, 0, 0, 2]
+            ];
+
+            const result = game.move('down');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[3][0], 2, 'First tile should be at position [3][0]');
+            this.assertEquals(game.grid[3][1], 2, 'Second tile should be at position [3][1]');
+            this.assertEquals(game.grid[3][2], 2, 'Third tile should be at position [3][2]');
+            this.assertEquals(game.grid[3][3], 2, 'Fourth tile should be at position [3][3]');
+        });
+
+        // Test: Tile merging
+        runner.test('Tile Merging', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 2, 0, 0],
+                [4, 4, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 4, 'First row should merge to 4');
+            this.assertEquals(game.grid[1][0], 8, 'Second row should merge to 8');
+            this.assertEquals(result.scoreGained, 12, 'Score gained should be 4 + 8 = 12');
+        });
+
+        // Test: Multiple merges in one move
+        runner.test('Multiple Merges in One Move', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 2, 2, 2],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 4, 'First merge should be 4');
+            this.assertEquals(game.grid[0][1], 4, 'Second merge should be 4');
+            this.assertEquals(result.scoreGained, 8, 'Score gained should be 4 + 4 = 8');
+        });
+
+        // Test: No merge on different values
+        runner.test('No Merge on Different Values', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 4, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 2, 'First tile should remain 2');
+            this.assertEquals(game.grid[0][1], 4, 'Second tile should remain 4');
+            this.assertEquals(result.scoreGained, 0, 'No score should be gained');
+        });
+
+        // Test: No movement on full row
+        runner.test('No Movement on Full Row', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 4, 8, 16],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertFalse(result.moved, 'Tiles should not have moved');
+        });
+
+        // Test: Win condition
+        runner.test('Win Condition', function() {
+            const game = new Game();
+            game.grid = [
+                [1024, 1024, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertTrue(result.moved, 'Tiles should have moved');
+            this.assertEquals(game.grid[0][0], 2048, 'Should create 2048 tile');
+            this.assertTrue(game.hasWon(), 'Game should be won');
+        });
+
+        // Test: Game over detection
+        runner.test('Game Over Detection', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 4, 2, 4],
+                [4, 2, 4, 2],
+                [2, 4, 2, 4],
+                [4, 2, 4, 2]
+            ];
+
+            this.assertFalse(game.canMove(), 'No moves should be available');
+        });
+
+        // Test: Can move with empty cells
+        runner.test('Can Move with Empty Cells', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 4, 2, 4],
+                [4, 2, 4, 2],
+                [2, 4, 2, 4],
+                [4, 2, 4, 0]
+            ];
+
+            this.assertTrue(game.canMove(), 'Should be able to move with empty cell');
+        });
+
+        // Test: Can move with adjacent matching tiles
+        runner.test('Can Move with Adjacent Matching Tiles', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 4, 2, 4],
+                [4, 2, 4, 2],
+                [2, 4, 2, 4],
+                [4, 2, 2, 4]
+            ];
+
+            this.assertTrue(game.canMove(), 'Should be able to move with matching tiles');
+        });
+
+        // Test: Score tracking
+        runner.test('Score Tracking', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 2, 0, 0],
+                [4, 4, 0, 0],
+                [8, 8, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const result = game.move('left');
+
+            this.assertEquals(game.getScore(), 28, 'Score should be 4 + 8 + 16 = 28');
+        });
+
+        // Test: Undo functionality
+        runner.test('Undo Functionality', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            const originalGrid = game.getGrid();
+            game.move('right');
+
+            this.assertTrue(game.canUndo(), 'Should be able to undo');
+
+            game.restoreState();
+
+            this.assertEquals(game.grid[0][0], 2, 'Grid should be restored to original state');
+        });
+
+        // Test: Multiple undos
+        runner.test('Multiple Undos', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            game.move('right');
+            game.move('up');
+            game.move('left');
+
+            this.assertTrue(game.canUndo(), 'Should be able to undo');
+
+            game.restoreState(); // Undo left
+            game.restoreState(); // Undo up
+            game.restoreState(); // Undo right
+
+            this.assertEquals(game.grid[0][0], 2, 'Grid should be restored after multiple undos');
+        });
+
+        // Test: Undo limit
+        runner.test('Undo History Limit', function() {
+            const game = new Game();
+            game.grid = [
+                [2, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0],
+                [0, 0, 0, 0]
+            ];
+
+            // Perform more moves than history size
+            for (let i = 0; i < 15; i++) {
+                game.move('left');
+                game.move('right');
+            }
+
+            let undoCount = 0;
+            while (game.canUndo()) {
+                game.restoreState();
+                undoCount++;
+            }
+
+            this.assertTrue(undoCount <= game.maxHistorySize, 'Undo count should not exceed max history size');
+        });
+
+        // Run all tests
+        runner.run();
+    </script>
+</body>
+</html>

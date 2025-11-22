@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game of Life - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #00ffff;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #console {
+            background: #000;
+            border: 2px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            min-height: 400px;
+            overflow-y: auto;
+        }
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        .info { color: #00ffff; }
+        .summary {
+            margin-top: 20px;
+            padding: 15px;
+            background: #0a0a0a;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+    </style>
+</head>
+<body>
+    <h1>Conway's Game of Life - Test Suite</h1>
+    <div id="console"></div>
+
+    <script src="../js/patterns.js"></script>
+    <script src="../js/game-of-life.js"></script>
+    <script>
+        // Override console.log to display in page
+        const consoleDiv = document.getElementById('console');
+        const originalLog = console.log;
+        const originalError = console.error;
+
+        console.log = function(...args) {
+            const message = args.join(' ');
+            const line = document.createElement('div');
+
+            if (message.includes('✓')) {
+                line.className = 'pass';
+            } else if (message.includes('===')) {
+                line.className = 'info';
+            }
+
+            line.textContent = message;
+            consoleDiv.appendChild(line);
+            originalLog.apply(console, args);
+        };
+
+        console.error = function(...args) {
+            const message = args.join(' ');
+            const line = document.createElement('div');
+            line.className = 'fail';
+            line.textContent = message;
+            consoleDiv.appendChild(line);
+            originalError.apply(console, args);
+        };
+    </script>
+    <script src="game-of-life.test.js"></script>
+</body>
+</html>

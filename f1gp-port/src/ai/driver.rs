@@ -176,7 +176,12 @@ impl AIDriver {
     }
 
     /// Update AI and compute inputs for the car
-    pub fn update(&mut self, car: &CarPhysics, nearby_cars: &[NearbyCarInfo], delta_time: f32) -> CarInput {
+    pub fn update(
+        &mut self,
+        car: &CarPhysics,
+        nearby_cars: &[NearbyCarInfo],
+        delta_time: f32,
+    ) -> CarInput {
         // If no racing line, return neutral inputs
         if self.racing_line.is_none() {
             return CarInput::default();
@@ -189,7 +194,11 @@ impl AIDriver {
         self.update_ai_state(car, nearby_cars);
 
         // Get target point and speed from racing line
-        let target_speed = self.racing_line.as_ref().unwrap().get_target_speed(car.body.position);
+        let target_speed = self
+            .racing_line
+            .as_ref()
+            .unwrap()
+            .get_target_speed(car.body.position);
 
         // Apply skill modifier to target speed
         let adjusted_target_speed = target_speed * (0.7 + self.personality.skill * 0.3);
@@ -203,12 +212,10 @@ impl AIDriver {
 
         // Smooth lateral offset transitions
         let offset_smoothness = 0.05;
-        self.lateral_offset += (self.target_lateral_offset - self.lateral_offset) * offset_smoothness;
+        self.lateral_offset +=
+            (self.target_lateral_offset - self.lateral_offset) * offset_smoothness;
 
-        let target_steering = self.calculate_steering_with_offset(
-            car.body.position,
-            car_forward,
-        );
+        let target_steering = self.calculate_steering_with_offset(car.body.position, car_forward);
 
         // Smooth steering (add human-like imperfection)
         let steering_smoothness = 0.1 + self.personality.skill * 0.1;
@@ -220,11 +227,8 @@ impl AIDriver {
         self.current_steering = (self.current_steering + random_offset).clamp(-1.0, 1.0);
 
         // Calculate throttle and brake using PID controller
-        let (throttle, brake) = self.calculate_speed_control(
-            car.speed,
-            final_target_speed,
-            delta_time,
-        );
+        let (throttle, brake) =
+            self.calculate_speed_control(car.speed, final_target_speed, delta_time);
 
         // Smooth throttle/brake inputs
         let input_smoothness = 0.15;
@@ -235,7 +239,7 @@ impl AIDriver {
             throttle: self.current_throttle,
             brake: self.current_brake,
             steering: self.current_steering,
-            shift_up: false,  // TODO: Implement automatic shifting
+            shift_up: false, // TODO: Implement automatic shifting
             shift_down: false,
         }
     }
@@ -243,11 +247,13 @@ impl AIDriver {
     /// Update AI state based on nearby cars
     fn update_ai_state(&mut self, car: &CarPhysics, nearby_cars: &[NearbyCarInfo]) {
         // Find closest car ahead and behind
-        let car_ahead = nearby_cars.iter()
+        let car_ahead = nearby_cars
+            .iter()
             .filter(|c| c.is_ahead && c.distance < 50.0)
             .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
 
-        let car_behind = nearby_cars.iter()
+        let car_behind = nearby_cars
+            .iter()
             .filter(|c| !c.is_ahead && c.distance < 30.0)
             .min_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
 
@@ -265,7 +271,8 @@ impl AIDriver {
                                 self.state = AIState::Overtaking;
                                 self.state_timer = 0.0;
                                 // Choose overtaking side (prefer inside of next corner)
-                                self.target_lateral_offset = if fastrand::bool() { 4.0 } else { -4.0 };
+                                self.target_lateral_offset =
+                                    if fastrand::bool() { 4.0 } else { -4.0 };
                             }
                         }
                     }
@@ -329,7 +336,12 @@ impl AIDriver {
     }
 
     /// Adjust target speed based on nearby cars (collision avoidance)
-    fn adjust_target_speed(&self, base_speed: f32, car: &CarPhysics, nearby_cars: &[NearbyCarInfo]) -> f32 {
+    fn adjust_target_speed(
+        &self,
+        base_speed: f32,
+        car: &CarPhysics,
+        nearby_cars: &[NearbyCarInfo],
+    ) -> f32 {
         let mut speed = base_speed;
 
         // Find closest car directly ahead (within 30 degrees)
@@ -364,11 +376,7 @@ impl AIDriver {
     }
 
     /// Calculate steering with lateral offset from racing line
-    fn calculate_steering_with_offset(
-        &self,
-        position: Vec3,
-        car_forward: Vec2,
-    ) -> f32 {
+    fn calculate_steering_with_offset(&self, position: Vec3, car_forward: Vec2) -> f32 {
         // Get base steering from racing line
         let base_steering = if let Some(ref racing_line) = self.racing_line {
             racing_line.calculate_steering(position, car_forward)
@@ -406,9 +414,8 @@ impl AIDriver {
         self.speed_error_prev = speed_error;
 
         // PID output
-        let control_output = kp * speed_error
-            + ki * self.speed_error_integral
-            + kd * speed_error_derivative;
+        let control_output =
+            kp * speed_error + ki * self.speed_error_integral + kd * speed_error_derivative;
 
         // Convert to throttle/brake
         if control_output > 0.0 {

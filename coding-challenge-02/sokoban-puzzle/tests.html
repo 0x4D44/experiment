@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sokoban Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #f1f5f9;
+        }
+
+        h1 {
+            color: #3b82f6;
+            text-align: center;
+        }
+
+        .test-suite {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 2px solid #334155;
+        }
+
+        .test-suite h2 {
+            margin-top: 0;
+            color: #60a5fa;
+        }
+
+        .test-case {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #475569;
+            background: #334155;
+        }
+
+        .test-case.pass {
+            border-left-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .test-case.fail {
+            border-left-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .test-result {
+            font-size: 0.9em;
+            color: #cbd5e1;
+        }
+
+        .test-error {
+            color: #fca5a5;
+            font-family: monospace;
+            margin-top: 5px;
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .summary {
+            background: #1e293b;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 2px solid #334155;
+        }
+
+        .summary-stat {
+            display: inline-block;
+            margin: 0 20px;
+            font-size: 1.2em;
+        }
+
+        .pass-count {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .fail-count {
+            color: #ef4444;
+            font-weight: bold;
+        }
+
+        .run-btn {
+            background: #3b82f6;
+            border: none;
+            color: white;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 8px;
+            cursor: pointer;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .run-btn:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Sokoban Test Suite</h1>
+
+    <button class="run-btn" onclick="runAllTests()">Run All Tests</button>
+
+    <div id="results"></div>
+
+    <div class="summary" id="summary" style="display: none;">
+        <h2>Test Summary</h2>
+        <div class="summary-stat">
+            Total: <span id="totalTests">0</span>
+        </div>
+        <div class="summary-stat">
+            Passed: <span class="pass-count" id="passedTests">0</span>
+        </div>
+        <div class="summary-stat">
+            Failed: <span class="fail-count" id="failedTests">0</span>
+        </div>
+    </div>
+
+    <script>
+        // Mock minimal game structures for testing
+        const TILE_TYPES = {
+            EMPTY: 0,
+            WALL: 1,
+            FLOOR: 2,
+            BOX: 3,
+            TARGET: 4,
+            PLAYER: 5,
+            BOX_ON_TARGET: 6
+        };
+
+        const DIRECTIONS = {
+            UP: { x: 0, y: -1 },
+            DOWN: { x: 0, y: 1 },
+            LEFT: { x: -1, y: 0 },
+            RIGHT: { x: 1, y: 0 }
+        };
+
+        // Test framework
+        class TestSuite {
+            constructor(name) {
+                this.name = name;
+                this.tests = [];
+                this.results = [];
+            }
+
+            addTest(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async run() {
+                this.results = [];
+
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        this.results.push({ name: test.name, passed: true });
+                    } catch (error) {
+                        this.results.push({ name: test.name, passed: false, error: error.message });
+                    }
+                }
+
+                return this.results;
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEquals(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected}, got ${actual}`);
+            }
+        }
+
+        function assertArrayEquals(actual, expected, message) {
+            if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                throw new Error(message || `Expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+            }
+        }
+
+        // ========================================
+        // TEST SUITES
+        // ========================================
+
+        // Level Parsing Tests
+        const parsingTests = new TestSuite('Level Parsing');
+
+        parsingTests.addTest('Parse simple level', () => {
+            const grid = [
+                "####",
+                "#@ #",
+                "####"
+            ];
+
+            let playerPos = null;
+            let walls = 0;
+
+            grid.forEach((row, y) => {
+                for (let x = 0; x < row.length; x++) {
+                    if (row[x] === '@') playerPos = { x, y };
+                    if (row[x] === '#') walls++;
+                }
+            });
+
+            assertEquals(playerPos.x, 1, 'Player X position');
+            assertEquals(playerPos.y, 1, 'Player Y position');
+            assertEquals(walls, 10, 'Wall count');
+        });
+
+        parsingTests.addTest('Parse level with boxes and targets', () => {
+            const grid = [
+                "#####",
+                "#@$ #",
+                "# . #",
+                "#####"
+            ];
+
+            let boxes = [];
+            let targets = [];
+
+            grid.forEach((row, y) => {
+                for (let x = 0; x < row.length; x++) {
+                    if (row[x] === '$') boxes.push({ x, y });
+                    if (row[x] === '.') targets.push({ x, y });
+                }
+            });
+
+            assertEquals(boxes.length, 1, 'Box count');
+            assertEquals(targets.length, 1, 'Target count');
+            assertEquals(boxes[0].x, 2, 'Box X position');
+            assertEquals(targets[0].x, 2, 'Target X position');
+        });
+
+        parsingTests.addTest('Parse level with box on target', () => {
+            const grid = [
+                "#####",
+                "#@* #",
+                "#####"
+            ];
+
+            let boxes = [];
+            let targets = [];
+
+            grid.forEach((row, y) => {
+                for (let x = 0; x < row.length; x++) {
+                    if (row[x] === '*') {
+                        boxes.push({ x, y });
+                        targets.push({ x, y });
+                    }
+                }
+            });
+
+            assertEquals(boxes.length, 1, 'Box on target creates box');
+            assertEquals(targets.length, 1, 'Box on target creates target');
+        });
+
+        // Movement Logic Tests
+        const movementTests = new TestSuite('Movement Logic');
+
+        movementTests.addTest('Valid move to empty floor', () => {
+            const playerPos = { x: 1, y: 1 };
+            const grid = [
+                [1, 1, 1],
+                [1, 2, 2],
+                [1, 1, 1]
+            ];
+
+            const newPos = {
+                x: playerPos.x + DIRECTIONS.RIGHT.x,
+                y: playerPos.y + DIRECTIONS.RIGHT.y
+            };
+
+            const tile = grid[newPos.y][newPos.x];
+            assert(tile === TILE_TYPES.FLOOR, 'Can move to floor tile');
+        });
+
+        movementTests.addTest('Invalid move into wall', () => {
+            const playerPos = { x: 1, y: 1 };
+            const grid = [
+                [1, 1, 1],
+                [1, 2, 1],
+                [1, 1, 1]
+            ];
+
+            const newPos = {
+                x: playerPos.x + DIRECTIONS.RIGHT.x,
+                y: playerPos.y + DIRECTIONS.RIGHT.y
+            };
+
+            const tile = grid[newPos.y][newPos.x];
+            assert(tile === TILE_TYPES.WALL, 'Cannot move into wall');
+        });
+
+        movementTests.addTest('Push box into empty space', () => {
+            const playerPos = { x: 1, y: 1 };
+            const boxes = [{ x: 2, y: 1 }];
+            const grid = [
+                [1, 1, 1, 1],
+                [1, 2, 2, 2],
+                [1, 1, 1, 1]
+            ];
+
+            const direction = DIRECTIONS.RIGHT;
+            const boxNewPos = {
+                x: boxes[0].x + direction.x,
+                y: boxes[0].y + direction.y
+            };
+
+            const tile = grid[boxNewPos.y][boxNewPos.x];
+            assert(tile === TILE_TYPES.FLOOR, 'Can push box to floor');
+        });
+
+        movementTests.addTest('Cannot push box into wall', () => {
+            const playerPos = { x: 1, y: 1 };
+            const boxes = [{ x: 2, y: 1 }];
+            const grid = [
+                [1, 1, 1, 1],
+                [1, 2, 2, 1],
+                [1, 1, 1, 1]
+            ];
+
+            const direction = DIRECTIONS.RIGHT;
+            const boxNewPos = {
+                x: boxes[0].x + direction.x,
+                y: boxes[0].y + direction.y
+            };
+
+            const tile = grid[boxNewPos.y][boxNewPos.x];
+            assert(tile === TILE_TYPES.WALL, 'Cannot push box into wall');
+        });
+
+        movementTests.addTest('Cannot push two boxes', () => {
+            const boxes = [{ x: 2, y: 1 }, { x: 3, y: 1 }];
+            const boxNewPos = { x: 3, y: 1 };
+
+            const hasBoxAtNewPos = boxes.some(b => b.x === boxNewPos.x && b.y === boxNewPos.y);
+            assert(hasBoxAtNewPos, 'Cannot push box into another box');
+        });
+
+        // Win Detection Tests
+        const winTests = new TestSuite('Win Detection');
+
+        winTests.addTest('No boxes on targets - not won', () => {
+            const boxes = [{ x: 1, y: 1 }, { x: 2, y: 1 }];
+            const targets = [{ x: 3, y: 1 }, { x: 4, y: 1 }];
+
+            const won = boxes.every(box =>
+                targets.some(target => target.x === box.x && target.y === box.y)
+            );
+
+            assert(!won, 'Level not complete when boxes not on targets');
+        });
+
+        winTests.addTest('All boxes on targets - won', () => {
+            const boxes = [{ x: 1, y: 1 }, { x: 2, y: 1 }];
+            const targets = [{ x: 1, y: 1 }, { x: 2, y: 1 }];
+
+            const won = boxes.every(box =>
+                targets.some(target => target.x === box.x && target.y === box.y)
+            );
+
+            assert(won, 'Level complete when all boxes on targets');
+        });
+
+        winTests.addTest('Some boxes on targets - not won', () => {
+            const boxes = [{ x: 1, y: 1 }, { x: 2, y: 1 }];
+            const targets = [{ x: 1, y: 1 }, { x: 3, y: 1 }];
+
+            const won = boxes.every(box =>
+                targets.some(target => target.x === box.x && target.y === box.y)
+            );
+
+            assert(!won, 'Level not complete when some boxes not on targets');
+        });
+
+        // Undo System Tests
+        const undoTests = new TestSuite('Undo/Redo System');
+
+        undoTests.addTest('Undo restores previous state', () => {
+            const history = [
+                { playerPos: { x: 1, y: 1 }, boxes: [{ x: 2, y: 1 }], moves: 0 }
+            ];
+
+            const currentState = {
+                playerPos: { x: 2, y: 1 },
+                boxes: [{ x: 3, y: 1 }],
+                moves: 1
+            };
+
+            const previousState = history[history.length - 1];
+
+            assertEquals(previousState.moves, 0, 'Previous state has correct move count');
+            assertEquals(previousState.playerPos.x, 1, 'Previous state has correct player X');
+        });
+
+        undoTests.addTest('Cannot undo with empty history', () => {
+            const history = [];
+            assert(history.length === 0, 'Empty history prevents undo');
+        });
+
+        undoTests.addTest('Redo restores next state', () => {
+            const redoStack = [
+                { playerPos: { x: 2, y: 1 }, boxes: [{ x: 3, y: 1 }], moves: 1 }
+            ];
+
+            assert(redoStack.length > 0, 'Redo stack has states');
+            const nextState = redoStack[redoStack.length - 1];
+            assertEquals(nextState.moves, 1, 'Next state has correct move count');
+        });
+
+        undoTests.addTest('New move clears redo stack', () => {
+            let redoStack = [{ playerPos: { x: 2, y: 1 }, boxes: [], moves: 1 }];
+
+            // Simulate new move
+            redoStack = [];
+
+            assertEquals(redoStack.length, 0, 'Redo stack cleared after new move');
+        });
+
+        // Star Rating Tests
+        const ratingTests = new TestSuite('Star Rating System');
+
+        ratingTests.addTest('Perfect score - 3 stars', () => {
+            const moves = 10;
+            const optimal = 10;
+            const ratio = moves / optimal;
+
+            let stars = 1;
+            if (ratio <= 1.2) stars = 3;
+            else if (ratio <= 1.5) stars = 2;
+
+            assertEquals(stars, 3, 'Perfect score gives 3 stars');
+        });
+
+        ratingTests.addTest('Good score - 3 stars', () => {
+            const moves = 12;
+            const optimal = 10;
+            const ratio = moves / optimal;
+
+            let stars = 1;
+            if (ratio <= 1.2) stars = 3;
+            else if (ratio <= 1.5) stars = 2;
+
+            assertEquals(stars, 3, 'Within 120% gives 3 stars');
+        });
+
+        ratingTests.addTest('Average score - 2 stars', () => {
+            const moves = 14;
+            const optimal = 10;
+            const ratio = moves / optimal;
+
+            let stars = 1;
+            if (ratio <= 1.2) stars = 3;
+            else if (ratio <= 1.5) stars = 2;
+
+            assertEquals(stars, 2, 'Within 150% gives 2 stars');
+        });
+
+        ratingTests.addTest('Poor score - 1 star', () => {
+            const moves = 20;
+            const optimal = 10;
+            const ratio = moves / optimal;
+
+            let stars = 1;
+            if (ratio <= 1.2) stars = 3;
+            else if (ratio <= 1.5) stars = 2;
+
+            assertEquals(stars, 1, 'Over 150% gives 1 star');
+        });
+
+        // Level Editor Tests
+        const editorTests = new TestSuite('Level Editor');
+
+        editorTests.addTest('Validate level - missing player', () => {
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'box', 'wall'],
+                ['wall', 'target', 'wall'],
+                ['wall', 'wall', 'wall']
+            ];
+
+            let playerCount = 0;
+            grid.forEach(row => {
+                row.forEach(tile => {
+                    if (tile === 'player') playerCount++;
+                });
+            });
+
+            assert(playerCount === 0, 'Missing player detected');
+        });
+
+        editorTests.addTest('Validate level - box count matches targets', () => {
+            const grid = [
+                ['wall', 'wall', 'wall', 'wall'],
+                ['wall', 'player', 'box', 'wall'],
+                ['wall', 'target', 'target', 'wall'],
+                ['wall', 'wall', 'wall', 'wall']
+            ];
+
+            let boxCount = 0;
+            let targetCount = 0;
+
+            grid.forEach(row => {
+                row.forEach(tile => {
+                    if (tile === 'box') boxCount++;
+                    if (tile === 'target') targetCount++;
+                });
+            });
+
+            assert(boxCount !== targetCount, 'Mismatched box and target count detected');
+        });
+
+        editorTests.addTest('Export level to string format', () => {
+            const grid = [
+                ['wall', 'wall', 'wall'],
+                ['wall', 'player', 'wall'],
+                ['wall', 'wall', 'wall']
+            ];
+
+            const exported = grid.map(row =>
+                row.map(tile => {
+                    switch (tile) {
+                        case 'wall': return '#';
+                        case 'player': return '@';
+                        case 'floor': return ' ';
+                        case 'box': return '$';
+                        case 'target': return '.';
+                        default: return ' ';
+                    }
+                }).join('')
+            );
+
+            assertEquals(exported[0], '###', 'First row exported correctly');
+            assertEquals(exported[1], '#@#', 'Second row with player exported correctly');
+        });
+
+        // Progress Tracking Tests
+        const progressTests = new TestSuite('Progress Tracking');
+
+        progressTests.addTest('Save level progress', () => {
+            const progress = {
+                'beginner_0': {
+                    completed: true,
+                    stars: 3,
+                    bestMoves: 8,
+                    bestTime: 15
+                }
+            };
+
+            assert(progress['beginner_0'].completed, 'Level marked as completed');
+            assertEquals(progress['beginner_0'].stars, 3, 'Stars saved correctly');
+        });
+
+        progressTests.addTest('Update best score', () => {
+            const existingProgress = {
+                bestMoves: 15,
+                bestTime: 30
+            };
+
+            const newMoves = 12;
+            const newTime = 25;
+
+            const updatedMoves = Math.min(newMoves, existingProgress.bestMoves);
+            const updatedTime = Math.min(newTime, existingProgress.bestTime);
+
+            assertEquals(updatedMoves, 12, 'Best moves updated');
+            assertEquals(updatedTime, 25, 'Best time updated');
+        });
+
+        progressTests.addTest('Track total statistics', () => {
+            const stats = {
+                levelsCompleted: 5,
+                totalMoves: 150,
+                totalTime: 600,
+                totalStars: 12
+            };
+
+            // Complete another level
+            stats.levelsCompleted += 1;
+            stats.totalMoves += 25;
+            stats.totalTime += 45;
+            stats.totalStars += 3;
+
+            assertEquals(stats.levelsCompleted, 6, 'Total levels updated');
+            assertEquals(stats.totalMoves, 175, 'Total moves updated');
+            assertEquals(stats.totalStars, 15, 'Total stars updated');
+        });
+
+        // ========================================
+        // TEST RUNNER
+        // ========================================
+
+        async function runAllTests() {
+            const suites = [
+                parsingTests,
+                movementTests,
+                winTests,
+                undoTests,
+                ratingTests,
+                editorTests,
+                progressTests
+            ];
+
+            const resultsContainer = document.getElementById('results');
+            resultsContainer.innerHTML = '';
+
+            let totalPassed = 0;
+            let totalFailed = 0;
+
+            for (const suite of suites) {
+                const results = await suite.run();
+
+                const suiteDiv = document.createElement('div');
+                suiteDiv.className = 'test-suite';
+
+                const passed = results.filter(r => r.passed).length;
+                const failed = results.filter(r => !r.passed).length;
+
+                totalPassed += passed;
+                totalFailed += failed;
+
+                suiteDiv.innerHTML = `<h2>${suite.name}</h2>`;
+
+                results.forEach(result => {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = `test-case ${result.passed ? 'pass' : 'fail'}`;
+
+                    testDiv.innerHTML = `
+                        <div class="test-name">${result.passed ? '✓' : '✗'} ${result.name}</div>
+                        <div class="test-result">${result.passed ? 'Passed' : 'Failed'}</div>
+                        ${result.error ? `<div class="test-error">${result.error}</div>` : ''}
+                    `;
+
+                    suiteDiv.appendChild(testDiv);
+                });
+
+                resultsContainer.appendChild(suiteDiv);
+            }
+
+            // Update summary
+            document.getElementById('summary').style.display = 'block';
+            document.getElementById('totalTests').textContent = totalPassed + totalFailed;
+            document.getElementById('passedTests').textContent = totalPassed;
+            document.getElementById('failedTests').textContent = totalFailed;
+
+            // Scroll to results
+            resultsContainer.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

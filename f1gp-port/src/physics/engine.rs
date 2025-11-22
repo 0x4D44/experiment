@@ -317,8 +317,7 @@ impl PhysicsWorld {
             // Update orientation
             // For quaternions: q' = q + 0.5 * (ω * q) * dt
             if body.angular_velocity.length_squared() > 0.0001 {
-                let angular_quat =
-                    Quat::from_scaled_axis(body.angular_velocity * dt * 0.5);
+                let angular_quat = Quat::from_scaled_axis(body.angular_velocity * dt * 0.5);
                 body.orientation = (body.orientation + angular_quat * body.orientation).normalize();
             }
 

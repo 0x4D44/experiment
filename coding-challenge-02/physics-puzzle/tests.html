@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Reaction - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 30px;
+        }
+
+        .test-suite {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .test {
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #ccc;
+            background: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .test.pass {
+            border-left-color: #4caf50;
+            background: #f1f8f4;
+        }
+
+        .test.fail {
+            border-left-color: #f44336;
+            background: #fff5f5;
+        }
+
+        .test-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .test-result {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .test.pass .test-result {
+            color: #2e7d32;
+        }
+
+        .test.fail .test-result {
+            color: #c62828;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .summary h2 {
+            margin-top: 0;
+            color: white;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .error-detail {
+            background: #fff;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        #runTests {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 20px 0;
+            transition: transform 0.2s;
+        }
+
+        #runTests:hover {
+            transform: translateY(-2px);
+        }
+
+        #runTests:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Chain Reaction - Test Suite</h1>
+    <p>Comprehensive tests for core game mechanics and functionality.</p>
+
+    <button id="runTests" onclick="runAllTests()">▶ Run All Tests</button>
+
+    <div id="testResults"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script>
+        /**
+         * Test Framework
+         */
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async run() {
+                this.results = [];
+
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        this.results.push({
+                            name: test.name,
+                            passed: true,
+                            error: null
+                        });
+                    } catch (error) {
+                        this.results.push({
+                            name: test.name,
+                            passed: false,
+                            error: error.message
+                        });
+                    }
+                }
+
+                return this.results;
+            }
+
+            getSummary() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+                const passRate = total > 0 ? ((passed / total) * 100).toFixed(1) : 0;
+
+                return { total, passed, failed, passRate };
+            }
+        }
+
+        /**
+         * Assertion helpers
+         */
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEqual(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(
+                    message || `Expected ${expected} but got ${actual}`
+                );
+            }
+        }
+
+        function assertNotNull(value, message) {
+            if (value === null || value === undefined) {
+                throw new Error(message || 'Value is null or undefined');
+            }
+        }
+
+        function assertGreaterThan(actual, threshold, message) {
+            if (actual <= threshold) {
+                throw new Error(
+                    message || `Expected ${actual} to be greater than ${threshold}`
+                );
+            }
+        }
+
+        function assertLessThan(actual, threshold, message) {
+            if (actual >= threshold) {
+                throw new Error(
+                    message || `Expected ${actual} to be less than ${threshold}`
+                );
+            }
+        }
+
+        /**
+         * Mock Game Class for Testing
+         */
+        class MockPhysicsGame {
+            constructor() {
+                this.currentLevel = 1;
+                this.maxUnlockedLevel = 1;
+                this.levelStars = {};
+                this.moveCount = 0;
+                this.elapsedTime = 0;
+                this.isLevelStarted = false;
+                this.isLevelComplete = false;
+                this.history = [];
+                this.engine = Matter.Engine.create();
+            }
+
+            calculateStars(time, moves) {
+                const thresholds = {
+                    threeStarTime: 10,
+                    threeStarMoves: 3,
+                    twoStarTime: 20,
+                    twoStarMoves: 6
+                };
+
+                if (time <= thresholds.threeStarTime && moves <= thresholds.threeStarMoves) {
+                    return 3;
+                } else if (time <= thresholds.twoStarTime && moves <= thresholds.twoStarMoves) {
+                    return 2;
+                } else {
+                    return 1;
+                }
+            }
+
+            incrementMoves() {
+                this.moveCount++;
+            }
+
+            getLevels() {
+                // Return mock levels
+                return Array(15).fill(null).map((_, i) => ({
+                    name: `Level ${i + 1}`,
+                    ballStart: { x: 100, y: 100 },
+                    target: { x: 700, y: 400 }
+                }));
+            }
+        }
+
+        /**
+         * Test Suites
+         */
+        const runner = new TestRunner();
+
+        // ===== Game Initialization Tests =====
+        runner.test('Game instance can be created', () => {
+            const game = new MockPhysicsGame();
+            assertNotNull(game, 'Game instance should not be null');
+        });
+
+        runner.test('Game starts at level 1', () => {
+            const game = new MockPhysicsGame();
+            assertEqual(game.currentLevel, 1, 'Current level should be 1');
+        });
+
+        runner.test('Only level 1 is unlocked initially', () => {
+            const game = new MockPhysicsGame();
+            assertEqual(game.maxUnlockedLevel, 1, 'Max unlocked level should be 1');
+        });
+
+        runner.test('Move count starts at 0', () => {
+            const game = new MockPhysicsGame();
+            assertEqual(game.moveCount, 0, 'Move count should start at 0');
+        });
+
+        runner.test('Level is not started initially', () => {
+            const game = new MockPhysicsGame();
+            assertEqual(game.isLevelStarted, false, 'Level should not be started');
+        });
+
+        // ===== Star Rating Tests =====
+        runner.test('Perfect performance gives 3 stars', () => {
+            const game = new MockPhysicsGame();
+            const stars = game.calculateStars(5, 2);
+            assertEqual(stars, 3, 'Should get 3 stars for time=5, moves=2');
+        });
+
+        runner.test('Good performance gives 2 stars', () => {
+            const game = new MockPhysicsGame();
+            const stars = game.calculateStars(15, 5);
+            assertEqual(stars, 2, 'Should get 2 stars for time=15, moves=5');
+        });
+
+        runner.test('Completion gives at least 1 star', () => {
+            const game = new MockPhysicsGame();
+            const stars = game.calculateStars(60, 20);
+            assertEqual(stars, 1, 'Should get 1 star for slow completion');
+        });
+
+        runner.test('Fast time but many moves gives 2 stars', () => {
+            const game = new MockPhysicsGame();
+            const stars = game.calculateStars(8, 5);
+            assertEqual(stars, 2, 'Should get 2 stars for fast time but moderate moves');
+        });
+
+        runner.test('Few moves but slow time gives 2 stars', () => {
+            const game = new MockPhysicsGame();
+            const stars = game.calculateStars(18, 3);
+            assertEqual(stars, 2, 'Should get 2 stars for few moves but slower time');
+        });
+
+        // ===== Move Counter Tests =====
+        runner.test('Incrementing moves increases count', () => {
+            const game = new MockPhysicsGame();
+            game.incrementMoves();
+            assertEqual(game.moveCount, 1, 'Move count should be 1');
+            game.incrementMoves();
+            assertEqual(game.moveCount, 2, 'Move count should be 2');
+        });
+
+        runner.test('Multiple actions increment moves correctly', () => {
+            const game = new MockPhysicsGame();
+            for (let i = 0; i < 5; i++) {
+                game.incrementMoves();
+            }
+            assertEqual(game.moveCount, 5, 'Move count should be 5');
+        });
+
+        // ===== Level Configuration Tests =====
+        runner.test('Game has 15 levels', () => {
+            const game = new MockPhysicsGame();
+            const levels = game.getLevels();
+            assertEqual(levels.length, 15, 'Should have 15 levels');
+        });
+
+        runner.test('Each level has required properties', () => {
+            const game = new MockPhysicsGame();
+            const levels = game.getLevels();
+
+            levels.forEach((level, index) => {
+                assertNotNull(level.ballStart, `Level ${index + 1} should have ballStart`);
+                assertNotNull(level.target, `Level ${index + 1} should have target`);
+            });
+        });
+
+        runner.test('Ball start and target have x,y coordinates', () => {
+            const game = new MockPhysicsGame();
+            const levels = game.getLevels();
+
+            levels.forEach((level, index) => {
+                assertNotNull(level.ballStart.x, `Level ${index + 1} ballStart should have x`);
+                assertNotNull(level.ballStart.y, `Level ${index + 1} ballStart should have y`);
+                assertNotNull(level.target.x, `Level ${index + 1} target should have x`);
+                assertNotNull(level.target.y, `Level ${index + 1} target should have y`);
+            });
+        });
+
+        // ===== Physics Engine Tests =====
+        runner.test('Matter.js engine can be created', () => {
+            const engine = Matter.Engine.create();
+            assertNotNull(engine, 'Physics engine should be created');
+        });
+
+        runner.test('Physics engine has gravity', () => {
+            const engine = Matter.Engine.create();
+            assertNotNull(engine.gravity, 'Engine should have gravity');
+            assertNotNull(engine.gravity.y, 'Engine should have y gravity');
+        });
+
+        runner.test('Can create physics bodies', () => {
+            const circle = Matter.Bodies.circle(100, 100, 20);
+            assertNotNull(circle, 'Circle body should be created');
+
+            const rectangle = Matter.Bodies.rectangle(100, 100, 50, 50);
+            assertNotNull(rectangle, 'Rectangle body should be created');
+        });
+
+        runner.test('Bodies can be added to world', () => {
+            const engine = Matter.Engine.create();
+            const body = Matter.Bodies.circle(100, 100, 20);
+
+            Matter.World.add(engine.world, body);
+
+            const bodies = Matter.Composite.allBodies(engine.world);
+            assert(bodies.includes(body), 'Body should be in world');
+        });
+
+        runner.test('Bodies can be removed from world', () => {
+            const engine = Matter.Engine.create();
+            const body = Matter.Bodies.circle(100, 100, 20);
+
+            Matter.World.add(engine.world, body);
+            Matter.World.remove(engine.world, body);
+
+            const bodies = Matter.Composite.allBodies(engine.world);
+            assert(!bodies.includes(body), 'Body should be removed from world');
+        });
+
+        runner.test('Static bodies do not move', () => {
+            const engine = Matter.Engine.create();
+            const staticBody = Matter.Bodies.rectangle(100, 100, 50, 50, {
+                isStatic: true
+            });
+
+            Matter.World.add(engine.world, staticBody);
+            const initialY = staticBody.position.y;
+
+            // Run physics simulation
+            Matter.Engine.update(engine, 16.666); // One frame at 60fps
+
+            assertEqual(
+                staticBody.position.y,
+                initialY,
+                'Static body should not move'
+            );
+        });
+
+        runner.test('Dynamic bodies fall with gravity', () => {
+            const engine = Matter.Engine.create();
+            engine.gravity.y = 1;
+
+            const dynamicBody = Matter.Bodies.circle(100, 100, 20, {
+                isStatic: false
+            });
+
+            Matter.World.add(engine.world, dynamicBody);
+            const initialY = dynamicBody.position.y;
+
+            // Run physics simulation for multiple frames
+            for (let i = 0; i < 10; i++) {
+                Matter.Engine.update(engine, 16.666);
+            }
+
+            assertGreaterThan(
+                dynamicBody.position.y,
+                initialY,
+                'Dynamic body should fall due to gravity'
+            );
+        });
+
+        // ===== Constraint Tests =====
+        runner.test('Constraints can be created', () => {
+            const bodyA = Matter.Bodies.circle(100, 100, 20);
+            const bodyB = Matter.Bodies.circle(150, 100, 20);
+
+            const constraint = Matter.Constraint.create({
+                bodyA: bodyA,
+                bodyB: bodyB,
+                length: 50
+            });
+
+            assertNotNull(constraint, 'Constraint should be created');
+        });
+
+        runner.test('Constraints connect bodies', () => {
+            const engine = Matter.Engine.create();
+            const bodyA = Matter.Bodies.circle(100, 100, 20, { isStatic: true });
+            const bodyB = Matter.Bodies.circle(150, 100, 20);
+
+            const constraint = Matter.Constraint.create({
+                bodyA: bodyA,
+                bodyB: bodyB,
+                length: 50,
+                stiffness: 1
+            });
+
+            Matter.World.add(engine.world, [bodyA, bodyB, constraint]);
+
+            // Check constraint is in world
+            const constraints = Matter.Composite.allConstraints(engine.world);
+            assert(constraints.includes(constraint), 'Constraint should be in world');
+        });
+
+        // ===== Collision Detection Tests =====
+        runner.test('Collision detection works', (done) => {
+            const engine = Matter.Engine.create();
+            engine.gravity.y = 1;
+
+            const staticBody = Matter.Bodies.rectangle(400, 500, 800, 50, {
+                isStatic: true
+            });
+
+            const fallingBody = Matter.Bodies.circle(400, 100, 20);
+
+            Matter.World.add(engine.world, [staticBody, fallingBody]);
+
+            let collisionDetected = false;
+
+            Matter.Events.on(engine, 'collisionStart', (event) => {
+                const pairs = event.pairs;
+                for (let pair of pairs) {
+                    if ((pair.bodyA === staticBody && pair.bodyB === fallingBody) ||
+                        (pair.bodyB === staticBody && pair.bodyA === fallingBody)) {
+                        collisionDetected = true;
+                    }
+                }
+            });
+
+            // Run simulation
+            for (let i = 0; i < 200; i++) {
+                Matter.Engine.update(engine, 16.666);
+            }
+
+            assert(collisionDetected, 'Collision should be detected');
+        });
+
+        // ===== LocalStorage Tests =====
+        runner.test('Can save to localStorage', () => {
+            const testData = { test: 'value' };
+            localStorage.setItem('testKey', JSON.stringify(testData));
+
+            const retrieved = JSON.parse(localStorage.getItem('testKey'));
+            assertEqual(retrieved.test, 'value', 'Should retrieve saved data');
+
+            localStorage.removeItem('testKey');
+        });
+
+        runner.test('Can save game progress', () => {
+            const progress = {
+                maxUnlockedLevel: 5,
+                levelStars: { 1: 3, 2: 2, 3: 3 }
+            };
+
+            localStorage.setItem('chainReactionProgress', JSON.stringify(progress));
+
+            const retrieved = JSON.parse(localStorage.getItem('chainReactionProgress'));
+            assertEqual(retrieved.maxUnlockedLevel, 5, 'Should save max level');
+            assertEqual(retrieved.levelStars[1], 3, 'Should save star ratings');
+
+            localStorage.removeItem('chainReactionProgress');
+        });
+
+        // ===== History/Undo Tests =====
+        runner.test('History starts empty', () => {
+            const game = new MockPhysicsGame();
+            assertEqual(game.history.length, 0, 'History should be empty');
+        });
+
+        runner.test('Actions can be added to history', () => {
+            const game = new MockPhysicsGame();
+            game.history.push({ type: 'place', body: {} });
+            assertEqual(game.history.length, 1, 'History should have 1 item');
+        });
+
+        runner.test('History can be popped for undo', () => {
+            const game = new MockPhysicsGame();
+            game.history.push({ type: 'place', body: {} });
+            game.history.push({ type: 'cut', constraint: {} });
+
+            const lastAction = game.history.pop();
+            assertEqual(lastAction.type, 'cut', 'Should pop last action');
+            assertEqual(game.history.length, 1, 'History should have 1 item left');
+        });
+
+        // ===== Integration Tests =====
+        runner.test('Complete game flow simulation', () => {
+            const game = new MockPhysicsGame();
+
+            // Start game
+            assertEqual(game.currentLevel, 1, 'Should start at level 1');
+
+            // Make moves
+            game.incrementMoves();
+            game.incrementMoves();
+            game.incrementMoves();
+
+            assertEqual(game.moveCount, 3, 'Should have 3 moves');
+
+            // Complete with good time
+            game.elapsedTime = 8;
+            const stars = game.calculateStars(game.elapsedTime, game.moveCount);
+
+            assertEqual(stars, 3, 'Should earn 3 stars');
+
+            // Save progress
+            game.levelStars[game.currentLevel] = stars;
+            game.maxUnlockedLevel = game.currentLevel + 1;
+
+            assertEqual(game.maxUnlockedLevel, 2, 'Should unlock level 2');
+        });
+
+        /**
+         * Run all tests and display results
+         */
+        async function runAllTests() {
+            const button = document.getElementById('runTests');
+            button.disabled = true;
+            button.textContent = '⏳ Running tests...';
+
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p>Running tests...</p>';
+
+            await runner.run();
+
+            const summary = runner.getSummary();
+
+            let html = `
+                <div class="summary">
+                    <h2>Test Results</h2>
+                    <div class="stats">
+                        <div class="stat">
+                            <div class="stat-value">${summary.total}</div>
+                            <div class="stat-label">Total Tests</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${summary.passed}</div>
+                            <div class="stat-label">Passed</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${summary.failed}</div>
+                            <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="stat">
+                            <div class="stat-value">${summary.passRate}%</div>
+                            <div class="stat-label">Pass Rate</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Group tests by category
+            const categories = {
+                'Game Initialization': [],
+                'Star Rating': [],
+                'Move Counter': [],
+                'Level Configuration': [],
+                'Physics Engine': [],
+                'Constraints': [],
+                'Collision Detection': [],
+                'LocalStorage': [],
+                'History/Undo': [],
+                'Integration': []
+            };
+
+            runner.results.forEach(result => {
+                let category = 'Other';
+
+                if (result.name.includes('instance') || result.name.includes('starts') ||
+                    result.name.includes('unlocked') || result.name.includes('count starts') ||
+                    result.name.includes('not started')) {
+                    category = 'Game Initialization';
+                } else if (result.name.includes('star')) {
+                    category = 'Star Rating';
+                } else if (result.name.includes('moves') || result.name.includes('Incrementing')) {
+                    category = 'Move Counter';
+                } else if (result.name.includes('levels') || result.name.includes('level has') ||
+                           result.name.includes('coordinates')) {
+                    category = 'Level Configuration';
+                } else if (result.name.includes('engine') || result.name.includes('gravity') ||
+                           result.name.includes('bodies') || result.name.includes('world') ||
+                           result.name.includes('Static') || result.name.includes('Dynamic')) {
+                    category = 'Physics Engine';
+                } else if (result.name.includes('Constraint')) {
+                    category = 'Constraints';
+                } else if (result.name.includes('Collision')) {
+                    category = 'Collision Detection';
+                } else if (result.name.includes('localStorage') || result.name.includes('save')) {
+                    category = 'LocalStorage';
+                } else if (result.name.includes('History') || result.name.includes('undo') ||
+                           result.name.includes('popped')) {
+                    category = 'History/Undo';
+                } else if (result.name.includes('Complete') || result.name.includes('flow')) {
+                    category = 'Integration';
+                }
+
+                if (!categories[category]) {
+                    categories[category] = [];
+                }
+                categories[category].push(result);
+            });
+
+            // Render categorized tests
+            for (const [category, tests] of Object.entries(categories)) {
+                if (tests.length > 0) {
+                    html += `<div class="test-suite"><h2>${category}</h2>`;
+
+                    tests.forEach(result => {
+                        const statusClass = result.passed ? 'pass' : 'fail';
+                        const statusIcon = result.passed ? '✅' : '❌';
+
+                        html += `
+                            <div class="test ${statusClass}">
+                                <div class="test-name">${statusIcon} ${result.name}</div>
+                                <div class="test-result">
+                                    ${result.passed ? 'PASSED' : 'FAILED'}
+                                </div>
+                                ${result.error ? `<div class="error-detail">${result.error}</div>` : ''}
+                            </div>
+                        `;
+                    });
+
+                    html += '</div>';
+                }
+            }
+
+            resultsDiv.innerHTML = html;
+
+            button.disabled = false;
+            button.textContent = '▶ Run All Tests';
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

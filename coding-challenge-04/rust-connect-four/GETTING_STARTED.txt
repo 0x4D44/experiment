@@ -1,0 +1,112 @@
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                  ║
+║                      CONNECT FOUR - RUST EDITION                                ║
+║                      Getting Started in 3 Steps                                 ║
+║                                                                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+
+STEP 1: BUILD (10 seconds)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Open a terminal in the rust-connect-four directory and run:
+
+    cargo build --release
+
+Expected output:
+    Compiling rust-connect-four v1.0.0
+    Finished `release` profile [optimized] target(s) in 2-5s
+
+
+STEP 2: VERIFY (5 seconds)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Run the test suite to verify everything works:
+
+    cargo test
+
+Expected output:
+    test result: ok. 39 passed; 0 failed
+
+
+STEP 3: PLAY! (2 minutes)
+═══════════════════════════════════════════════════════════════════════════════════
+
+Start the game:
+
+    cargo run --release
+
+You'll see a menu:
+    [1] Player vs Player
+    [2] Player vs AI (Easy)
+    [3] Player vs AI (Medium)      ← Recommended for first game!
+    [4] Player vs AI (Hard)
+    [5] Player vs AI (Expert)
+
+Press 3 and hit Enter to play against Medium AI.
+
+
+CONTROLS
+═══════════════════════════════════════════════════════════════════════════════════
+
+    1-7         Select column (direct)
+    ← →         Navigate columns (arrow keys)
+    Enter       Drop your piece
+    U           Undo last move
+    Q           Quit game
+
+
+QUICK TIPS
+═══════════════════════════════════════════════════════════════════════════════════
+
+    • Start in the center (column 4) for best position
+    • Always block opponent's three-in-a-row
+    • Try to create two ways to win at once
+    • Watch for diagonal connections
+
+
+DOCUMENTATION
+═══════════════════════════════════════════════════════════════════════════════════
+
+    README.md           Complete guide with strategy tips
+    QUICKSTART.md       Quick reference guide
+    ARCHITECTURE.md     Technical deep dive
+    PROJECT_SUMMARY.md  Competition highlights
+    INDEX.md            Documentation index
+
+
+NEED HELP?
+═══════════════════════════════════════════════════════════════════════════════════
+
+    • Read README.md for detailed strategy guide
+    • Check QUICKSTART.md for quick reference
+    • All documentation is in Markdown format
+
+
+SYSTEM REQUIREMENTS
+═══════════════════════════════════════════════════════════════════════════════════
+
+    • Rust 1.70 or higher
+    • Terminal with ANSI color support
+    • ~2 MB free memory
+    • ~10 MB disk space (including build artifacts)
+
+
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════════
+
+Problem: Colors not showing
+Solution: Use a terminal with ANSI color support (Windows Terminal, iTerm2, etc.)
+
+Problem: Compilation error
+Solution: Update Rust with: rustup update
+
+Problem: AI is slow
+Solution: Make sure you built with --release flag
+
+
+═══════════════════════════════════════════════════════════════════════════════════
+
+                            ENJOY THE GAME!
+
+═══════════════════════════════════════════════════════════════════════════════════

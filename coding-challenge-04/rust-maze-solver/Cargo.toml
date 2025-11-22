@@ -1,0 +1,22 @@
+[package]
+name = "rust-maze-solver"
+version = "0.1.0"
+edition = "2021"
+authors = ["Maze Challenge Team"]
+description = "An amazing maze generator and solver with multiple algorithms and beautiful visualizations"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+crossterm = "0.27"
+rand = "0.8"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+colored = "2.1"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name = "maze_benchmark"
+harness = false

@@ -7,8 +7,8 @@
 //! - Effects
 
 use sdl2::audio::{AudioCallback, AudioDevice, AudioSpecDesired};
-use std::sync::{Arc, Mutex};
 use std::f32::consts::PI;
+use std::sync::{Arc, Mutex};
 
 /// Audio engine state (shared between game thread and audio callback)
 #[derive(Debug, Clone)]
@@ -72,7 +72,17 @@ impl AudioCallback for EngineAudioCallback {
 
     fn callback(&mut self, out: &mut [f32]) {
         // Copy state values to avoid holding lock during generation
-        let (rpm, volume, engine_volume, _muted, mut gear_shift_samples, mut menu_beep_samples, tire_squeal_intensity, mut collision_samples, rain_intensity) = {
+        let (
+            rpm,
+            volume,
+            engine_volume,
+            _muted,
+            mut gear_shift_samples,
+            mut menu_beep_samples,
+            tire_squeal_intensity,
+            mut collision_samples,
+            rain_intensity,
+        ) = {
             let mut state = self.state.lock().unwrap();
 
             // If muted, output silence
@@ -320,7 +330,11 @@ impl SoundEngine {
         let callback_state = state.clone();
 
         let device = sdl_audio.open_playback(None, &desired_spec, |spec| {
-            log::info!("Audio initialized: {} Hz, {} channels", spec.freq, spec.channels);
+            log::info!(
+                "Audio initialized: {} Hz, {} channels",
+                spec.freq,
+                spec.channels
+            );
 
             EngineAudioCallback {
                 state: callback_state,
@@ -336,7 +350,10 @@ impl SoundEngine {
 
         log::info!("Sound engine initialized successfully");
 
-        Ok(Self { _device: device, state })
+        Ok(Self {
+            _device: device,
+            state,
+        })
     }
 
     /// Update engine RPM

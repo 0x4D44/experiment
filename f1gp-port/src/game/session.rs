@@ -218,7 +218,12 @@ impl RaceSession {
             return 0.0;
         }
 
-        self.race_time - self.lap_start_times.get(driver_index).copied().unwrap_or(0.0)
+        self.race_time
+            - self
+                .lap_start_times
+                .get(driver_index)
+                .copied()
+                .unwrap_or(0.0)
     }
 
     /// Determine flag for a specific driver
@@ -253,7 +258,8 @@ impl RaceSession {
             // Calculate total race time
             let race_time = if laps_completed >= self.total_laps {
                 // Finished: sum of all lap times
-                self.driver_lap_times.get(i)
+                self.driver_lap_times
+                    .get(i)
                     .map(|times| times.iter().sum())
                     .unwrap_or(0.0)
             } else {
@@ -278,7 +284,8 @@ impl RaceSession {
 
         // Sort by: laps completed (desc), then race time (asc)
         results.sort_by(|a, b| {
-            b.laps_completed.cmp(&a.laps_completed)
+            b.laps_completed
+                .cmp(&a.laps_completed)
                 .then(a.race_time.partial_cmp(&b.race_time).unwrap())
         });
 

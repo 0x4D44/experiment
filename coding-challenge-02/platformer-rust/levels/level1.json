@@ -1,0 +1,94 @@
+{
+  "name": "Tutorial Valley",
+  "width": 2000.0,
+  "height": 600.0,
+  "spawn_x": 100.0,
+  "spawn_y": 400.0,
+  "platforms": [
+    {
+      "x": 0.0,
+      "y": 500.0,
+      "width": 400.0,
+      "height": 100.0,
+      "platform_type": "Solid",
+      "end_x": null,
+      "end_y": null,
+      "speed": null
+    },
+    {
+      "x": 500.0,
+      "y": 500.0,
+      "width": 200.0,
+      "height": 100.0,
+      "platform_type": "Solid",
+      "end_x": null,
+      "end_y": null,
+      "speed": null
+    },
+    {
+      "x": 800.0,
+      "y": 500.0,
+      "width": 400.0,
+      "height": 100.0,
+      "platform_type": "Solid",
+      "end_x": null,
+      "end_y": null,
+      "speed": null
+    },
+    {
+      "x": 450.0,
+      "y": 400.0,
+      "width": 100.0,
+      "height": 20.0,
+      "platform_type": "Solid",
+      "end_x": null,
+      "end_y": null,
+      "speed": null
+    },
+    {
+      "x": 1500.0,
+      "y": 500.0,
+      "width": 500.0,
+      "height": 100.0,
+      "platform_type": "Solid",
+      "end_x": null,
+      "end_y": null,
+      "speed": null
+    }
+  ],
+  "enemies": [
+    {
+      "x": 900.0,
+      "y": 450.0,
+      "enemy_type": "Walker",
+      "patrol_start": 850.0,
+      "patrol_end": 1100.0,
+      "radius": null
+    }
+  ],
+  "collectibles": [
+    {
+      "x": 450.0,
+      "y": 350.0,
+      "collectible_type": "Coin"
+    },
+    {
+      "x": 500.0,
+      "y": 350.0,
+      "collectible_type": "Coin"
+    },
+    {
+      "x": 1000.0,
+      "y": 450.0,
+      "collectible_type": "DoubleJump"
+    }
+  ],
+  "checkpoints": [
+    {
+      "x": 1300.0,
+      "y": 400.0
+    }
+  ],
+  "goal_x": 1850.0,
+  "goal_y": 450.0
+}

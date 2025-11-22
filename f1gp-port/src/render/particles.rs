@@ -85,7 +85,7 @@ impl ParticleSystem {
         // Determine spawn rate and intensity based on weather
         let (spawn_rate, intensity) = match weather {
             WeatherCondition::Dry => (0.0, 0.0),
-            WeatherCondition::LightRain => (50.0, 0.5),  // 50 particles/second
+            WeatherCondition::LightRain => (50.0, 0.5), // 50 particles/second
             WeatherCondition::HeavyRain => (150.0, 1.0), // 150 particles/second
         };
 
@@ -109,7 +109,8 @@ impl ParticleSystem {
         }
 
         // Remove off-screen particles
-        self.particles.retain(|p| !p.is_offscreen(self.screen_height));
+        self.particles
+            .retain(|p| !p.is_offscreen(self.screen_height));
     }
 
     /// Render all particles

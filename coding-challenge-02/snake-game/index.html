@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Snake Game - Competition Edition</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="particle-container"></div>
+
+    <div class="game-container">
+        <!-- Main Menu -->
+        <div id="main-menu" class="menu active">
+            <h1 class="game-title">
+                <span class="title-snake">🐍</span>
+                ULTIMATE SNAKE
+                <span class="title-snake">🐍</span>
+            </h1>
+            <div class="menu-content">
+                <button class="btn btn-primary" onclick="game.showModeSelection()">
+                    <span class="btn-icon">🎮</span> PLAY GAME
+                </button>
+                <button class="btn btn-secondary" onclick="game.showSettings()">
+                    <span class="btn-icon">⚙️</span> SETTINGS
+                </button>
+                <button class="btn btn-secondary" onclick="game.showStatistics()">
+                    <span class="btn-icon">📊</span> STATISTICS
+                </button>
+                <button class="btn btn-secondary" onclick="game.showControls()">
+                    <span class="btn-icon">🎯</span> CONTROLS
+                </button>
+            </div>
+        </div>
+
+        <!-- Mode Selection -->
+        <div id="mode-menu" class="menu">
+            <h2>SELECT GAME MODE</h2>
+            <div class="mode-grid">
+                <div class="mode-card" onclick="game.selectMode('classic')">
+                    <div class="mode-icon">🎮</div>
+                    <h3>Classic</h3>
+                    <p>Traditional snake gameplay</p>
+                </div>
+                <div class="mode-card" onclick="game.selectMode('timed')">
+                    <div class="mode-icon">⏱️</div>
+                    <h3>Timed</h3>
+                    <p>Race against the clock</p>
+                </div>
+                <div class="mode-card" onclick="game.selectMode('endless')">
+                    <div class="mode-icon">♾️</div>
+                    <h3>Endless</h3>
+                    <p>No walls, infinite mode</p>
+                </div>
+                <div class="mode-card" onclick="game.selectMode('obstacle')">
+                    <div class="mode-icon">🧱</div>
+                    <h3>Obstacle</h3>
+                    <p>Dynamic obstacles spawn</p>
+                </div>
+            </div>
+            <button class="btn btn-back" onclick="game.showMainMenu()">← BACK</button>
+        </div>
+
+        <!-- Difficulty Selection -->
+        <div id="difficulty-menu" class="menu">
+            <h2>SELECT DIFFICULTY</h2>
+            <div class="difficulty-buttons">
+                <button class="btn btn-difficulty btn-easy" onclick="game.selectDifficulty('easy')">
+                    <span class="difficulty-icon">🟢</span> EASY
+                </button>
+                <button class="btn btn-difficulty btn-medium" onclick="game.selectDifficulty('medium')">
+                    <span class="difficulty-icon">🟡</span> MEDIUM
+                </button>
+                <button class="btn btn-difficulty btn-hard" onclick="game.selectDifficulty('hard')">
+                    <span class="difficulty-icon">🔴</span> HARD
+                </button>
+                <button class="btn btn-difficulty btn-insane" onclick="game.selectDifficulty('insane')">
+                    <span class="difficulty-icon">💀</span> INSANE
+                </button>
+            </div>
+            <button class="btn btn-back" onclick="game.showModeSelection()">← BACK</button>
+        </div>
+
+        <!-- Settings Menu -->
+        <div id="settings-menu" class="menu">
+            <h2>SETTINGS</h2>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label>Theme:</label>
+                    <select id="theme-select" onchange="game.changeTheme(this.value)">
+                        <option value="classic">Classic</option>
+                        <option value="neon">Neon</option>
+                        <option value="retro">Retro</option>
+                        <option value="nature">Nature</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Sound Effects:</label>
+                    <input type="checkbox" id="sound-toggle" checked onchange="game.toggleSound(this.checked)">
+                </div>
+                <div class="setting-item">
+                    <label>Particles:</label>
+                    <input type="checkbox" id="particle-toggle" checked onchange="game.toggleParticles(this.checked)">
+                </div>
+                <div class="setting-item">
+                    <label>Grid Lines:</label>
+                    <input type="checkbox" id="grid-toggle" checked onchange="game.toggleGrid(this.checked)">
+                </div>
+            </div>
+            <button class="btn btn-back" onclick="game.showMainMenu()">← BACK</button>
+        </div>
+
+        <!-- Statistics Menu -->
+        <div id="stats-menu" class="menu">
+            <h2>STATISTICS</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-games">0</div>
+                    <div class="stat-label">Games Played</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-highscore">0</div>
+                    <div class="stat-label">High Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-longest">0</div>
+                    <div class="stat-label">Longest Snake</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-food">0</div>
+                    <div class="stat-label">Total Food</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-powerups">0</div>
+                    <div class="stat-label">Power-Ups Used</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="stat-time">0</div>
+                    <div class="stat-label">Total Time (min)</div>
+                </div>
+            </div>
+            <button class="btn btn-danger" onclick="game.resetStats()" style="margin: 20px 0;">
+                🗑️ RESET STATISTICS
+            </button>
+            <button class="btn btn-back" onclick="game.showMainMenu()">← BACK</button>
+        </div>
+
+        <!-- Controls Menu -->
+        <div id="controls-menu" class="menu">
+            <h2>CONTROLS</h2>
+            <div class="controls-content">
+                <div class="control-section">
+                    <h3>🖱️ Desktop Controls</h3>
+                    <div class="control-item">
+                        <span class="key">↑</span> <span class="key">W</span>
+                        <span>Move Up</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↓</span> <span class="key">S</span>
+                        <span>Move Down</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">←</span> <span class="key">A</span>
+                        <span>Move Left</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">→</span> <span class="key">D</span>
+                        <span>Move Right</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">SPACE</span> <span class="key">P</span>
+                        <span>Pause Game</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">ESC</span>
+                        <span>Exit to Menu</span>
+                    </div>
+                </div>
+                <div class="control-section">
+                    <h3>📱 Mobile Controls</h3>
+                    <div class="control-item">
+                        <span class="mobile-gesture">👆 Swipe Up</span>
+                        <span>Move Up</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="mobile-gesture">👇 Swipe Down</span>
+                        <span>Move Down</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="mobile-gesture">👈 Swipe Left</span>
+                        <span>Move Left</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="mobile-gesture">👉 Swipe Right</span>
+                        <span>Move Right</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="mobile-gesture">👆 Tap</span>
+                        <span>Pause Game</span>
+                    </div>
+                </div>
+            </div>
+            <button class="btn btn-back" onclick="game.showMainMenu()">← BACK</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="game-screen">
+            <div class="game-header">
+                <div class="game-info">
+                    <div class="info-item">
+                        <span class="info-label">SCORE</span>
+                        <span class="info-value" id="score">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">LENGTH</span>
+                        <span class="info-value" id="length">3</span>
+                    </div>
+                    <div class="info-item" id="timer-display" style="display: none;">
+                        <span class="info-label">TIME</span>
+                        <span class="info-value" id="timer">60</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">COMBO</span>
+                        <span class="info-value combo-value" id="combo">x1</span>
+                    </div>
+                </div>
+                <div class="game-controls">
+                    <button class="btn-icon-only" onclick="game.togglePause()" title="Pause">⏸️</button>
+                    <button class="btn-icon-only" onclick="game.exitToMenu()" title="Exit">🚪</button>
+                </div>
+            </div>
+
+            <div class="canvas-container">
+                <canvas id="game-canvas"></canvas>
+                <div id="pause-overlay" class="overlay">
+                    <div class="overlay-content">
+                        <h2>⏸️ PAUSED</h2>
+                        <button class="btn btn-primary" onclick="game.togglePause()">RESUME</button>
+                        <button class="btn btn-secondary" onclick="game.exitToMenu()">EXIT TO MENU</button>
+                    </div>
+                </div>
+                <div id="gameover-overlay" class="overlay">
+                    <div class="overlay-content">
+                        <h2 id="gameover-title">💀 GAME OVER</h2>
+                        <div class="gameover-stats">
+                            <p>Final Score: <span id="final-score">0</span></p>
+                            <p>Snake Length: <span id="final-length">0</span></p>
+                            <p id="new-highscore" style="display: none; color: #ffd700; font-weight: bold;">
+                                🏆 NEW HIGH SCORE! 🏆
+                            </p>
+                        </div>
+                        <button class="btn btn-primary" onclick="game.restart()">PLAY AGAIN</button>
+                        <button class="btn btn-secondary" onclick="game.exitToMenu()">EXIT TO MENU</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="powerups-display">
+                <h3>Active Power-Ups</h3>
+                <div id="active-powerups"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

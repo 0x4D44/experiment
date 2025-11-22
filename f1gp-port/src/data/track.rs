@@ -3,9 +3,9 @@
 //! This module contains data structures representing the F1GP track file format.
 //! Based on reverse engineering and ArgDocs documentation.
 
-use serde::{Deserialize, Serialize};
-use glam::Vec3;
 use super::objects::ObjectShape;
+use glam::Vec3;
+use serde::{Deserialize, Serialize};
 
 /// Offsets into the track file
 /// These offsets are stored at 0x1000 and point to various data sections
@@ -338,7 +338,7 @@ impl TrackSection {
     pub fn straight(length_meters: f32) -> Self {
         Self {
             length: length_meters,
-            curvature: 0,  // Straight
+            curvature: 0, // Straight
             ..Default::default()
         }
     }

@@ -1,0 +1,51 @@
+name: RE - Ghidra Export
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 're/ghidra/**'
+      - 're/scripts/**'
+      - 're/artifacts/**'
+  pull_request:
+    paths:
+      - 're/ghidra/**'
+      - 're/scripts/**'
+      - 're/artifacts/**'
+
+jobs:
+  ghidra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17 (Ghidra requirement)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Python deps
+        run: |
+          python3 -m pip install --user jsonschema pyyaml
+      - name: Download Ghidra
+        run: |
+          GHIDRA_URL=${GHIDRA_URL:-"https://ghidra-sre.org/ghidra_11.0_PUBLIC_20240101.zip"}
+          curl -L "$GHIDRA_URL" -o ghidra.zip
+          unzip -q ghidra.zip -d $HOME
+          echo "GHIDRA_HEADLESS=$HOME/ghidra_11.0_PUBLIC/support/analyzeHeadless" >> $GITHUB_ENV
+      - name: Refresh artifacts (Ghidra only)
+        env:
+          GHIDRA_HEADLESS: ${{ env.GHIDRA_HEADLESS }}
+        run: |
+          python3 re/scripts/refresh_artifacts.py --skip-binja --skip-validate --subsystems physics,input
+      - name: Validate artifacts
+        run: |
+          python3 re/scripts/refresh_artifacts.py --dry-run --skip-ghidra --skip-binja
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghidra-artifacts
+          path: |
+            re/artifacts/symbols.json
+            re/artifacts/segments.yml
+            re/artifacts/types/
+            re/artifacts/logs/

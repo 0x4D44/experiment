@@ -1,0 +1,33 @@
+name: RE - Parity Tests
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 're/**'
+      - 'f1gp-port/**'
+      - 'f1gp-data/dos_traces/**'
+  pull_request:
+    paths:
+      - 're/**'
+      - 'f1gp-port/**'
+      - 'f1gp-data/dos_traces/**'
+
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Python deps
+        run: python3 -m pip install --user jsonschema pyyaml
+      - name: Ensure sample metadata present
+        run: |
+          test -f f1gp-data/dos_traces/sample_boot/metadata.json
+          test -f f1gp-port/tests/data/sample_capture_meta.json
+      - name: Run parity harness stub
+        run: |
+          cargo run --bin parity_harness -- \
+            --reference-meta f1gp-data/dos_traces/sample_boot/metadata.json \
+            --candidate-meta f1gp-port/tests/data/sample_capture_meta.json

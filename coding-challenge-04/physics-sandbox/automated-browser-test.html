@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Sandbox - Automated Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #0a0e27;
+            color: white;
+            padding: 20px;
+        }
+        #canvas {
+            border: 2px solid #6496ff;
+            display: block;
+            margin: 20px 0;
+        }
+        .test-section {
+            background: rgba(26, 30, 55, 0.95);
+            border: 2px solid rgba(100, 150, 255, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .pass { color: #4ade80; }
+        .fail { color: #f87171; }
+        .warn { color: #fbbf24; }
+        h2 { color: #6496ff; }
+        .test-item {
+            padding: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Physics Sandbox - Automated Browser Test</h1>
+
+    <canvas id="canvas" width="800" height="600"></canvas>
+
+    <div class="test-section">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script src="physics-engine.js"></script>
+    <script src="renderer.js"></script>
+    <script>
+        // Automated test suite
+        class BrowserTest {
+            constructor() {
+                this.results = [];
+                this.canvas = document.getElementById('canvas');
+                this.resultsDiv = document.getElementById('test-results');
+            }
+
+            log(message, status = 'info') {
+                const className = status === 'pass' ? 'pass' : status === 'fail' ? 'fail' : status === 'warn' ? 'warn' : '';
+                const symbol = status === 'pass' ? '✓' : status === 'fail' ? '✗' : status === 'warn' ? '⚠' : '→';
+                const div = document.createElement('div');
+                div.className = `test-item ${className}`;
+                div.textContent = `${symbol} ${message}`;
+                this.resultsDiv.appendChild(div);
+                console.log(message);
+                this.results.push({ message, status });
+            }
+
+            async runAllTests() {
+                this.log('Starting automated browser tests...', 'info');
+
+                // Test 1: Canvas rendering
+                this.testCanvasRendering();
+
+                // Test 2: Physics engine initialization
+                this.testPhysicsEngine();
+
+                // Test 3: Renderer initialization
+                this.testRenderer();
+
+                // Test 4: Object spawning
+                this.testObjectSpawning();
+
+                // Test 5: Visual effects
+                this.testVisualEffects();
+
+                // Test 6: Collision detection
+                await this.testCollisions();
+
+                // Test 7: Gravity
+                this.testGravity();
+
+                // Test 8: Performance
+                this.testPerformance();
+
+                // Test 9: Memory management
+                this.testMemoryManagement();
+
+                // Summary
+                this.showSummary();
+            }
+
+            testCanvasRendering() {
+                this.log('Testing canvas rendering...', 'info');
+
+                const ctx = this.canvas.getContext('2d');
+                if (ctx) {
+                    this.log('Canvas context available', 'pass');
+                } else {
+                    this.log('Canvas context NOT available', 'fail');
+                    return;
+                }
+
+                // Test drawing
+                try {
+                    ctx.fillStyle = '#ff0000';
+                    ctx.fillRect(0, 0, 10, 10);
+                    this.log('Canvas drawing works', 'pass');
+                } catch (e) {
+                    this.log('Canvas drawing failed: ' + e.message, 'fail');
+                }
+            }
+
+            testPhysicsEngine() {
+                this.log('Testing physics engine...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+                    this.log('PhysicsEngine created successfully', 'pass');
+
+                    // Test adding objects
+                    const circle = new Circle(100, 100, 30, 1);
+                    engine.addObject(circle);
+
+                    if (engine.objects.length === 1) {
+                        this.log('Object added to engine', 'pass');
+                    } else {
+                        this.log('Failed to add object', 'fail');
+                    }
+
+                    // Test gravity toggle
+                    engine.toggleGravity();
+                    if (!engine.enableGravity) {
+                        this.log('Gravity toggle works', 'pass');
+                    } else {
+                        this.log('Gravity toggle failed', 'fail');
+                    }
+
+                } catch (e) {
+                    this.log('PhysicsEngine error: ' + e.message, 'fail');
+                }
+            }
+
+            testRenderer() {
+                this.log('Testing renderer...', 'info');
+
+                try {
+                    const renderer = new Renderer(this.canvas);
+                    this.log('Renderer created successfully', 'pass');
+
+                    // Test rendering
+                    const engine = new PhysicsEngine(800, 600);
+                    const circle = new Circle(400, 300, 30, 1);
+                    engine.addObject(circle);
+
+                    renderer.render(engine);
+                    this.log('Rendering completed without errors', 'pass');
+
+                    // Test trails toggle
+                    renderer.toggleTrails();
+                    if (!renderer.enableTrails) {
+                        this.log('Trails toggle works', 'pass');
+                    } else {
+                        this.log('Trails toggle failed', 'fail');
+                    }
+
+                } catch (e) {
+                    this.log('Renderer error: ' + e.message, 'fail');
+                }
+            }
+
+            testObjectSpawning() {
+                this.log('Testing object spawning...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+
+                    // Spawn circle
+                    const circle = new Circle(100, 100, 30, 1);
+                    engine.addObject(circle);
+                    this.log('Circle spawned successfully', 'pass');
+
+                    // Spawn box
+                    const box = new Box(200, 200, 50, 50, 1.5);
+                    engine.addObject(box);
+                    this.log('Box spawned successfully', 'pass');
+
+                    // Verify object properties
+                    if (circle.color && circle.color.startsWith('hsl')) {
+                        this.log('Object colors generated correctly', 'pass');
+                    } else {
+                        this.log('Object color generation failed', 'fail');
+                    }
+
+                } catch (e) {
+                    this.log('Object spawning error: ' + e.message, 'fail');
+                }
+            }
+
+            testVisualEffects() {
+                this.log('Testing visual effects...', 'info');
+
+                try {
+                    const renderer = new Renderer(this.canvas);
+                    const engine = new PhysicsEngine(800, 600);
+                    const circle = new Circle(400, 300, 30, 1);
+
+                    // Give it velocity to create trails
+                    circle.velocity = new Vector2(100, 100);
+                    engine.addObject(circle);
+
+                    // Update a few times to create trail
+                    for (let i = 0; i < 10; i++) {
+                        engine.update(1/60);
+                    }
+
+                    if (circle.trail.length > 0) {
+                        this.log('Trails are being created', 'pass');
+                    } else {
+                        this.log('Trails not created', 'warn');
+                    }
+
+                    // Render with effects
+                    renderer.render(engine);
+                    this.log('Visual effects rendered', 'pass');
+
+                } catch (e) {
+                    this.log('Visual effects error: ' + e.message, 'fail');
+                }
+            }
+
+            async testCollisions() {
+                this.log('Testing collision detection...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+
+                    // Create two overlapping circles
+                    const circle1 = new Circle(400, 300, 30, 1);
+                    const circle2 = new Circle(450, 300, 30, 1);
+
+                    circle1.velocity = new Vector2(100, 0);
+                    circle2.velocity = new Vector2(-100, 0);
+
+                    engine.addObject(circle1);
+                    engine.addObject(circle2);
+
+                    // Run collision detection
+                    const initialDistance = circle1.position.distance(circle2.position);
+                    engine.handleCollisions();
+                    const finalDistance = circle1.position.distance(circle2.position);
+
+                    if (finalDistance >= circle1.radius + circle2.radius - 1) {
+                        this.log('Circle-circle collision detection works', 'pass');
+                    } else {
+                        this.log('Circle-circle collision needs adjustment', 'warn');
+                    }
+
+                    // Test circle-box collision
+                    const circle3 = new Circle(100, 100, 30, 1);
+                    const box = new Box(150, 100, 50, 50, 1.5);
+
+                    engine.addObject(circle3);
+                    engine.addObject(box);
+
+                    engine.handleCollisions();
+                    this.log('Circle-box collision handler executed', 'pass');
+
+                } catch (e) {
+                    this.log('Collision detection error: ' + e.message, 'fail');
+                }
+            }
+
+            testGravity() {
+                this.log('Testing gravity simulation...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+                    const circle = new Circle(400, 100, 30, 1);
+                    engine.addObject(circle);
+
+                    const initialY = circle.position.y;
+
+                    // Update with gravity
+                    for (let i = 0; i < 10; i++) {
+                        engine.update(1/60);
+                    }
+
+                    if (circle.position.y > initialY) {
+                        this.log('Gravity is working (object fell)', 'pass');
+                    } else {
+                        this.log('Gravity not working', 'fail');
+                    }
+
+                    // Test gravity toggle
+                    engine.toggleGravity();
+                    const y2 = circle.position.y;
+                    circle.velocity = new Vector2(0, 0);
+
+                    for (let i = 0; i < 10; i++) {
+                        engine.update(1/60);
+                    }
+
+                    if (Math.abs(circle.position.y - y2) < 5) {
+                        this.log('Gravity toggle works (no falling)', 'pass');
+                    } else {
+                        this.log('Gravity toggle issue', 'warn');
+                    }
+
+                } catch (e) {
+                    this.log('Gravity test error: ' + e.message, 'fail');
+                }
+            }
+
+            testPerformance() {
+                this.log('Testing performance...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+                    const renderer = new Renderer(this.canvas);
+
+                    // Spawn many objects
+                    for (let i = 0; i < 50; i++) {
+                        const circle = new Circle(
+                            Math.random() * 800,
+                            Math.random() * 600,
+                            20,
+                            1
+                        );
+                        circle.velocity = new Vector2(
+                            (Math.random() - 0.5) * 200,
+                            (Math.random() - 0.5) * 200
+                        );
+                        engine.addObject(circle);
+                    }
+
+                    // Measure frame time
+                    const iterations = 60;
+                    const start = performance.now();
+
+                    for (let i = 0; i < iterations; i++) {
+                        engine.update(1/60);
+                        renderer.render(engine);
+                    }
+
+                    const end = performance.now();
+                    const avgFrameTime = (end - start) / iterations;
+                    const fps = Math.floor(1000 / avgFrameTime);
+
+                    this.log(`Average frame time: ${avgFrameTime.toFixed(2)}ms`, 'info');
+                    this.log(`Estimated FPS: ${fps}`, 'info');
+
+                    if (fps >= 60) {
+                        this.log('Performance: EXCELLENT (60+ FPS)', 'pass');
+                    } else if (fps >= 30) {
+                        this.log('Performance: GOOD (30+ FPS)', 'pass');
+                    } else {
+                        this.log('Performance: NEEDS OPTIMIZATION (<30 FPS)', 'warn');
+                    }
+
+                } catch (e) {
+                    this.log('Performance test error: ' + e.message, 'fail');
+                }
+            }
+
+            testMemoryManagement() {
+                this.log('Testing memory management...', 'info');
+
+                try {
+                    const engine = new PhysicsEngine(800, 600);
+
+                    // Try to add more objects than the limit
+                    for (let i = 0; i < 600; i++) {
+                        const circle = new Circle(
+                            Math.random() * 800,
+                            Math.random() * 600,
+                            20,
+                            1
+                        );
+                        engine.addObject(circle);
+                    }
+
+                    if (engine.objects.length === engine.maxObjects) {
+                        this.log(`Memory limit enforced (${engine.maxObjects} objects max)`, 'pass');
+                    } else {
+                        this.log('Memory limit not properly enforced', 'warn');
+                    }
+
+                    // Test clear
+                    engine.clear();
+                    if (engine.objects.length === 0) {
+                        this.log('Clear function works', 'pass');
+                    } else {
+                        this.log('Clear function failed', 'fail');
+                    }
+
+                } catch (e) {
+                    this.log('Memory management error: ' + e.message, 'fail');
+                }
+            }
+
+            showSummary() {
+                this.log('', 'info');
+                this.log('='.repeat(50), 'info');
+
+                const passed = this.results.filter(r => r.status === 'pass').length;
+                const failed = this.results.filter(r => r.status === 'fail').length;
+                const warnings = this.results.filter(r => r.status === 'warn').length;
+
+                this.log(`Tests Passed: ${passed}`, 'pass');
+                if (warnings > 0) this.log(`Warnings: ${warnings}`, 'warn');
+                if (failed > 0) this.log(`Tests Failed: ${failed}`, 'fail');
+
+                if (failed === 0 && warnings === 0) {
+                    this.log('OVERALL: ALL TESTS PASSED - READY FOR COMPETITION!', 'pass');
+                } else if (failed === 0) {
+                    this.log('OVERALL: PASSED WITH WARNINGS', 'warn');
+                } else {
+                    this.log('OVERALL: SOME TESTS FAILED - NEEDS FIXES', 'fail');
+                }
+
+                this.log('='.repeat(50), 'info');
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', () => {
+            const tester = new BrowserTest();
+            setTimeout(() => tester.runAllTests(), 500);
+        });
+    </script>
+</body>
+</html>

@@ -230,11 +230,7 @@ impl CarPhysics {
         }
 
         // Downforce (simplified, acts downward)
-        let downforce = 0.5
-            * air_density
-            * speed_squared
-            * self.spec.aerodynamics.downforce
-            * 2.0;
+        let downforce = 0.5 * air_density * speed_squared * self.spec.aerodynamics.downforce * 2.0;
         self.body.add_force(Vec3::new(0.0, -downforce, 0.0));
     }
 
@@ -248,11 +244,8 @@ impl CarPhysics {
         let lateral_velocity = self.body.velocity - forward * self.body.velocity.dot(forward);
 
         if lateral_velocity.length() > 0.1 {
-            let lateral_friction = -lateral_velocity.normalize()
-                * friction_coefficient
-                * self.spec.mass
-                * 9.81
-                * 2.0;
+            let lateral_friction =
+                -lateral_velocity.normalize() * friction_coefficient * self.spec.mass * 9.81 * 2.0;
             self.body.add_force(lateral_friction);
         }
     }

@@ -124,7 +124,12 @@ impl Menu {
     }
 
     /// Create race setup menu
-    pub fn race_setup_menu(screen_width: u32, screen_height: u32, num_opponents: usize, weather: WeatherCondition) -> Self {
+    pub fn race_setup_menu(
+        screen_width: u32,
+        screen_height: u32,
+        num_opponents: usize,
+        weather: WeatherCondition,
+    ) -> Self {
         let weather_text = match weather {
             WeatherCondition::Dry => "DRY",
             WeatherCondition::LightRain => "LIGHT RAIN",
@@ -201,8 +206,8 @@ impl Menu {
             self.selected_index += 1;
 
             // Skip disabled items
-            while self.selected_index < self.items.len()
-                && !self.items[self.selected_index].enabled {
+            while self.selected_index < self.items.len() && !self.items[self.selected_index].enabled
+            {
                 self.selected_index += 1;
             }
 
@@ -215,7 +220,8 @@ impl Menu {
 
     /// Get selected action
     pub fn get_selected_action(&self) -> MenuAction {
-        self.items.get(self.selected_index)
+        self.items
+            .get(self.selected_index)
             .map(|item| item.action)
             .unwrap_or(MenuAction::None)
     }
@@ -253,7 +259,10 @@ impl Menu {
         let title_y = center_y - 150.0;
         renderer.draw_text(
             &self.title,
-            Vec2::new(center_x - (self.title.len() as f32 * title_size * 0.3), title_y),
+            Vec2::new(
+                center_x - (self.title.len() as f32 * title_size * 0.3),
+                title_y,
+            ),
             title_size,
             Color::WHITE,
         )?;
@@ -280,7 +289,10 @@ impl Menu {
             if is_selected && item.enabled {
                 renderer.draw_text(
                     ">",
-                    Vec2::new(center_x - (item.text.len() as f32 * item_size * 0.35) - 30.0, y),
+                    Vec2::new(
+                        center_x - (item.text.len() as f32 * item_size * 0.35) - 30.0,
+                        y,
+                    ),
                     item_size,
                     color,
                 )?;
@@ -301,7 +313,10 @@ impl Menu {
         let hint_text = "UP/DOWN: Navigate  ENTER: Select  ESC: Back";
         renderer.draw_text(
             hint_text,
-            Vec2::new(center_x - (hint_text.len() as f32 * hint_size * 0.3), hint_y),
+            Vec2::new(
+                center_x - (hint_text.len() as f32 * hint_size * 0.3),
+                hint_y,
+            ),
             hint_size,
             Color::rgba(200, 200, 200, 255),
         )?;

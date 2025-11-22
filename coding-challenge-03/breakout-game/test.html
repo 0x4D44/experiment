@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout Arena - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #2a1a4e 100%);
+            color: #fff;
+            padding: 20px;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.5);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(138, 43, 226, 0.8);
+            background: linear-gradient(90deg, #ff00ff, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .test-summary {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2em;
+        }
+
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(138, 43, 226, 0.1);
+            border-radius: 10px;
+            border: 2px solid rgba(138, 43, 226, 0.3);
+        }
+
+        .test-section h2 {
+            color: #8a2be2;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .test-case {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border-left: 4px solid #888;
+        }
+
+        .test-case.pass {
+            border-left-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .test-case.fail {
+            border-left-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 1.1em;
+        }
+
+        .test-result {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .test-result.pass {
+            background: #00ff00;
+            color: #000;
+        }
+
+        .test-result.fail {
+            background: #ff0000;
+            color: #fff;
+        }
+
+        .test-details {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .error-message {
+            color: #ff6666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .run-button {
+            display: block;
+            margin: 30px auto;
+            padding: 15px 40px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #8a2be2, #4b0082);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+        }
+
+        .run-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(138, 43, 226, 0.6);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            color: #8a2be2;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-value.pass {
+            color: #00ff00;
+        }
+
+        .stat-value.fail {
+            color: #ff0000;
+        }
+
+        canvas {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>BREAKOUT ARENA TEST SUITE</h1>
+        <p style="text-align: center; color: #aaa; margin-bottom: 20px;">
+            Comprehensive testing for game mechanics, physics, and logic
+        </p>
+
+        <button class="run-button" onclick="runAllTests()">RUN ALL TESTS</button>
+
+        <div class="stats" id="testStats" style="display: none;">
+            <div class="stat-item">
+                <div class="stat-label">TOTAL TESTS</div>
+                <div class="stat-value" id="totalTests">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">PASSED</div>
+                <div class="stat-value pass" id="passedTests">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">FAILED</div>
+                <div class="stat-value fail" id="failedTests">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">SUCCESS RATE</div>
+                <div class="stat-value" id="successRate">0%</div>
+            </div>
+        </div>
+
+        <div id="testResults"></div>
+    </div>
+
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <script src="game.js"></script>
+    <script src="tests.js"></script>
+</body>
+</html>

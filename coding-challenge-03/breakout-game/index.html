@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breakout Arena - Classic Arcade Action</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #2a1a4e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .game-container {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(138, 43, 226, 0.5);
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(138, 43, 226, 0.8);
+            background: linear-gradient(90deg, #ff00ff, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin: 20px 0;
+            font-size: 1.2em;
+            gap: 20px;
+        }
+
+        .stat-item {
+            padding: 10px 20px;
+            background: rgba(138, 43, 226, 0.2);
+            border-radius: 10px;
+            border: 2px solid rgba(138, 43, 226, 0.5);
+            min-width: 150px;
+        }
+
+        .stat-label {
+            color: #8a2be2;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+        }
+
+        canvas {
+            border: 4px solid rgba(138, 43, 226, 0.8);
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.6),
+                        inset 0 0 30px rgba(0, 0, 0, 0.5);
+            display: block;
+            margin: 20px auto;
+            background: #000;
+        }
+
+        .controls {
+            margin: 20px 0;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .button {
+            padding: 15px 30px;
+            font-size: 1.2em;
+            background: linear-gradient(135deg, #8a2be2, #4b0082);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            cursor: pointer;
+            margin: 10px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(138, 43, 226, 0.4);
+            transition: all 0.3s;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(138, 43, 226, 0.6);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .game-over, .level-complete, .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #8a2be2;
+            box-shadow: 0 0 50px rgba(138, 43, 226, 0.8);
+            z-index: 1000;
+            display: none;
+        }
+
+        .game-over h2, .level-complete h2, .start-screen h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #ff00ff;
+            text-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+        }
+
+        .lives {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .life-icon {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #ff00ff, #00ffff);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(138, 43, 226, 0.8);
+        }
+
+        .powerup-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid #8a2be2;
+            font-size: 0.9em;
+            max-width: 200px;
+            display: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .pulse {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>BREAKOUT ARENA</h1>
+
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-label">SCORE</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">HIGH SCORE</div>
+                <div class="stat-value" id="highScore">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">LEVEL</div>
+                <div class="stat-value" id="level">1</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">LIVES</div>
+                <div class="lives" id="lives">
+                    <div class="life-icon"></div>
+                    <div class="life-icon"></div>
+                    <div class="life-icon"></div>
+                </div>
+            </div>
+        </div>
+
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div class="controls">
+            🎮 Use ARROW KEYS or MOUSE to move paddle | SPACE to pause
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <h2>BREAKOUT ARENA</h2>
+            <p style="margin: 20px 0; font-size: 1.1em;">
+                Classic arcade action with modern polish!<br><br>
+                🎯 Break all the bricks<br>
+                ⚡ Collect power-ups<br>
+                🏆 Beat your high score<br>
+            </p>
+            <button class="button pulse" onclick="game.start()">START GAME</button>
+        </div>
+
+        <div class="level-complete" id="levelComplete">
+            <h2>LEVEL COMPLETE!</h2>
+            <p id="levelCompleteText" style="margin: 20px 0; font-size: 1.2em;"></p>
+            <button class="button" onclick="game.nextLevel()">NEXT LEVEL</button>
+        </div>
+
+        <div class="game-over" id="gameOver">
+            <h2>GAME OVER</h2>
+            <p id="finalScore" style="margin: 20px 0; font-size: 1.5em;"></p>
+            <button class="button" onclick="game.restart()">TRY AGAIN</button>
+        </div>
+
+        <div class="powerup-info" id="powerupInfo"></div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

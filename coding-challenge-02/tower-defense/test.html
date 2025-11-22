@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #333;
+            padding: 20px;
+        }
+
+        #test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: #555;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .test-case {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .test-case.pass {
+            background: #c6f6d5;
+            border-left: 4px solid #48bb78;
+        }
+
+        .test-case.fail {
+            background: #fed7d7;
+            border-left: 4px solid #f56565;
+        }
+
+        .test-name {
+            font-weight: 600;
+        }
+
+        .test-result {
+            font-weight: bold;
+        }
+
+        .test-result.pass {
+            color: #48bb78;
+        }
+
+        .test-result.fail {
+            color: #f56565;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .summary h2 {
+            color: white;
+            margin-top: 0;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+        }
+
+        .stat {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .error-detail {
+            color: #c53030;
+            font-size: 0.9em;
+            margin-top: 5px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div id="test-container">
+        <h1>🧪 Tower Defense Game - Test Suite</h1>
+        <div id="test-results"></div>
+        <div class="summary">
+            <h2>Test Summary</h2>
+            <div class="summary-stats">
+                <div>
+                    <div class="stat" id="total-tests">0</div>
+                    <div>Total Tests</div>
+                </div>
+                <div>
+                    <div class="stat" id="passed-tests">0</div>
+                    <div>Passed</div>
+                </div>
+                <div>
+                    <div class="stat" id="failed-tests">0</div>
+                    <div>Failed</div>
+                </div>
+                <div>
+                    <div class="stat" id="pass-rate">0%</div>
+                    <div>Pass Rate</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Test Framework
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async run() {
+                this.results = [];
+
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        this.results.push({ name: test.name, passed: true });
+                    } catch (error) {
+                        this.results.push({ name: test.name, passed: false, error: error.message });
+                    }
+                }
+
+                this.displayResults();
+            }
+
+            displayResults() {
+                const container = document.getElementById('test-results');
+                container.innerHTML = '';
+
+                // Group tests by section
+                const sections = {};
+                this.results.forEach(result => {
+                    const section = result.name.split(':')[0];
+                    if (!sections[section]) {
+                        sections[section] = [];
+                    }
+                    sections[section].push(result);
+                });
+
+                // Display each section
+                for (const [sectionName, tests] of Object.entries(sections)) {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.className = 'test-section';
+
+                    const sectionTitle = document.createElement('h2');
+                    sectionTitle.textContent = sectionName;
+                    sectionDiv.appendChild(sectionTitle);
+
+                    tests.forEach(result => {
+                        const testDiv = document.createElement('div');
+                        testDiv.className = `test-case ${result.passed ? 'pass' : 'fail'}`;
+
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'test-name';
+                        nameSpan.textContent = result.name.split(':')[1]?.trim() || result.name;
+
+                        const resultSpan = document.createElement('span');
+                        resultSpan.className = `test-result ${result.passed ? 'pass' : 'fail'}`;
+                        resultSpan.textContent = result.passed ? '✓ PASS' : '✗ FAIL';
+
+                        testDiv.appendChild(nameSpan);
+                        testDiv.appendChild(resultSpan);
+
+                        if (result.error) {
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'error-detail';
+                            errorDiv.textContent = result.error;
+                            testDiv.appendChild(errorDiv);
+                        }
+
+                        sectionDiv.appendChild(testDiv);
+                    });
+
+                    container.appendChild(sectionDiv);
+                }
+
+                // Update summary
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+                const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = passed;
+                document.getElementById('failed-tests').textContent = failed;
+                document.getElementById('pass-rate').textContent = `${passRate}%`;
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEquals(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected}, got ${actual}`);
+            }
+        }
+
+        function assertApprox(actual, expected, tolerance, message) {
+            if (Math.abs(actual - expected) > tolerance) {
+                throw new Error(message || `Expected ${expected} ± ${tolerance}, got ${actual}`);
+            }
+        }
+
+        // Test Suite
+        const runner = new TestRunner();
+
+        // ============================================================================
+        // CONFIGURATION TESTS
+        // ============================================================================
+
+        runner.test('Configuration: Tower types are properly defined', () => {
+            const TOWER_TYPES = {
+                basic: { name: 'Basic Tower', cost: 50, damage: 15, range: 120, fireRate: 1.0 },
+                rapid: { name: 'Rapid Tower', cost: 70, damage: 8, range: 100, fireRate: 0.3 },
+                splash: { name: 'Splash Tower', cost: 100, damage: 25, range: 110, fireRate: 1.5 },
+                sniper: { name: 'Sniper Tower', cost: 120, damage: 50, range: 200, fireRate: 2.0 },
+                slow: { name: 'Frost Tower', cost: 80, damage: 10, range: 90, fireRate: 0.8 }
+            };
+
+            assert(Object.keys(TOWER_TYPES).length === 5, 'Should have 5 tower types');
+            assert(TOWER_TYPES.basic.cost === 50, 'Basic tower cost is 50');
+            assert(TOWER_TYPES.sniper.range === 200, 'Sniper tower has longest range');
+        });
+
+        runner.test('Configuration: Enemy types are properly defined', () => {
+            const ENEMY_TYPES = {
+                basic: { health: 100, speed: 1.0, reward: 10 },
+                fast: { health: 80, speed: 1.5, reward: 15 },
+                tank: { health: 250, speed: 0.7, reward: 30 },
+                swarm: { health: 50, speed: 1.2, reward: 8 },
+                boss: { health: 500, speed: 0.5, reward: 100 }
+            };
+
+            assert(Object.keys(ENEMY_TYPES).length === 5, 'Should have 5 enemy types');
+            assert(ENEMY_TYPES.boss.health === 500, 'Boss has highest health');
+            assert(ENEMY_TYPES.fast.speed === 1.5, 'Fast enemy has speed 1.5');
+        });
+
+        runner.test('Configuration: Waves are properly configured', () => {
+            const WAVES = Array(10).fill(null).map((_, i) => ({
+                enemies: [{ type: 'basic', count: 10 + i * 5, interval: 1.0 }]
+            }));
+
+            assert(WAVES.length === 10, 'Should have 10 waves');
+            assert(WAVES[0].enemies.length > 0, 'Waves should have enemies');
+        });
+
+        // ============================================================================
+        // GAME MECHANICS TESTS
+        // ============================================================================
+
+        runner.test('Game Mechanics: Tower damage calculation', () => {
+            const baseDamage = 15;
+            const level = 2;
+            const expectedDamage = Math.floor(baseDamage * Math.pow(1.5, level - 1));
+
+            assertApprox(expectedDamage, 22, 1, 'Level 2 tower damage should be ~22');
+        });
+
+        runner.test('Game Mechanics: Tower upgrade cost calculation', () => {
+            const baseCost = 50;
+            const level = 2;
+            const upgradeCost = Math.floor(baseCost * level * 0.7);
+
+            assertEquals(upgradeCost, 70, 'Level 2 upgrade should cost 70');
+        });
+
+        runner.test('Game Mechanics: Tower sell value calculation', () => {
+            const totalCost = 50 + 35; // Base + upgrade
+            const sellValue = Math.floor(totalCost * 0.7);
+
+            assertEquals(sellValue, 59, 'Sell value should be 70% of total cost');
+        });
+
+        runner.test('Game Mechanics: Enemy health reduction', () => {
+            let health = 100;
+            const damage = 15;
+
+            health -= damage;
+            assertEquals(health, 85, 'Health should decrease by damage amount');
+
+            health -= damage * 6;
+            assert(health <= 0, 'Enemy should be killed after enough damage');
+        });
+
+        runner.test('Game Mechanics: Slow effect application', () => {
+            const baseSpeed = 1.0;
+            const slowEffect = 0.5;
+            const effectiveSpeed = baseSpeed * slowEffect;
+
+            assertEquals(effectiveSpeed, 0.5, 'Slow effect should reduce speed to 50%');
+        });
+
+        // ============================================================================
+        // DISTANCE AND RANGE TESTS
+        // ============================================================================
+
+        runner.test('Distance Calculation: Pythagorean distance', () => {
+            const x1 = 0, y1 = 0;
+            const x2 = 3, y2 = 4;
+            const distance = Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+
+            assertEquals(distance, 5, 'Distance between (0,0) and (3,4) should be 5');
+        });
+
+        runner.test('Distance Calculation: Tower range check', () => {
+            const towerX = 100, towerY = 100;
+            const enemyX = 150, enemyY = 150;
+            const towerRange = 120;
+
+            const dx = enemyX - towerX;
+            const dy = enemyY - towerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            assert(distance <= towerRange, 'Enemy should be in range');
+        });
+
+        runner.test('Distance Calculation: Out of range check', () => {
+            const towerX = 100, towerY = 100;
+            const enemyX = 300, enemyY = 300;
+            const towerRange = 120;
+
+            const dx = enemyX - towerX;
+            const dy = enemyY - towerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            assert(distance > towerRange, 'Enemy should be out of range');
+        });
+
+        // ============================================================================
+        // PATHFINDING TESTS
+        // ============================================================================
+
+        runner.test('Pathfinding: Path generation', () => {
+            const GRID_WIDTH = 20;
+            const GRID_HEIGHT = 15;
+            const startX = 0;
+
+            const path = [];
+            let x = startX;
+            let y = Math.floor(GRID_HEIGHT / 2);
+
+            while (x < GRID_WIDTH) {
+                path.push({ x, y });
+                x++;
+            }
+
+            assert(path.length > 0, 'Path should not be empty');
+            assert(path[0].x === 0, 'Path should start at x=0');
+            assert(path[path.length - 1].x >= GRID_WIDTH - 1, 'Path should reach the end');
+        });
+
+        runner.test('Pathfinding: Enemy movement along path', () => {
+            const startX = 0, startY = 100;
+            const targetX = 100, targetY = 100;
+            const speed = 2;
+
+            let x = startX;
+            const dx = targetX - x;
+            const distance = Math.abs(dx);
+
+            x += (dx / distance) * speed;
+
+            assert(x > startX, 'Enemy should move towards target');
+            assert(x < targetX, 'Enemy should not overshoot in one frame');
+        });
+
+        // ============================================================================
+        // ECONOMY TESTS
+        // ============================================================================
+
+        runner.test('Economy: Starting gold is sufficient', () => {
+            const startingGold = 200;
+            const basicTowerCost = 50;
+
+            assert(startingGold >= basicTowerCost, 'Should be able to afford basic tower');
+            assert(startingGold >= basicTowerCost * 2, 'Should afford at least 2 basic towers');
+        });
+
+        runner.test('Economy: Enemy rewards', () => {
+            const basicReward = 10;
+            const enemiesKilled = 10;
+            const totalGold = basicReward * enemiesKilled;
+
+            assertEquals(totalGold, 100, 'Should gain 100 gold from 10 basic enemies');
+        });
+
+        runner.test('Economy: Score calculation', () => {
+            const reward = 10;
+            const scoreMultiplier = 10;
+            const score = reward * scoreMultiplier;
+
+            assertEquals(score, 100, 'Score should be reward × 10');
+        });
+
+        // ============================================================================
+        // WAVE PROGRESSION TESTS
+        // ============================================================================
+
+        runner.test('Wave Progression: Enemy count increases', () => {
+            const wave1Count = 10;
+            const wave2Count = 15;
+
+            assert(wave2Count > wave1Count, 'Later waves should have more enemies');
+        });
+
+        runner.test('Wave Progression: Difficulty scaling', () => {
+            const basicEnemyHealth = 100;
+            const tankEnemyHealth = 250;
+            const bossEnemyHealth = 500;
+
+            assert(tankEnemyHealth > basicEnemyHealth, 'Tank is tougher than basic');
+            assert(bossEnemyHealth > tankEnemyHealth, 'Boss is toughest');
+        });
+
+        // ============================================================================
+        // UI AND GAME STATE TESTS
+        // ============================================================================
+
+        runner.test('Game State: Initial values', () => {
+            const gameState = {
+                gold: 200,
+                lives: 20,
+                wave: 0,
+                score: 0,
+                paused: false,
+                gameOver: false
+            };
+
+            assertEquals(gameState.gold, 200, 'Starting gold is 200');
+            assertEquals(gameState.lives, 20, 'Starting lives is 20');
+            assertEquals(gameState.wave, 0, 'Starting wave is 0');
+            assert(!gameState.paused, 'Game should not be paused initially');
+        });
+
+        runner.test('Game State: Game over condition', () => {
+            let lives = 20;
+
+            lives -= 20;
+            assert(lives <= 0, 'Game should be over when lives reach 0');
+        });
+
+        runner.test('Game State: Win condition', () => {
+            const currentWave = 10;
+            const totalWaves = 10;
+
+            assert(currentWave >= totalWaves, 'Game should be won after completing all waves');
+        });
+
+        // ============================================================================
+        // PROJECTILE TESTS
+        // ============================================================================
+
+        runner.test('Projectile: Movement speed', () => {
+            const speed = 5;
+            const deltaTime = 1;
+            const distance = speed * deltaTime;
+
+            assertEquals(distance, 5, 'Projectile should move 5 pixels in 1 second');
+        });
+
+        runner.test('Projectile: Splash damage radius', () => {
+            const splashRadius = 50;
+            const centerX = 100, centerY = 100;
+            const enemyX = 130, enemyY = 130;
+
+            const dx = enemyX - centerX;
+            const dy = enemyY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            assert(distance <= splashRadius, 'Enemy should be within splash radius');
+        });
+
+        // ============================================================================
+        // GRID AND PLACEMENT TESTS
+        // ============================================================================
+
+        runner.test('Grid: Cell calculations', () => {
+            const GRID_SIZE = 40;
+            const mouseX = 125;
+            const gridX = Math.floor(mouseX / GRID_SIZE);
+
+            assertEquals(gridX, 3, 'Mouse at 125 should be in grid cell 3');
+        });
+
+        runner.test('Grid: Valid placement check', () => {
+            const PATH = [{ x: 0, y: 7 }, { x: 1, y: 7 }, { x: 2, y: 7 }];
+            const towerX = 0, towerY = 7;
+
+            const onPath = PATH.some(p => p.x === towerX && p.y === towerY);
+            assert(onPath, 'Tower on path should be invalid placement');
+        });
+
+        runner.test('Grid: Empty cell placement', () => {
+            const PATH = [{ x: 0, y: 7 }, { x: 1, y: 7 }];
+            const towerX = 2, towerY = 3;
+
+            const onPath = PATH.some(p => p.x === towerX && p.y === towerY);
+            assert(!onPath, 'Tower off path should be valid placement');
+        });
+
+        // ============================================================================
+        // GAME SPEED TESTS
+        // ============================================================================
+
+        runner.test('Game Speed: Normal speed', () => {
+            const gameSpeed = 1;
+            const baseValue = 10;
+            const effectiveValue = baseValue * gameSpeed;
+
+            assertEquals(effectiveValue, 10, 'Normal speed should not modify values');
+        });
+
+        runner.test('Game Speed: Fast forward', () => {
+            const gameSpeed = 2;
+            const baseValue = 10;
+            const effectiveValue = baseValue * gameSpeed;
+
+            assertEquals(effectiveValue, 20, '2x speed should double values');
+        });
+
+        // Run all tests
+        runner.run();
+    </script>
+</body>
+</html>

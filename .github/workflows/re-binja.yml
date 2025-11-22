@@ -1,0 +1,51 @@
+name: RE - Binary Ninja Export
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 're/binary_ninja/**'
+      - 're/artifacts/**'
+  pull_request:
+    paths:
+      - 're/binary_ninja/**'
+      - 're/artifacts/**'
+
+jobs:
+  binja:
+    runs-on: ubuntu-latest
+    env:
+      BINJA_LICENSE: ${{ secrets.BINJA_LICENSE }}
+      BINJA_DOWNLOAD_URL: ${{ secrets.BINJA_DOWNLOAD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure license secret present
+        run: |
+          if [ -z "$BINJA_LICENSE" ] || [ -z "$BINJA_DOWNLOAD_URL" ]; then
+            echo "Binary Ninja secrets missing" >&2
+            exit 1
+          fi
+      - name: Download Binary Ninja Headless
+        run: |
+          curl -L "$BINJA_DOWNLOAD_URL" -o binja.zip
+          unzip -q binja.zip -d $HOME/binja
+          echo "$BINJA_LICENSE" > $HOME/binja/license.dat
+          echo "BINARY_NINJA_HEADLESS=$HOME/binja/binaryninja-headless" >> $GITHUB_ENV
+      - name: Install Python deps
+        run: python3 -m pip install --user jsonschema pyyaml
+      - name: Refresh artifacts (Binary Ninja only)
+        env:
+          BINARY_NINJA_HEADLESS: ${{ env.BINARY_NINJA_HEADLESS }}
+          F1GP_SUBSYSTEMS: physics,input
+        run: |
+          python3 re/scripts/refresh_artifacts.py --skip-ghidra --skip-validate --subsystems physics,input
+      - name: Validate artifacts
+        run: |
+          python3 re/scripts/refresh_artifacts.py --dry-run --skip-ghidra --skip-binja
+      - name: Upload HLIL
+        uses: actions/upload-artifact@v4
+        with:
+          name: hlil
+          path: |
+            re/artifacts/hlil/
+            re/artifacts/logs/

@@ -1,0 +1,59 @@
+{
+  "timestamp": "2025-11-20T17:46:53.166522+00:00",
+  "steps": [
+    {
+      "name": "trace_index",
+      "status": "skipped"
+    },
+    {
+      "name": "ghidra",
+      "command": [
+        "/home/md/ghidra_11.4.2_PUBLIC/support/analyzeHeadless",
+        "/home/md/language/experiment/re/ghidra/project_template",
+        "F1GP_Auto",
+        "-import",
+        "/home/md/language/experiment/f1gp-disasm/GP.EXE",
+        "-overwrite",
+        "-scriptPath",
+        "/home/md/language/experiment/re/ghidra/scripts",
+        "-postScript",
+        "TagInterruptUsage.py",
+        "-postScript",
+        "ExportSymbolsToJson.java",
+        "-postScript",
+        "ExportSegmentsToYaml.java",
+        "-postScript",
+        "EmitTypeDecls.py"
+      ],
+      "status": "ok",
+      "duration_s": 9.018
+    },
+    {
+      "name": "binary_ninja",
+      "status": "skipped"
+    },
+    {
+      "name": "validate",
+      "status": "ok",
+      "symbols": {
+        "status": "ok"
+      },
+      "segments": {
+        "status": "ok"
+      }
+    },
+    {
+      "name": "coverage",
+      "command": [
+        "/usr/bin/python3",
+        "/home/md/language/experiment/re/scripts/coverage_report.py"
+      ],
+      "status": "ok",
+      "duration_s": 0.027
+    },
+    {
+      "name": "hlil_publish",
+      "status": "skipped"
+    }
+  ]
+}

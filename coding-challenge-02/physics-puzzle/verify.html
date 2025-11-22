@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Verification - Chain Reaction</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1.2em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .verification-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .check-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .check-icon {
+            font-size: 2em;
+            min-width: 40px;
+        }
+
+        .check-icon.pending { opacity: 0.3; }
+        .check-icon.pass { color: #4caf50; }
+        .check-icon.fail { color: #f44336; }
+
+        .check-text {
+            flex: 1;
+        }
+
+        .check-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .check-detail {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .summary {
+            text-align: center;
+            font-size: 1.3em;
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        .summary.pass {
+            background: rgba(76, 175, 80, 0.3);
+        }
+
+        .summary.fail {
+            background: rgba(244, 67, 54, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Game Verification</h1>
+    <p class="subtitle">Automated checks for Chain Reaction game</p>
+
+    <div class="verification-box">
+        <h2>File Structure Checks</h2>
+        <div id="fileChecks"></div>
+    </div>
+
+    <div class="verification-box">
+        <h2>Functionality Checks</h2>
+        <div id="funcChecks"></div>
+    </div>
+
+    <div id="summary" class="summary">
+        Running verification...
+    </div>
+
+    <div class="action-buttons">
+        <a href="index.html" class="btn primary">Launch Game</a>
+        <a href="tests.html" class="btn">View Tests</a>
+        <a href="README.md" class="btn">Read Documentation</a>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script>
+        const checks = {
+            files: [
+                { name: 'Matter.js CDN', test: () => typeof Matter !== 'undefined', detail: 'Physics engine loaded' },
+                { name: 'HTML Structure', test: () => document.getElementById('mainMenu') !== null, detail: 'Main menu exists' },
+                { name: 'Game Canvas', test: () => document.getElementById('gameCanvas') !== null, detail: 'Canvas element present' },
+                { name: 'Level Select', test: () => document.getElementById('levelSelect') !== null, detail: 'Level selection screen' },
+                { name: 'Win Overlay', test: () => document.getElementById('winOverlay') !== null, detail: 'Victory screen present' }
+            ],
+            functionality: [
+                { name: 'Physics Engine', test: () => Matter && Matter.Engine && Matter.Bodies, detail: 'Matter.js modules available' },
+                { name: 'LocalStorage', test: () => typeof localStorage !== 'undefined', detail: 'Save system available' },
+                { name: 'Canvas Support', test: () => {
+                    const canvas = document.createElement('canvas');
+                    return !!(canvas.getContext && canvas.getContext('2d'));
+                }, detail: '2D canvas rendering' },
+                { name: 'ES6 Support', test: () => {
+                    try {
+                        eval('const test = () => true');
+                        return true;
+                    } catch(e) {
+                        return false;
+                    }
+                }, detail: 'Modern JavaScript' },
+                { name: 'CSS Support', test: () => {
+                    return CSS && CSS.supports && CSS.supports('backdrop-filter', 'blur(10px)');
+                }, detail: 'Modern CSS effects' }
+            ]
+        };
+
+        function renderCheck(check, container) {
+            const div = document.createElement('div');
+            div.className = 'check-item';
+
+            const icon = document.createElement('div');
+            icon.className = 'check-icon pending';
+            icon.textContent = '⏳';
+
+            const text = document.createElement('div');
+            text.className = 'check-text';
+            text.innerHTML = `
+                <div class="check-name">${check.name}</div>
+                <div class="check-detail">${check.detail}</div>
+            `;
+
+            div.appendChild(icon);
+            div.appendChild(text);
+            container.appendChild(div);
+
+            // Run test
+            setTimeout(() => {
+                try {
+                    const result = check.test();
+                    if (result) {
+                        icon.className = 'check-icon pass';
+                        icon.textContent = '✅';
+                    } else {
+                        icon.className = 'check-icon fail';
+                        icon.textContent = '❌';
+                    }
+                } catch (error) {
+                    icon.className = 'check-icon fail';
+                    icon.textContent = '❌';
+                    text.innerHTML += `<div class="check-detail" style="color: #f44336;">Error: ${error.message}</div>`;
+                }
+                updateSummary();
+            }, 100);
+        }
+
+        function updateSummary() {
+            const allIcons = document.querySelectorAll('.check-icon');
+            const pending = document.querySelectorAll('.check-icon.pending').length;
+
+            if (pending > 0) return; // Wait for all checks
+
+            const passed = document.querySelectorAll('.check-icon.pass').length;
+            const failed = document.querySelectorAll('.check-icon.fail').length;
+            const total = allIcons.length;
+
+            const summary = document.getElementById('summary');
+
+            if (failed === 0) {
+                summary.className = 'summary pass';
+                summary.innerHTML = `
+                    <div style="font-size: 3em; margin-bottom: 10px;">🎉</div>
+                    <div><strong>All Checks Passed!</strong></div>
+                    <div style="font-size: 0.9em; margin-top: 10px;">
+                        ${passed}/${total} checks successful
+                    </div>
+                    <div style="margin-top: 15px; font-size: 1.1em;">
+                        ✨ Game is ready to play! ✨
+                    </div>
+                `;
+            } else {
+                summary.className = 'summary fail';
+                summary.innerHTML = `
+                    <div style="font-size: 3em; margin-bottom: 10px;">⚠️</div>
+                    <div><strong>Some Checks Failed</strong></div>
+                    <div style="font-size: 0.9em; margin-top: 10px;">
+                        ${passed}/${total} checks passed, ${failed} failed
+                    </div>
+                    <div style="margin-top: 15px;">
+                        Game may still be playable with limited functionality
+                    </div>
+                `;
+            }
+        }
+
+        // Wait for page load
+        window.addEventListener('DOMContentLoaded', () => {
+            const fileContainer = document.getElementById('fileChecks');
+            const funcContainer = document.getElementById('funcChecks');
+
+            checks.files.forEach(check => renderCheck(check, fileContainer));
+            checks.functionality.forEach(check => renderCheck(check, funcContainer));
+        });
+
+        // Check for external files
+        window.addEventListener('load', () => {
+            // Try to fetch and check game.js
+            fetch('game.js')
+                .then(response => response.text())
+                .then(content => {
+                    const container = document.getElementById('funcChecks');
+                    renderCheck({
+                        name: 'Game.js Loaded',
+                        test: () => content.includes('PhysicsGame') && content.includes('getLevel15'),
+                        detail: 'Main game logic file with all 15 levels'
+                    }, container);
+                })
+                .catch(err => {
+                    const container = document.getElementById('funcChecks');
+                    renderCheck({
+                        name: 'Game.js Loaded',
+                        test: () => false,
+                        detail: 'Could not load game.js: ' + err.message
+                    }, container);
+                });
+
+            // Check CSS
+            fetch('style.css')
+                .then(response => response.text())
+                .then(content => {
+                    const container = document.getElementById('fileChecks');
+                    renderCheck({
+                        name: 'Style.css Loaded',
+                        test: () => content.includes('.game-title') && content.includes('.level-btn'),
+                        detail: 'Stylesheet with all game styles'
+                    }, container);
+                })
+                .catch(err => {
+                    const container = document.getElementById('fileChecks');
+                    renderCheck({
+                        name: 'Style.css Loaded',
+                        test: () => false,
+                        detail: 'Could not load style.css: ' + err.message
+                    }, container);
+                });
+        });
+    </script>
+</body>
+</html>

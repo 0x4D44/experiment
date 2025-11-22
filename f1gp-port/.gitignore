@@ -30,3 +30,7 @@ Thumbs.db
 
 # Benchmarks
 /benches/results/
+data/fixtures/track_stub.bin
+data/fixtures/driver_db.json
+telemetry/
+data/fixtures/sprites/

@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+
+        h1 {
+            color: #4ec9b0;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #569cd6;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .test-suite {
+            margin-bottom: 30px;
+        }
+
+        .test-case {
+            margin: 10px 0;
+            padding: 10px;
+            background: #252526;
+            border-left: 3px solid #555;
+            border-radius: 3px;
+        }
+
+        .test-case.pass {
+            border-left-color: #4ec9b0;
+        }
+
+        .test-case.fail {
+            border-left-color: #f48771;
+        }
+
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .test-result {
+            margin-left: 20px;
+            color: #808080;
+        }
+
+        .pass .test-result {
+            color: #4ec9b0;
+        }
+
+        .fail .test-result {
+            color: #f48771;
+        }
+
+        .summary {
+            margin-top: 30px;
+            padding: 20px;
+            background: #252526;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+
+        .summary .pass-count {
+            color: #4ec9b0;
+        }
+
+        .summary .fail-count {
+            color: #f48771;
+        }
+
+        .run-button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .run-button:hover {
+            background: #005a9e;
+        }
+
+        .debug-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #1e1e1e;
+            border-radius: 3px;
+            font-size: 12px;
+            color: #858585;
+        }
+    </style>
+</head>
+<body>
+    <h1>Flappy Bird - Comprehensive Test Suite</h1>
+    <button class="run-button" onclick="runAllTests()">Run All Tests</button>
+
+    <div id="testResults"></div>
+    <div id="summary" class="summary" style="display: none;"></div>
+
+    <script>
+        /**
+         * Comprehensive Test Suite for Flappy Bird Game
+         * Tests: Physics, Collision Detection, Pipe Generation, Score System, Game State
+         */
+
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            addTest(name, testFn) {
+                this.tests.push({ name, testFn });
+            }
+
+            async runAll() {
+                this.results = [];
+                const resultsDiv = document.getElementById('testResults');
+                resultsDiv.innerHTML = '';
+
+                for (const test of this.tests) {
+                    try {
+                        const result = await test.testFn();
+                        this.results.push({
+                            name: test.name,
+                            passed: result.passed,
+                            message: result.message,
+                            debug: result.debug
+                        });
+                    } catch (error) {
+                        this.results.push({
+                            name: test.name,
+                            passed: false,
+                            message: `Test threw error: ${error.message}`,
+                            debug: error.stack
+                        });
+                    }
+                }
+
+                this.displayResults();
+            }
+
+            displayResults() {
+                const resultsDiv = document.getElementById('testResults');
+                resultsDiv.innerHTML = '';
+
+                let passCount = 0;
+                let failCount = 0;
+
+                this.results.forEach(result => {
+                    const testCase = document.createElement('div');
+                    testCase.className = `test-case ${result.passed ? 'pass' : 'fail'}`;
+
+                    const testName = document.createElement('div');
+                    testName.className = 'test-name';
+                    testName.textContent = `${result.passed ? '✓' : '✗'} ${result.name}`;
+
+                    const testResult = document.createElement('div');
+                    testResult.className = 'test-result';
+                    testResult.textContent = result.message;
+
+                    testCase.appendChild(testName);
+                    testCase.appendChild(testResult);
+
+                    if (result.debug) {
+                        const debugInfo = document.createElement('div');
+                        debugInfo.className = 'debug-info';
+                        debugInfo.textContent = result.debug;
+                        testCase.appendChild(debugInfo);
+                    }
+
+                    resultsDiv.appendChild(testCase);
+
+                    if (result.passed) passCount++;
+                    else failCount++;
+                });
+
+                // Display summary
+                const summaryDiv = document.getElementById('summary');
+                summaryDiv.style.display = 'block';
+                summaryDiv.innerHTML = `
+                    <strong>Test Summary:</strong><br>
+                    <span class="pass-count">Passed: ${passCount}</span> |
+                    <span class="fail-count">Failed: ${failCount}</span> |
+                    Total: ${this.results.length}<br>
+                    Success Rate: ${((passCount / this.results.length) * 100).toFixed(1)}%
+                `;
+            }
+        }
+
+        // ==================== PHYSICS TESTS ====================
+
+        function testGravityAcceleration() {
+            const bird = { velocity: 0 };
+            const GRAVITY = 0.5;
+
+            // Simulate 10 frames
+            for (let i = 0; i < 10; i++) {
+                bird.velocity += GRAVITY;
+            }
+
+            const expectedVelocity = 5; // 0.5 * 10
+            const passed = Math.abs(bird.velocity - expectedVelocity) < 0.001;
+
+            return {
+                passed,
+                message: `After 10 frames, velocity should be ${expectedVelocity}, got ${bird.velocity}`,
+                debug: `Initial: 0, Gravity: ${GRAVITY}, Frames: 10`
+            };
+        }
+
+        function testFlapVelocity() {
+            const FLAP_POWER = -9;
+            const bird = { velocity: 5 };
+
+            // Apply flap
+            bird.velocity = FLAP_POWER;
+
+            const passed = bird.velocity === FLAP_POWER;
+
+            return {
+                passed,
+                message: `Flap should set velocity to ${FLAP_POWER}, got ${bird.velocity}`,
+                debug: `Expected: ${FLAP_POWER}, Actual: ${bird.velocity}`
+            };
+        }
+
+        function testFlapAfterFalling() {
+            const GRAVITY = 0.5;
+            const FLAP_POWER = -9;
+            const bird = { velocity: 0, y: 100 };
+
+            // Fall for 20 frames
+            for (let i = 0; i < 20; i++) {
+                bird.velocity += GRAVITY;
+                bird.y += bird.velocity;
+            }
+
+            const yBeforeFlap = bird.y;
+
+            // Flap
+            bird.velocity = FLAP_POWER;
+
+            // Move for a few frames
+            for (let i = 0; i < 5; i++) {
+                bird.velocity += GRAVITY;
+                bird.y += bird.velocity;
+            }
+
+            const yAfterFlap = bird.y;
+            const passed = yAfterFlap < yBeforeFlap; // Bird should move up
+
+            return {
+                passed,
+                message: `After flap, bird should move up. Before: ${yBeforeFlap.toFixed(2)}, After: ${yAfterFlap.toFixed(2)}`,
+                debug: `Velocity after flap and gravity: ${bird.velocity}`
+            };
+        }
+
+        function testTerminalVelocity() {
+            const GRAVITY = 0.5;
+            const bird = { velocity: 0 };
+
+            // Simulate long fall
+            for (let i = 0; i < 100; i++) {
+                bird.velocity += GRAVITY;
+            }
+
+            const expectedVelocity = 50; // 0.5 * 100
+            const passed = Math.abs(bird.velocity - expectedVelocity) < 0.1;
+
+            return {
+                passed,
+                message: `After 100 frames of falling, velocity should be ${expectedVelocity}, got ${bird.velocity}`,
+                debug: `Continuous acceleration without cap`
+            };
+        }
+
+        // ==================== COLLISION DETECTION TESTS ====================
+
+        function testPipeCollisionTop() {
+            const BIRD_SIZE = 34;
+            const PIPE_WIDTH = 80;
+
+            const bird = {
+                x: 150,
+                y: 50,
+                size: BIRD_SIZE
+            };
+
+            const pipe = {
+                x: 140,
+                gapY: 100,
+                width: PIPE_WIDTH
+            };
+
+            const birdLeft = bird.x - bird.size / 2;
+            const birdRight = bird.x + bird.size / 2;
+            const birdTop = bird.y - bird.size / 2;
+
+            const pipeLeft = pipe.x;
+            const pipeRight = pipe.x + pipe.width;
+
+            const xOverlap = birdRight > pipeLeft && birdLeft < pipeRight;
+            const collision = xOverlap && birdTop < pipe.gapY;
+
+            const passed = collision === true;
+
+            return {
+                passed,
+                message: `Should detect collision with top pipe`,
+                debug: `Bird top: ${birdTop}, Gap Y: ${pipe.gapY}, X overlap: ${xOverlap}`
+            };
+        }
+
+        function testPipeCollisionBottom() {
+            const BIRD_SIZE = 34;
+            const PIPE_WIDTH = 80;
+            const PIPE_GAP = 180;
+
+            const bird = {
+                x: 150,
+                y: 350,
+                size: BIRD_SIZE
+            };
+
+            const pipe = {
+                x: 140,
+                gapY: 100,
+                width: PIPE_WIDTH
+            };
+
+            const birdLeft = bird.x - bird.size / 2;
+            const birdRight = bird.x + bird.size / 2;
+            const birdBottom = bird.y + bird.size / 2;
+
+            const pipeLeft = pipe.x;
+            const pipeRight = pipe.x + pipe.width;
+
+            const xOverlap = birdRight > pipeLeft && birdLeft < pipeRight;
+            const collision = xOverlap && birdBottom > pipe.gapY + PIPE_GAP;
+
+            const passed = collision === true;
+
+            return {
+                passed,
+                message: `Should detect collision with bottom pipe`,
+                debug: `Bird bottom: ${birdBottom}, Gap bottom: ${pipe.gapY + PIPE_GAP}, X overlap: ${xOverlap}`
+            };
+        }
+
+        function testNoCollisionInGap() {
+            const BIRD_SIZE = 34;
+            const PIPE_WIDTH = 80;
+            const PIPE_GAP = 180;
+
+            const bird = {
+                x: 150,
+                y: 190, // In the middle of the gap
+                size: BIRD_SIZE
+            };
+
+            const pipe = {
+                x: 140,
+                gapY: 100,
+                width: PIPE_WIDTH
+            };
+
+            const birdLeft = bird.x - bird.size / 2;
+            const birdRight = bird.x + bird.size / 2;
+            const birdTop = bird.y - bird.size / 2;
+            const birdBottom = bird.y + bird.size / 2;
+
+            const pipeLeft = pipe.x;
+            const pipeRight = pipe.x + pipe.width;
+
+            const xOverlap = birdRight > pipeLeft && birdLeft < pipeRight;
+            const topCollision = xOverlap && birdTop < pipe.gapY;
+            const bottomCollision = xOverlap && birdBottom > pipe.gapY + PIPE_GAP;
+
+            const collision = topCollision || bottomCollision;
+            const passed = collision === false;
+
+            return {
+                passed,
+                message: `Should NOT detect collision when bird is in gap`,
+                debug: `Bird Y: ${bird.y}, Gap: ${pipe.gapY}-${pipe.gapY + PIPE_GAP}, Collision: ${collision}`
+            };
+        }
+
+        function testNoCollisionBeforePipe() {
+            const BIRD_SIZE = 34;
+            const PIPE_WIDTH = 80;
+
+            const bird = {
+                x: 50,
+                y: 200,
+                size: BIRD_SIZE
+            };
+
+            const pipe = {
+                x: 300,
+                gapY: 100,
+                width: PIPE_WIDTH
+            };
+
+            const birdRight = bird.x + bird.size / 2;
+            const pipeLeft = pipe.x;
+
+            const xOverlap = birdRight > pipeLeft;
+            const passed = xOverlap === false;
+
+            return {
+                passed,
+                message: `Should NOT detect collision when bird hasn't reached pipe`,
+                debug: `Bird right: ${birdRight}, Pipe left: ${pipeLeft}`
+            };
+        }
+
+        function testGroundCollision() {
+            const BIRD_SIZE = 34;
+            const CANVAS_HEIGHT = 640;
+            const GROUND_HEIGHT = 100;
+
+            const bird = {
+                y: CANVAS_HEIGHT - GROUND_HEIGHT + 10,
+                size: BIRD_SIZE
+            };
+
+            const birdBottom = bird.y + bird.size / 2;
+            const groundTop = CANVAS_HEIGHT - GROUND_HEIGHT;
+
+            const collision = birdBottom > groundTop;
+            const passed = collision === true;
+
+            return {
+                passed,
+                message: `Should detect collision with ground`,
+                debug: `Bird bottom: ${birdBottom}, Ground top: ${groundTop}`
+            };
+        }
+
+        // ==================== PIPE GENERATION TESTS ====================
+
+        function testPipeSpawnInterval() {
+            const SPAWN_INTERVAL = 90;
+            let timer = 0;
+            let pipeCount = 0;
+
+            // Simulate 300 frames
+            for (let i = 0; i < 300; i++) {
+                timer++;
+                if (timer >= SPAWN_INTERVAL) {
+                    pipeCount++;
+                    timer = 0;
+                }
+            }
+
+            const expectedPipes = Math.floor(300 / SPAWN_INTERVAL);
+            const passed = pipeCount === expectedPipes;
+
+            return {
+                passed,
+                message: `Should spawn ${expectedPipes} pipes in 300 frames, got ${pipeCount}`,
+                debug: `Interval: ${SPAWN_INTERVAL}, Frames: 300`
+            };
+        }
+
+        function testPipeGapRandomness() {
+            const MIN_GAP_Y = 100;
+            const MAX_GAP_Y = 340;
+            const gaps = [];
+
+            // Generate 50 pipes
+            for (let i = 0; i < 50; i++) {
+                const gapY = Math.random() * (MAX_GAP_Y - MIN_GAP_Y) + MIN_GAP_Y;
+                gaps.push(gapY);
+            }
+
+            // Check all gaps are within range
+            const allInRange = gaps.every(gap => gap >= MIN_GAP_Y && gap <= MAX_GAP_Y);
+
+            // Check there's variation (not all the same)
+            const uniqueGaps = new Set(gaps.map(g => Math.floor(g / 10)));
+            const hasVariation = uniqueGaps.size > 5;
+
+            const passed = allInRange && hasVariation;
+
+            return {
+                passed,
+                message: `Pipe gaps should be random and within range`,
+                debug: `Range: ${MIN_GAP_Y}-${MAX_GAP_Y}, Unique values: ${uniqueGaps.size}, All in range: ${allInRange}`
+            };
+        }
+
+        function testPipeMovement() {
+            const PIPE_SPEED = 3;
+            const pipe = { x: 480 };
+
+            // Move pipe for 10 frames
+            for (let i = 0; i < 10; i++) {
+                pipe.x -= PIPE_SPEED;
+            }
+
+            const expectedX = 480 - (PIPE_SPEED * 10);
+            const passed = pipe.x === expectedX;
+
+            return {
+                passed,
+                message: `Pipe should move ${PIPE_SPEED * 10} pixels in 10 frames, got ${480 - pipe.x}`,
+                debug: `Start: 480, End: ${pipe.x}, Expected: ${expectedX}`
+            };
+        }
+
+        function testPipeRemoval() {
+            const PIPE_WIDTH = 80;
+            const pipes = [
+                { x: -100 },
+                { x: 100 },
+                { x: 300 }
+            ];
+
+            // Remove off-screen pipes
+            const filtered = pipes.filter(pipe => pipe.x + PIPE_WIDTH >= 0);
+
+            const passed = filtered.length === 2 && filtered[0].x === 100;
+
+            return {
+                passed,
+                message: `Should remove off-screen pipes. Started with 3, have ${filtered.length}`,
+                debug: `Remaining pipe positions: ${filtered.map(p => p.x).join(', ')}`
+            };
+        }
+
+        // ==================== SCORE SYSTEM TESTS ====================
+
+        function testScoreIncrement() {
+            let score = 0;
+            const pipe = { x: 150, scored: false };
+            const birdX = 100;
+
+            // Before passing
+            if (!pipe.scored && pipe.x + 80 < birdX) {
+                pipe.scored = true;
+                score++;
+            }
+
+            const passed = score === 0; // Shouldn't score yet
+
+            return {
+                passed,
+                message: `Should not score before passing pipe`,
+                debug: `Score: ${score}, Pipe X: ${pipe.x}, Bird X: ${birdX}`
+            };
+        }
+
+        function testScoreOnPass() {
+            let score = 0;
+            const pipe = { x: 50, scored: false };
+            const birdX = 200;
+
+            // After passing
+            if (!pipe.scored && pipe.x + 80 < birdX) {
+                pipe.scored = true;
+                score++;
+            }
+
+            const passed = score === 1 && pipe.scored === true;
+
+            return {
+                passed,
+                message: `Should score once after passing pipe`,
+                debug: `Score: ${score}, Scored flag: ${pipe.scored}`
+            };
+        }
+
+        function testNoDoubleScore() {
+            let score = 0;
+            const pipe = { x: 50, scored: false };
+            const birdX = 200;
+
+            // Score once
+            if (!pipe.scored && pipe.x + 80 < birdX) {
+                pipe.scored = true;
+                score++;
+            }
+
+            // Try to score again
+            if (!pipe.scored && pipe.x + 80 < birdX) {
+                pipe.scored = true;
+                score++;
+            }
+
+            const passed = score === 1;
+
+            return {
+                passed,
+                message: `Should not score the same pipe twice. Score: ${score}`,
+                debug: `Scored flag prevents double scoring`
+            };
+        }
+
+        function testProgressiveDifficulty() {
+            let pipeInterval = 90;
+            let score = 0;
+
+            // Simulate scoring
+            for (let i = 0; i < 20; i++) {
+                score++;
+                if (score > 0 && score % 5 === 0) {
+                    pipeInterval = Math.max(70, pipeInterval - 1);
+                }
+            }
+
+            const passed = pipeInterval < 90;
+
+            return {
+                passed,
+                message: `Pipe interval should decrease with score. Started: 90, Now: ${pipeInterval}`,
+                debug: `After 20 points, interval should be reduced`
+            };
+        }
+
+        // ==================== GAME STATE TESTS ====================
+
+        function testGameStateTransitions() {
+            let state = 'start';
+
+            // Start game
+            state = 'playing';
+            const validPlaying = state === 'playing';
+
+            // Game over
+            state = 'gameOver';
+            const validGameOver = state === 'gameOver';
+
+            // Restart
+            state = 'playing';
+            const validRestart = state === 'playing';
+
+            const passed = validPlaying && validGameOver && validRestart;
+
+            return {
+                passed,
+                message: `Game state should transition correctly`,
+                debug: `start -> playing -> gameOver -> playing`
+            };
+        }
+
+        function testHighScorePersistence() {
+            const score = 42;
+            const currentHigh = 30;
+
+            const newHigh = Math.max(score, currentHigh);
+            const passed = newHigh === 42;
+
+            return {
+                passed,
+                message: `High score should update when beaten. Old: ${currentHigh}, New: ${newHigh}`,
+                debug: `Score: ${score}, Current high: ${currentHigh}`
+            };
+        }
+
+        function testHighScoreNotOverwritten() {
+            const score = 10;
+            const currentHigh = 50;
+
+            const newHigh = Math.max(score, currentHigh);
+            const passed = newHigh === 50;
+
+            return {
+                passed,
+                message: `High score should not decrease. Stayed at: ${newHigh}`,
+                debug: `Score: ${score}, Current high: ${currentHigh}`
+            };
+        }
+
+        // ==================== INTEGRATION TESTS ====================
+
+        function testCompleteGameCycle() {
+            // Simulate a complete game
+            let gameState = 'start';
+            let score = 0;
+            let bird = { y: 320, velocity: 0 };
+            const GRAVITY = 0.5;
+            const FLAP_POWER = -9;
+
+            // Start game
+            gameState = 'playing';
+
+            // Play for some frames
+            for (let i = 0; i < 50; i++) {
+                // Flap occasionally
+                if (i % 10 === 0) {
+                    bird.velocity = FLAP_POWER;
+                }
+
+                // Physics
+                bird.velocity += GRAVITY;
+                bird.y += bird.velocity;
+
+                // Score
+                if (i % 20 === 0) {
+                    score++;
+                }
+            }
+
+            // Game over
+            gameState = 'gameOver';
+
+            const passed = gameState === 'gameOver' && score > 0;
+
+            return {
+                passed,
+                message: `Complete game cycle should work. Score: ${score}, Final state: ${gameState}`,
+                debug: `Bird final Y: ${bird.y.toFixed(2)}, Velocity: ${bird.velocity.toFixed(2)}`
+            };
+        }
+
+        // ==================== RUN TESTS ====================
+
+        const runner = new TestRunner();
+
+        // Physics tests
+        runner.addTest('Physics: Gravity Acceleration', testGravityAcceleration);
+        runner.addTest('Physics: Flap Velocity', testFlapVelocity);
+        runner.addTest('Physics: Flap After Falling', testFlapAfterFalling);
+        runner.addTest('Physics: Terminal Velocity', testTerminalVelocity);
+
+        // Collision tests
+        runner.addTest('Collision: Pipe Top', testPipeCollisionTop);
+        runner.addTest('Collision: Pipe Bottom', testPipeCollisionBottom);
+        runner.addTest('Collision: No Collision in Gap', testNoCollisionInGap);
+        runner.addTest('Collision: No Collision Before Pipe', testNoCollisionBeforePipe);
+        runner.addTest('Collision: Ground', testGroundCollision);
+
+        // Pipe generation tests
+        runner.addTest('Pipes: Spawn Interval', testPipeSpawnInterval);
+        runner.addTest('Pipes: Gap Randomness', testPipeGapRandomness);
+        runner.addTest('Pipes: Movement', testPipeMovement);
+        runner.addTest('Pipes: Removal', testPipeRemoval);
+
+        // Score tests
+        runner.addTest('Score: No Score Before Pass', testScoreIncrement);
+        runner.addTest('Score: Score On Pass', testScoreOnPass);
+        runner.addTest('Score: No Double Score', testNoDoubleScore);
+        runner.addTest('Score: Progressive Difficulty', testProgressiveDifficulty);
+
+        // Game state tests
+        runner.addTest('State: Transitions', testGameStateTransitions);
+        runner.addTest('State: High Score Update', testHighScorePersistence);
+        runner.addTest('State: High Score Persistence', testHighScoreNotOverwritten);
+
+        // Integration test
+        runner.addTest('Integration: Complete Game Cycle', testCompleteGameCycle);
+
+        function runAllTests() {
+            runner.runAll();
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

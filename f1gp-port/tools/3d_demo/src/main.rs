@@ -6,7 +6,7 @@ mod track_loader;
 
 use anyhow::Result;
 use f1gp_port::game::GameState;
-use f1gp_port::render3d::{Renderer3D, HudRenderer};
+use f1gp_port::render3d::{HudRenderer, Renderer3D};
 use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Instant;
@@ -71,13 +71,13 @@ impl App {
             power_preference: wgpu::PowerPreference::default(),
             compatible_surface: Some(&surface),
             force_fallback_adapter: false,
-        })).unwrap();
+        }))
+        .unwrap();
 
         log::info!("Adapter: {:?}", adapter.get_info());
 
-        let (device, queue) = pollster::block_on(adapter.request_device(
-            &wgpu::DeviceDescriptor::default(),
-        ))?;
+        let (device, queue) =
+            pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))?;
 
         log::info!("Device and queue created");
 
@@ -155,11 +155,9 @@ impl App {
 
         self.current_track_index = track_index;
 
-        if let (Some(game), Some(device), Some(renderer_3d)) = (
-            &mut self.game,
-            &self.device,
-            &mut self.renderer_3d,
-        ) {
+        if let (Some(game), Some(device), Some(renderer_3d)) =
+            (&mut self.game, &self.device, &mut self.renderer_3d)
+        {
             // Load new track
             if let Some(track) = track_loader::get_track(track_index) {
                 log::info!("Switching to track: {}", track.name);
@@ -196,34 +194,51 @@ impl App {
             let mut up = 0.0f32;
 
             // WASD for movement
-            if self.pressed_keys.contains(&KeyCode::KeyW) || self.pressed_keys.contains(&KeyCode::ArrowUp) {
+            if self.pressed_keys.contains(&KeyCode::KeyW)
+                || self.pressed_keys.contains(&KeyCode::ArrowUp)
+            {
                 forward += 1.0;
             }
-            if self.pressed_keys.contains(&KeyCode::KeyS) || self.pressed_keys.contains(&KeyCode::ArrowDown) {
+            if self.pressed_keys.contains(&KeyCode::KeyS)
+                || self.pressed_keys.contains(&KeyCode::ArrowDown)
+            {
                 forward -= 1.0;
             }
-            if self.pressed_keys.contains(&KeyCode::KeyA) || self.pressed_keys.contains(&KeyCode::ArrowLeft) {
+            if self.pressed_keys.contains(&KeyCode::KeyA)
+                || self.pressed_keys.contains(&KeyCode::ArrowLeft)
+            {
                 right -= 1.0;
             }
-            if self.pressed_keys.contains(&KeyCode::KeyD) || self.pressed_keys.contains(&KeyCode::ArrowRight) {
+            if self.pressed_keys.contains(&KeyCode::KeyD)
+                || self.pressed_keys.contains(&KeyCode::ArrowRight)
+            {
                 right += 1.0;
             }
             if self.pressed_keys.contains(&KeyCode::Space) {
                 up += 1.0;
             }
-            if self.pressed_keys.contains(&KeyCode::ControlLeft) || self.pressed_keys.contains(&KeyCode::ControlRight) {
+            if self.pressed_keys.contains(&KeyCode::ControlLeft)
+                || self.pressed_keys.contains(&KeyCode::ControlRight)
+            {
                 up -= 1.0;
             }
 
             // Apply speed modifier for Shift
-            let speed_mult = if self.pressed_keys.contains(&KeyCode::ShiftLeft) || self.pressed_keys.contains(&KeyCode::ShiftRight) {
+            let speed_mult = if self.pressed_keys.contains(&KeyCode::ShiftLeft)
+                || self.pressed_keys.contains(&KeyCode::ShiftRight)
+            {
                 3.0
             } else {
                 1.0
             };
 
             // Move camera
-            renderer_3d.camera.move_free_camera(forward * speed_mult, right * speed_mult, up * speed_mult, delta_time);
+            renderer_3d.camera.move_free_camera(
+                forward * speed_mult,
+                right * speed_mult,
+                up * speed_mult,
+                delta_time,
+            );
         }
 
         // Update game
@@ -319,7 +334,10 @@ impl App {
                     [1.0, 1.0, 0.0, 1.0], // Yellow
                 ),
                 (
-                    format!("Track: {}", game.track().map(|t| t.name.as_str()).unwrap_or("Unknown")),
+                    format!(
+                        "Track: {}",
+                        game.track().map(|t| t.name.as_str()).unwrap_or("Unknown")
+                    ),
                     10.0,
                     178.0,
                     1.5,
@@ -496,18 +514,18 @@ impl ApplicationHandler for App {
                         }
                     }
                     // Track selection (all 16 F1GP tracks)
-                    KeyCode::Digit1 => self.switch_track(0),   // Phoenix
-                    KeyCode::Digit2 => self.switch_track(1),   // Interlagos
-                    KeyCode::Digit3 => self.switch_track(2),   // Imola
-                    KeyCode::Digit4 => self.switch_track(3),   // Monaco
-                    KeyCode::Digit5 => self.switch_track(4),   // Montreal
-                    KeyCode::Digit6 => self.switch_track(5),   // Mexico
-                    KeyCode::Digit7 => self.switch_track(6),   // Magny-Cours
-                    KeyCode::Digit8 => self.switch_track(7),   // Silverstone
-                    KeyCode::Digit9 => self.switch_track(8),   // Hockenheim
-                    KeyCode::Digit0 => self.switch_track(9),   // Hungaroring
-                    KeyCode::Minus => self.switch_track(10),   // Spa
-                    KeyCode::Equal => self.switch_track(11),   // Monza
+                    KeyCode::Digit1 => self.switch_track(0), // Phoenix
+                    KeyCode::Digit2 => self.switch_track(1), // Interlagos
+                    KeyCode::Digit3 => self.switch_track(2), // Imola
+                    KeyCode::Digit4 => self.switch_track(3), // Monaco
+                    KeyCode::Digit5 => self.switch_track(4), // Montreal
+                    KeyCode::Digit6 => self.switch_track(5), // Mexico
+                    KeyCode::Digit7 => self.switch_track(6), // Magny-Cours
+                    KeyCode::Digit8 => self.switch_track(7), // Silverstone
+                    KeyCode::Digit9 => self.switch_track(8), // Hockenheim
+                    KeyCode::Digit0 => self.switch_track(9), // Hungaroring
+                    KeyCode::Minus => self.switch_track(10), // Spa
+                    KeyCode::Equal => self.switch_track(11), // Monza
                     // Could add more but 12 tracks is plenty for now
                     _ => {
                         // Handle game input
@@ -540,7 +558,14 @@ impl ApplicationHandler for App {
             }
 
             WindowEvent::Resized(physical_size) => {
-                if let (Some(config), Some(surface), Some(device), Some(renderer_3d), Some(hud), Some(game)) = (
+                if let (
+                    Some(config),
+                    Some(surface),
+                    Some(device),
+                    Some(renderer_3d),
+                    Some(hud),
+                    Some(game),
+                ) = (
                     &mut self.config,
                     &self.surface,
                     &self.device,
@@ -589,7 +614,12 @@ impl ApplicationHandler for App {
         }
     }
 
-    fn device_event(&mut self, _event_loop: &ActiveEventLoop, _device_id: winit::event::DeviceId, event: winit::event::DeviceEvent) {
+    fn device_event(
+        &mut self,
+        _event_loop: &ActiveEventLoop,
+        _device_id: winit::event::DeviceId,
+        event: winit::event::DeviceEvent,
+    ) {
         // Handle raw mouse motion for free camera
         if let winit::event::DeviceEvent::MouseMotion { delta } = event {
             if let Some(renderer_3d) = &mut self.renderer_3d {
@@ -605,7 +635,11 @@ fn main() -> Result<()> {
     log::info!("═══════════════════════════════════════════");
     log::info!("  F1GP 3D Demo - Enhanced Edition");
     log::info!("═══════════════════════════════════════════");
-    log::info!("Window: {}x{} | Target: 60 FPS", WINDOW_WIDTH, WINDOW_HEIGHT);
+    log::info!(
+        "Window: {}x{} | Target: 60 FPS",
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT
+    );
     log::info!("");
     log::info!("Features:");
     log::info!("  ✓ 3D Rendering (wgpu 27.0)");

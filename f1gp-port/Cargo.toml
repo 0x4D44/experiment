@@ -2,11 +2,17 @@
 members = [
     ".",
     "tools/extract_iso",
+    "tools/asset_extractor",
     "tools/track_viewer",
     "tools/track_inspector",
     "tools/graphics_test",
     "tools/playable_demo",
     "tools/3d_demo",
+    "tools/audio_ui_extractor",
+    "tools/telemetry_cli",
+    "tools/racing_line_cli",
+    "tools/dos_capture_parser",
+    "tools/sprite_atlas_cli",
 ]
 
 [workspace.package]
@@ -21,6 +27,7 @@ anyhow = "1.0"
 thiserror = "1.0"
 log = "0.4"
 env_logger = "0.11"
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 # Math
 glam = { version = "0.28", features = ["serde"] }
@@ -65,11 +72,16 @@ path = "src/main.rs"
 name = "test_parser"
 path = "src/bin/test_parser.rs"
 
+[[bin]]
+name = "parity_harness"
+path = "src/bin/parity_harness.rs"
+
 [dependencies]
 anyhow.workspace = true
 thiserror.workspace = true
 log.workspace = true
 env_logger.workspace = true
+image.workspace = true
 glam.workspace = true
 serde.workspace = true
 bincode.workspace = true
@@ -77,6 +89,7 @@ serde_json.workspace = true
 bytemuck.workspace = true
 byteorder.workspace = true
 memmap2.workspace = true
+clap = { version = "4.5", features = ["derive"] }
 
 # Graphics (SDL2)
 sdl2 = { version = "0.37", features = ["bundled"] }
@@ -95,6 +108,8 @@ fastrand = "2.0"
 [features]
 default = []
 audio = ["rodio"]
+fixtures = []
 
 [dev-dependencies]
 criterion.workspace = true
+tempfile = "3.10"

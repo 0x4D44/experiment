@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .test-section {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-section h2 {
+            color: #667eea;
+            margin-top: 0;
+        }
+
+        .test-case {
+            padding: 10px;
+            margin: 10px 0;
+            border-left: 4px solid #ddd;
+            background: #f9f9f9;
+        }
+
+        .test-case.pass {
+            border-left-color: #4caf50;
+            background: #e8f5e9;
+        }
+
+        .test-case.fail {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .test-result {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .summary {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .summary h2 {
+            margin: 0 0 10px 0;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .run-tests-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+
+        .run-tests-btn:hover {
+            background: #5568d3;
+        }
+
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Minesweeper Test Suite</h1>
+
+    <button class="run-tests-btn" onclick="runAllTests()">Run All Tests</button>
+
+    <div class="summary" id="summary">
+        <h2>Test Results</h2>
+        <div class="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="total-tests">0</div>
+                <div>Total Tests</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="passed-tests">0</div>
+                <div>Passed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="failed-tests">0</div>
+                <div>Failed</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="test-results"></div>
+
+    <script>
+        // Simplified Minesweeper class for testing (core logic only)
+        class MinesweeperTest {
+            constructor(rows, cols, mines) {
+                this.rows = rows;
+                this.cols = cols;
+                this.mineCount = mines;
+                this.grid = Array(rows).fill(null).map(() => Array(cols).fill(0));
+                this.revealed = Array(rows).fill(null).map(() => Array(cols).fill(false));
+                this.flagged = Array(rows).fill(null).map(() => Array(cols).fill(false));
+            }
+
+            placeMines(excludeRow, excludeCol) {
+                let minesPlaced = 0;
+                const attempts = new Set();
+
+                while (minesPlaced < this.mineCount) {
+                    const row = Math.floor(Math.random() * this.rows);
+                    const col = Math.floor(Math.random() * this.cols);
+                    const key = `${row},${col}`;
+
+                    if (attempts.has(key)) continue;
+                    attempts.add(key);
+
+                    if ((row === excludeRow && col === excludeCol) || this.grid[row][col] === -1) {
+                        continue;
+                    }
+
+                    this.grid[row][col] = -1;
+                    minesPlaced++;
+                }
+
+                this.calculateNumbers();
+            }
+
+            placeMinesAt(positions) {
+                // For deterministic testing
+                positions.forEach(([row, col]) => {
+                    this.grid[row][col] = -1;
+                });
+                this.calculateNumbers();
+            }
+
+            calculateNumbers() {
+                for (let row = 0; row < this.rows; row++) {
+                    for (let col = 0; col < this.cols; col++) {
+                        if (this.grid[row][col] !== -1) {
+                            this.grid[row][col] = this.countAdjacentMines(row, col);
+                        }
+                    }
+                }
+            }
+
+            countAdjacentMines(row, col) {
+                let count = 0;
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+                        if (this.isValid(newRow, newCol) && this.grid[newRow][newCol] === -1) {
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+
+            isValid(row, col) {
+                return row >= 0 && row < this.rows && col >= 0 && col < this.cols;
+            }
+
+            revealCell(row, col) {
+                if (!this.isValid(row, col) || this.revealed[row][col] || this.flagged[row][col]) {
+                    return;
+                }
+
+                this.revealed[row][col] = true;
+
+                if (this.grid[row][col] === 0) {
+                    // Flood fill
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            this.revealCell(row + dr, col + dc);
+                        }
+                    }
+                }
+            }
+
+            countRevealed() {
+                let count = 0;
+                for (let row = 0; row < this.rows; row++) {
+                    for (let col = 0; col < this.cols; col++) {
+                        if (this.revealed[row][col]) count++;
+                    }
+                }
+                return count;
+            }
+
+            checkWin() {
+                const revealedCount = this.countRevealed();
+                const totalCells = this.rows * this.cols;
+                return revealedCount === totalCells - this.mineCount;
+            }
+
+            countAdjacentFlags(row, col) {
+                let count = 0;
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        const newRow = row + dr;
+                        const newCol = col + dc;
+                        if (this.isValid(newRow, newCol) && this.flagged[newRow][newCol]) {
+                            count++;
+                        }
+                    }
+                }
+                return count;
+            }
+
+            getTotalMines() {
+                let count = 0;
+                for (let row = 0; row < this.rows; row++) {
+                    for (let col = 0; col < this.cols; col++) {
+                        if (this.grid[row][col] === -1) count++;
+                    }
+                }
+                return count;
+            }
+        }
+
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async runAll() {
+                this.results = [];
+                const resultsContainer = document.getElementById('test-results');
+                resultsContainer.innerHTML = '';
+
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        this.results.push({ name: test.name, passed: true, error: null });
+                    } catch (error) {
+                        this.results.push({ name: test.name, passed: false, error: error.message });
+                    }
+                }
+
+                this.displayResults();
+            }
+
+            displayResults() {
+                const resultsContainer = document.getElementById('test-results');
+                const sections = {};
+
+                this.results.forEach(result => {
+                    const sectionName = result.name.split(' - ')[0];
+                    if (!sections[sectionName]) {
+                        sections[sectionName] = [];
+                    }
+                    sections[sectionName].push(result);
+                });
+
+                Object.entries(sections).forEach(([sectionName, tests]) => {
+                    const section = document.createElement('div');
+                    section.className = 'test-section';
+
+                    const header = document.createElement('h2');
+                    header.textContent = sectionName;
+                    section.appendChild(header);
+
+                    tests.forEach(result => {
+                        const testCase = document.createElement('div');
+                        testCase.className = `test-case ${result.passed ? 'pass' : 'fail'}`;
+
+                        const testName = document.createElement('div');
+                        testName.className = 'test-name';
+                        testName.textContent = `${result.passed ? '✓' : '✗'} ${result.name.split(' - ')[1]}`;
+                        testCase.appendChild(testName);
+
+                        if (!result.passed) {
+                            const testResult = document.createElement('div');
+                            testResult.className = 'test-result';
+                            testResult.textContent = `Error: ${result.error}`;
+                            testCase.appendChild(testResult);
+                        }
+
+                        section.appendChild(testCase);
+                    });
+
+                    resultsContainer.appendChild(section);
+                });
+
+                this.updateSummary();
+            }
+
+            updateSummary() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = passed;
+                document.getElementById('failed-tests').textContent = failed;
+            }
+
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || 'Assertion failed');
+                }
+            }
+
+            assertEqual(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(message || `Expected ${expected}, got ${actual}`);
+                }
+            }
+
+            assertGreaterThan(actual, threshold, message) {
+                if (actual <= threshold) {
+                    throw new Error(message || `Expected ${actual} > ${threshold}`);
+                }
+            }
+        }
+
+        const runner = new TestRunner();
+
+        // Mine Placement Tests
+        runner.test('Mine Placement - Correct number of mines', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            game.placeMines(-1, -1);
+            const totalMines = game.getTotalMines();
+            runner.assertEqual(totalMines, 10, `Expected 10 mines, got ${totalMines}`);
+        });
+
+        runner.test('Mine Placement - First click is safe', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            const safeRow = 4, safeCol = 4;
+            game.placeMines(safeRow, safeCol);
+            runner.assert(game.grid[safeRow][safeCol] !== -1, 'First click position should not have a mine');
+        });
+
+        runner.test('Mine Placement - Mines are unique positions', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            game.placeMines(-1, -1);
+            const minePositions = new Set();
+            for (let row = 0; row < 9; row++) {
+                for (let col = 0; col < 9; col++) {
+                    if (game.grid[row][col] === -1) {
+                        const key = `${row},${col}`;
+                        runner.assert(!minePositions.has(key), 'Duplicate mine found');
+                        minePositions.add(key);
+                    }
+                }
+            }
+        });
+
+        // Number Calculation Tests
+        runner.test('Number Calculation - Corner cell with one mine', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.placeMinesAt([[0, 1]]);
+            runner.assertEqual(game.grid[0][0], 1, 'Corner should show 1');
+        });
+
+        runner.test('Number Calculation - Center cell surrounded by mines', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.placeMinesAt([[0,0], [0,1], [0,2], [1,0], [1,2], [2,0], [2,1], [2,2]]);
+            runner.assertEqual(game.grid[1][1], 8, 'Center should show 8');
+        });
+
+        runner.test('Number Calculation - Edge cell with two mines', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.placeMinesAt([[0,0], [2,0]]);
+            runner.assertEqual(game.grid[1][0], 2, 'Edge should show 2');
+        });
+
+        runner.test('Number Calculation - Empty cell with no adjacent mines', () => {
+            const game = new MinesweeperTest(5, 5, 0);
+            game.placeMinesAt([[0,0]]);
+            runner.assertEqual(game.grid[2][2], 0, 'Center of 5x5 should show 0');
+        });
+
+        // Flood Fill Tests
+        runner.test('Flood Fill - Empty area reveals all connected cells', () => {
+            const game = new MinesweeperTest(5, 5, 0);
+            game.placeMinesAt([[0,0]]);
+            game.revealCell(2, 2);
+            const revealed = game.countRevealed();
+            runner.assertGreaterThan(revealed, 10, 'Should reveal multiple cells');
+        });
+
+        runner.test('Flood Fill - Stops at numbered cells', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.placeMinesAt([[0,0]]);
+            game.revealCell(2, 2);
+            // Should reveal cells but stop at cells adjacent to mine
+            runner.assert(game.revealed[2][2], 'Starting cell should be revealed');
+        });
+
+        runner.test('Flood Fill - Does not reveal flagged cells', () => {
+            const game = new MinesweeperTest(5, 5, 0);
+            game.flagged[2][3] = true;
+            game.revealCell(2, 2);
+            runner.assert(!game.revealed[2][3], 'Flagged cell should not be revealed');
+        });
+
+        runner.test('Flood Fill - Handles board edges correctly', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.revealCell(0, 0);
+            runner.assert(game.revealed[0][0], 'Corner cell should be revealed');
+            runner.assert(game.revealed[0][1], 'Adjacent cell should be revealed');
+            runner.assert(game.revealed[1][0], 'Adjacent cell should be revealed');
+        });
+
+        // Win Detection Tests
+        runner.test('Win Detection - Detects win when all non-mine cells revealed', () => {
+            const game = new MinesweeperTest(3, 3, 1);
+            game.placeMinesAt([[0,0]]);
+            // Reveal all except mine
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 3; col++) {
+                    if (row !== 0 || col !== 0) {
+                        game.revealed[row][col] = true;
+                    }
+                }
+            }
+            runner.assert(game.checkWin(), 'Should detect win condition');
+        });
+
+        runner.test('Win Detection - Does not win if cells remain unrevealed', () => {
+            const game = new MinesweeperTest(3, 3, 1);
+            game.placeMinesAt([[0,0]]);
+            game.revealed[1][1] = true;
+            runner.assert(!game.checkWin(), 'Should not win with unrevealed cells');
+        });
+
+        runner.test('Win Detection - Works with different board sizes', () => {
+            const game = new MinesweeperTest(16, 16, 40);
+            game.placeMines(-1, -1);
+            // Reveal all non-mine cells
+            for (let row = 0; row < 16; row++) {
+                for (let col = 0; col < 16; col++) {
+                    if (game.grid[row][col] !== -1) {
+                        game.revealed[row][col] = true;
+                    }
+                }
+            }
+            runner.assert(game.checkWin(), 'Should detect win on larger board');
+        });
+
+        // Flag Counting Tests
+        runner.test('Flag Counting - Counts adjacent flags correctly', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.flagged[0][0] = true;
+            game.flagged[0][2] = true;
+            game.flagged[2][0] = true;
+            const count = game.countAdjacentFlags(1, 1);
+            runner.assertEqual(count, 3, 'Should count 3 adjacent flags');
+        });
+
+        runner.test('Flag Counting - Returns zero with no flags', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            const count = game.countAdjacentFlags(1, 1);
+            runner.assertEqual(count, 0, 'Should count 0 flags');
+        });
+
+        runner.test('Flag Counting - Handles corner cells correctly', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.flagged[0][1] = true;
+            game.flagged[1][0] = true;
+            const count = game.countAdjacentFlags(0, 0);
+            runner.assertEqual(count, 2, 'Corner should count 2 adjacent flags');
+        });
+
+        // Boundary Tests
+        runner.test('Boundary - isValid returns false for negative coordinates', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            runner.assert(!game.isValid(-1, 0), 'Negative row should be invalid');
+            runner.assert(!game.isValid(0, -1), 'Negative col should be invalid');
+        });
+
+        runner.test('Boundary - isValid returns false for out of bounds', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            runner.assert(!game.isValid(9, 0), 'Row 9 should be invalid');
+            runner.assert(!game.isValid(0, 9), 'Col 9 should be invalid');
+        });
+
+        runner.test('Boundary - isValid returns true for valid coordinates', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            runner.assert(game.isValid(0, 0), 'Top-left should be valid');
+            runner.assert(game.isValid(8, 8), 'Bottom-right should be valid');
+            runner.assert(game.isValid(4, 4), 'Center should be valid');
+        });
+
+        // Difficulty Configuration Tests
+        runner.test('Difficulty - Beginner configuration is correct', () => {
+            const game = new MinesweeperTest(9, 9, 10);
+            runner.assertEqual(game.rows, 9, 'Beginner should have 9 rows');
+            runner.assertEqual(game.cols, 9, 'Beginner should have 9 cols');
+            runner.assertEqual(game.mineCount, 10, 'Beginner should have 10 mines');
+        });
+
+        runner.test('Difficulty - Intermediate configuration is correct', () => {
+            const game = new MinesweeperTest(16, 16, 40);
+            runner.assertEqual(game.rows, 16, 'Intermediate should have 16 rows');
+            runner.assertEqual(game.cols, 16, 'Intermediate should have 16 cols');
+            runner.assertEqual(game.mineCount, 40, 'Intermediate should have 40 mines');
+        });
+
+        runner.test('Difficulty - Expert configuration is correct', () => {
+            const game = new MinesweeperTest(16, 30, 99);
+            runner.assertEqual(game.rows, 16, 'Expert should have 16 rows');
+            runner.assertEqual(game.cols, 30, 'Expert should have 30 cols');
+            runner.assertEqual(game.mineCount, 99, 'Expert should have 99 mines');
+        });
+
+        // Reveal Logic Tests
+        runner.test('Reveal Logic - Cannot reveal flagged cell', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.flagged[1][1] = true;
+            game.revealCell(1, 1);
+            runner.assert(!game.revealed[1][1], 'Flagged cell should not be revealed');
+        });
+
+        runner.test('Reveal Logic - Cannot reveal already revealed cell', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.revealed[1][1] = true;
+            const initialCount = game.countRevealed();
+            game.revealCell(1, 1);
+            runner.assertEqual(game.countRevealed(), initialCount, 'Should not double-reveal');
+        });
+
+        runner.test('Reveal Logic - Single numbered cell reveal', () => {
+            const game = new MinesweeperTest(3, 3, 0);
+            game.placeMinesAt([[0,0]]);
+            game.revealCell(0, 1);
+            runner.assert(game.revealed[0][1], 'Numbered cell should be revealed');
+            // Should not cascade since it has a number
+            runner.assertEqual(game.countRevealed(), 1, 'Should only reveal one cell');
+        });
+
+        function runAllTests() {
+            runner.runAll();
+        }
+
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

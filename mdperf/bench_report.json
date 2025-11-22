@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generated_at": "2025-11-16T21:54:42.393087285Z",
+  "generated_at": "2025-11-17T15:18:34.095104643Z",
   "host": {
     "hostname": "Forge",
     "os_version": "Linux 24.04 Ubuntu",
@@ -22,21 +22,21 @@
         "duration_secs": 30.0,
         "operations": [
           {
-            "approx_gops": 1.7356253333333334,
-            "iterations_per_sec": 1735625333.3333333,
-            "iterations_total": 52068760000,
+            "approx_gops": 1.8285036666666667,
+            "iterations_per_sec": 1828503666.6666667,
+            "iterations_total": 54855110000,
             "name": "int"
           },
           {
-            "approx_gops": 1.7356253333333334,
-            "iterations_per_sec": 1735625333.3333333,
-            "iterations_total": 52068760000,
+            "approx_gops": 1.8285036666666667,
+            "iterations_per_sec": 1828503666.6666667,
+            "iterations_total": 54855110000,
             "name": "float"
           }
         ],
         "threads": 24
       },
-      "summary": "1.74 GOPS float across 24 threads",
+      "summary": "1.83 GOPS float across 24 threads",
       "warnings": [],
       "resources": [
         "cpu"
@@ -50,29 +50,29 @@
         "duration_secs": 30.0,
         "kernels": [
           {
-            "mean_gbps": 39.63371380186281,
+            "mean_gbps": 43.6500923076923,
             "name": "copy",
-            "p95_gbps": 43.935,
-            "p99_gbps": 44.703,
-            "samples": 1181
+            "p95_gbps": 47.967,
+            "p99_gbps": 48.799,
+            "samples": 1300
           },
           {
-            "mean_gbps": 21.244623622047236,
+            "mean_gbps": 23.45772325249641,
             "name": "scale",
-            "p95_gbps": 22.783,
-            "p99_gbps": 23.023,
-            "samples": 635
+            "p95_gbps": 25.551,
+            "p99_gbps": 26.223,
+            "samples": 701
           },
           {
-            "mean_gbps": 7.8182038216560485,
+            "mean_gbps": 8.476282352941176,
             "name": "triad",
-            "p95_gbps": 8.043,
-            "p99_gbps": 8.143,
-            "samples": 157
+            "p95_gbps": 8.847,
+            "p99_gbps": 8.967,
+            "samples": 170
           }
         ]
       },
-      "summary": "39.63 GB/s copy (buffer 512 MB)",
+      "summary": "43.65 GB/s copy (buffer 512 MB)",
       "warnings": [],
       "resources": [
         "memory"
@@ -86,17 +86,17 @@
         "fsync": false,
         "patterns": [
           {
-            "mb_per_sec": 3286.980583520008,
+            "mb_per_sec": 3766.683432699411,
             "pattern": "seq_write"
           },
           {
-            "mb_per_sec": 12041.459120045914,
+            "mb_per_sec": 12442.898155121626,
             "pattern": "seq_read"
           }
         ],
-        "temp_file": "/tmp/.tmpLyCyB5/mdperf-disk-0.dat"
+        "temp_file": "/tmp/.tmpqhXMRR/mdperf-disk-0.dat"
       },
-      "summary": "seq_write 3287.0 MB/s, seq_read 12041.5 MB/s",
+      "summary": "seq_write 3766.7 MB/s, seq_read 12442.9 MB/s",
       "warnings": [
         "fsync disabled; throughput results may be optimistic"
       ],
@@ -109,11 +109,11 @@
       "status": "succeeded",
       "metrics": {
         "addr": "127.0.0.1:4000",
-        "duration_secs": 30.000070556,
-        "mb_per_sec": 1272.1345081092547,
+        "duration_secs": 30.000022053,
+        "mb_per_sec": 1401.7677195605495,
         "payload_kb": 64
       },
-      "summary": "loopback 1272.13 MB/s",
+      "summary": "loopback 1401.77 MB/s",
       "warnings": [],
       "resources": [
         "network"

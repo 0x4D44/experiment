@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        #console {
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            padding: 1.5rem;
+            max-width: 900px;
+            margin: 0 auto;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .pass {
+            color: #10b981;
+        }
+
+        .fail {
+            color: #ef4444;
+        }
+
+        .info {
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <h1>Memory Match Game - Test Suite</h1>
+    <div id="console">Running tests...</div>
+
+    <script src="../js/game.js"></script>
+    <script>
+        // Capture console output
+        const consoleDiv = document.getElementById('console');
+        const originalLog = console.log;
+
+        console.log = function(...args) {
+            const message = args.join(' ');
+            const line = document.createElement('div');
+
+            if (message.includes('✅') || message.includes('PASS')) {
+                line.className = 'pass';
+            } else if (message.includes('❌') || message.includes('FAIL')) {
+                line.className = 'fail';
+            } else if (message.includes('🧪') || message.includes('📊')) {
+                line.className = 'info';
+            }
+
+            line.textContent = message;
+            consoleDiv.appendChild(line);
+            originalLog.apply(console, args);
+        };
+
+        // Clear console
+        consoleDiv.innerHTML = '';
+    </script>
+    <script src="game.test.js"></script>
+</body>
+</html>

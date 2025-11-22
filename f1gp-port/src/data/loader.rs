@@ -1,43 +1,48 @@
 //! File loading and parsing utilities
 
+use super::parser::parse_track;
+use super::track::Track;
 use anyhow::{Context, Result};
 use std::fs;
 use std::path::Path;
-use super::parser::parse_track;
-use super::track::Track;
 
 /// Load raw bytes from a file
 pub fn load_file_bytes<P: AsRef<Path>>(path: P) -> Result<Vec<u8>> {
-    fs::read(&path).with_context(|| {
-        format!("Failed to read file: {}", path.as_ref().display())
-    })
+    fs::read(&path).with_context(|| format!("Failed to read file: {}", path.as_ref().display()))
 }
 
-/// Calculate F1GP checksum
-///
-/// The checksum is stored in the last 4 bytes of the file.
-/// Algorithm TBD - needs reverse engineering.
+const CHECKSUM_TAIL_BYTES: usize = 4;
+
+/// Compute a simple checksum by summing all payload bytes (excluding footer)
 pub fn calculate_checksum(data: &[u8]) -> u32 {
-    // TODO: Implement actual F1GP checksum algorithm
-    // For now, just read the existing checksum from file
-    if data.len() >= 4 {
-        let idx = data.len() - 4;
-        u32::from_le_bytes([data[idx], data[idx + 1], data[idx + 2], data[idx + 3]])
-    } else {
-        0
+    if data.len() <= CHECKSUM_TAIL_BYTES {
+        return 0;
     }
+    data[..data.len() - CHECKSUM_TAIL_BYTES]
+        .iter()
+        .fold(0u32, |acc, byte| acc.wrapping_add(*byte as u32))
 }
 
-/// Verify file checksum
-pub fn verify_checksum(data: &[u8]) -> bool {
-    if data.len() < 4 {
-        return false;
+/// Read the stored checksum from the footer bytes (if present)
+pub fn read_stored_checksum(data: &[u8]) -> Option<u32> {
+    if data.len() < CHECKSUM_TAIL_BYTES {
+        return None;
     }
+    let idx = data.len() - CHECKSUM_TAIL_BYTES;
+    Some(u32::from_le_bytes([
+        data[idx],
+        data[idx + 1],
+        data[idx + 2],
+        data[idx + 3],
+    ]))
+}
 
-    let stored = calculate_checksum(data);
-    // TODO: Calculate actual checksum and compare
-    // For now, just return true if checksum exists
-    stored != 0
+/// Verify file checksum (wrapping sum vs. stored footer)
+pub fn verify_checksum(data: &[u8]) -> bool {
+    match read_stored_checksum(data) {
+        Some(stored) => stored == calculate_checksum(data),
+        None => false,
+    }
 }
 
 /// Load and parse a complete track file
@@ -70,7 +75,17 @@ pub fn load_track<P: AsRef<Path>>(path: P, name: Option<String>) -> Result<Track
 
     // Verify checksum (basic validation)
     if !verify_checksum(&data) {
-        log::warn!("Track file has invalid or missing checksum: {}", track_name);
+        if let Some(stored) = read_stored_checksum(&data) {
+            let computed = calculate_checksum(&data);
+            log::warn!(
+                "Track file has invalid checksum: {} (stored=0x{:08X} computed=0x{:08X})",
+                track_name,
+                stored,
+                computed
+            );
+        } else {
+            log::warn!("Track file has missing checksum footer: {}", track_name);
+        }
     }
 
     // Parse track
@@ -91,17 +106,24 @@ mod tests {
 
     #[test]
     fn test_checksum_calculation() {
-        let data = vec![0x01, 0x02, 0x03, 0x04, 0xAA, 0xBB, 0xCC, 0xDD];
-        let checksum = calculate_checksum(&data);
-        assert_eq!(checksum, 0xDDCCBBAA); // Little endian
+        let mut data = vec![0x01, 0x02, 0x03, 0x04, 0, 0, 0, 0];
+        let expected = 0x0Au32; // sum of first four bytes
+        let tail = data.len() - 4;
+        data[tail..].copy_from_slice(&expected.to_le_bytes());
+        assert_eq!(calculate_checksum(&data), expected);
+        assert_eq!(read_stored_checksum(&data), Some(expected));
+        assert!(verify_checksum(&data));
     }
 
     #[test]
-    fn test_verify_checksum() {
-        let data = vec![0x01, 0x02, 0x03, 0x04];
-        assert!(verify_checksum(&data));
+    fn test_verify_checksum_failure() {
+        let mut data = vec![0x01, 0x02, 0x03, 0x04, 0, 0, 0, 0];
+        let tail = data.len() - 4;
+        data[tail..].copy_from_slice(&0xFFFF_FFFFu32.to_le_bytes());
+        assert!(!verify_checksum(&data));
 
         let empty: Vec<u8> = vec![];
         assert!(!verify_checksum(&empty));
+        assert_eq!(read_stored_checksum(&empty), None);
     }
 }

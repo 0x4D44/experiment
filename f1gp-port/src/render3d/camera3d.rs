@@ -1,8 +1,8 @@
 // Camera3D - 3D camera system for different view modes
 // Stage 6.1 & 6.4 - Enhanced with smooth transitions, shake, interpolation
 
-use glam::{Mat4, Vec3};
 use crate::physics::CarPhysics;
+use glam::{Mat4, Vec3};
 
 /// Camera viewing modes
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,9 +100,9 @@ pub struct Camera3D {
     tv_camera_positions: Vec<Vec3>,
 
     // Free camera state
-    free_yaw: f32,       // Rotation around Y axis (radians)
-    free_pitch: f32,     // Rotation around X axis (radians)
-    free_zoom: f32,      // Zoom factor (1.0 = normal)
+    free_yaw: f32,   // Rotation around Y axis (radians)
+    free_pitch: f32, // Rotation around X axis (radians)
+    free_zoom: f32,  // Zoom factor (1.0 = normal)
     mouse_sensitivity: f32,
 }
 
@@ -131,8 +131,8 @@ impl Camera3D {
             near: 0.1,
             far: 1000.0,
             mode: CameraMode::Chase,
-            position_smoothing: 0.9,  // Smooth position transitions
-            target_smoothing: 0.85,   // Smooth target transitions
+            position_smoothing: 0.9, // Smooth position transitions
+            target_smoothing: 0.85,  // Smooth target transitions
             shake: CameraShake::new(),
             tv_camera_index: 0,
             tv_camera_positions,

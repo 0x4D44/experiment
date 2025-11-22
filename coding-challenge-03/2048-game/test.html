@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2048 Test Suite</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #4CAF50;
+      padding-bottom: 10px;
+    }
+    h2 {
+      color: #555;
+      margin-top: 30px;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 5px;
+    }
+    .test-results {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-case {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      border-left: 4px solid #ddd;
+    }
+    .test-case.pass {
+      background: #e8f5e9;
+      border-left-color: #4CAF50;
+    }
+    .test-case.fail {
+      background: #ffebee;
+      border-left-color: #f44336;
+    }
+    .test-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .test-pass {
+      color: #4CAF50;
+    }
+    .test-fail {
+      color: #f44336;
+    }
+    .test-error {
+      color: #666;
+      font-family: monospace;
+      font-size: 12px;
+      margin-top: 5px;
+      padding: 5px;
+      background: #f5f5f5;
+      border-radius: 3px;
+    }
+    .summary {
+      margin-top: 30px;
+      padding: 20px;
+      background: #fff3e0;
+      border-radius: 8px;
+      border-left: 4px solid #ff9800;
+    }
+    .summary h3 {
+      margin-top: 0;
+      color: #e65100;
+    }
+    .summary-stats {
+      display: flex;
+      gap: 30px;
+      margin-top: 15px;
+    }
+    .stat {
+      font-size: 18px;
+    }
+    .stat-label {
+      color: #666;
+      font-size: 14px;
+    }
+    .stat-value {
+      font-weight: bold;
+      font-size: 24px;
+    }
+    .stat-value.pass {
+      color: #4CAF50;
+    }
+    .stat-value.fail {
+      color: #f44336;
+    }
+  </style>
+</head>
+<body>
+  <h1>2048 Game Test Suite</h1>
+  <p>Comprehensive testing of game logic, tile movement, merging, and win/lose conditions.</p>
+
+  <div id="results" class="test-results"></div>
+  <div id="summary" class="summary"></div>
+
+  <script src="game.js"></script>
+  <script>
+    /**
+     * Simple Test Framework
+     */
+    class TestRunner {
+      constructor() {
+        this.tests = [];
+        this.results = [];
+      }
+
+      test(name, fn) {
+        this.tests.push({ name, fn });
+      }
+
+      async run() {
+        for (const test of this.tests) {
+          try {
+            await test.fn();
+            this.results.push({ name: test.name, pass: true });
+          } catch (error) {
+            this.results.push({ name: test.name, pass: false, error: error.message });
+          }
+        }
+        this.displayResults();
+      }
+
+      displayResults() {
+        const resultsDiv = document.getElementById('results');
+        const summaryDiv = document.getElementById('summary');
+
+        // Display individual test results
+        this.results.forEach(result => {
+          const div = document.createElement('div');
+          div.className = `test-case ${result.pass ? 'pass' : 'fail'}`;
+
+          const nameDiv = document.createElement('div');
+          nameDiv.className = 'test-name';
+          nameDiv.innerHTML = `${result.pass ? '✓' : '✗'} ${result.name}`;
+
+          div.appendChild(nameDiv);
+
+          if (!result.pass) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'test-error';
+            errorDiv.textContent = result.error;
+            div.appendChild(errorDiv);
+          }
+
+          resultsDiv.appendChild(div);
+        });
+
+        // Display summary
+        const passed = this.results.filter(r => r.pass).length;
+        const failed = this.results.filter(r => !r.pass).length;
+        const total = this.results.length;
+        const passRate = ((passed / total) * 100).toFixed(1);
+
+        summaryDiv.innerHTML = `
+          <h3>Test Summary</h3>
+          <div class="summary-stats">
+            <div class="stat">
+              <div class="stat-label">Total Tests</div>
+              <div class="stat-value">${total}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Passed</div>
+              <div class="stat-value pass">${passed}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Failed</div>
+              <div class="stat-value fail">${failed}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Pass Rate</div>
+              <div class="stat-value ${failed === 0 ? 'pass' : ''}">${passRate}%</div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    function assert(condition, message) {
+      if (!condition) {
+        throw new Error(message || 'Assertion failed');
+      }
+    }
+
+    function assertEqual(actual, expected, message) {
+      if (actual !== expected) {
+        throw new Error(message || `Expected ${expected}, but got ${actual}`);
+      }
+    }
+
+    /**
+     * Test Suite
+     */
+    const runner = new TestRunner();
+
+    // Tile Tests
+    runner.test('Tile: should create tile with correct properties', () => {
+      const tile = new Tile(2, 1, 1);
+      assertEqual(tile.value, 2, 'Tile value should be 2');
+      assertEqual(tile.row, 1, 'Tile row should be 1');
+      assertEqual(tile.col, 1, 'Tile col should be 1');
+      assert(tile.previousPosition === null, 'Previous position should be null');
+      assert(tile.mergedFrom === null, 'Merged from should be null');
+    });
+
+    runner.test('Tile: should save position correctly', () => {
+      const tile = new Tile(2, 1, 1);
+      tile.savePosition();
+      assert(tile.previousPosition !== null, 'Previous position should not be null');
+      assertEqual(tile.previousPosition.row, 1, 'Previous row should be 1');
+      assertEqual(tile.previousPosition.col, 1, 'Previous col should be 1');
+    });
+
+    runner.test('Tile: should update position correctly', () => {
+      const tile = new Tile(2, 1, 1);
+      tile.updatePosition({ row: 2, col: 2 });
+      assertEqual(tile.row, 2, 'Row should be updated to 2');
+      assertEqual(tile.col, 2, 'Col should be updated to 2');
+    });
+
+    // Grid Tests
+    runner.test('Grid: should create empty grid of correct size', () => {
+      const grid = new Grid(4);
+      assertEqual(grid.size, 4, 'Grid size should be 4');
+      assertEqual(grid.cells.length, 4, 'Grid should have 4 rows');
+      assertEqual(grid.cells[0].length, 4, 'Grid should have 4 columns');
+      assert(grid.cells[0][0] === null, 'Grid cells should be null');
+    });
+
+    runner.test('Grid: should insert and remove tiles correctly', () => {
+      const grid = new Grid(4);
+      const tile = new Tile(2, 1, 1);
+
+      grid.insertTile(tile);
+      assert(grid.cellOccupied({ row: 1, col: 1 }), 'Cell should be occupied after insert');
+      assertEqual(grid.cellContent({ row: 1, col: 1 }), tile, 'Cell should contain the tile');
+
+      grid.removeTile(tile);
+      assert(!grid.cellOccupied({ row: 1, col: 1 }), 'Cell should not be occupied after remove');
+    });
+
+    runner.test('Grid: should find available cells correctly', () => {
+      const grid = new Grid(4);
+      let available = grid.availableCells();
+      assertEqual(available.length, 16, 'Empty grid should have 16 available cells');
+
+      grid.insertTile(new Tile(2, 0, 0));
+      available = grid.availableCells();
+      assertEqual(available.length, 15, 'Grid with one tile should have 15 available cells');
+    });
+
+    runner.test('Grid: should check bounds correctly', () => {
+      const grid = new Grid(4);
+      assert(grid.withinBounds({ row: 0, col: 0 }), 'Origin should be within bounds');
+      assert(grid.withinBounds({ row: 3, col: 3 }), 'Last cell should be within bounds');
+      assert(!grid.withinBounds({ row: 4, col: 0 }), 'Row 4 should be out of bounds');
+      assert(!grid.withinBounds({ row: 0, col: -1 }), 'Negative col should be out of bounds');
+    });
+
+    // GameManager Tests
+    runner.test('GameManager: should initialize correctly', () => {
+      const game = new GameManager(4);
+      assertEqual(game.size, 4, 'Game size should be 4');
+      assertEqual(game.score, 0, 'Initial score should be 0');
+      assert(!game.over, 'Game should not be over initially');
+      assert(!game.won, 'Game should not be won initially');
+    });
+
+    runner.test('GameManager: should add start tiles', () => {
+      const game = new GameManager(4);
+      let tileCount = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          if (game.grid.cells[row][col]) tileCount++;
+        }
+      }
+      assertEqual(tileCount, 2, 'Game should start with 2 tiles');
+    });
+
+    runner.test('GameManager: should restart correctly', () => {
+      const game = new GameManager(4);
+      game.score = 100;
+      game.over = true;
+      game.restart();
+      assertEqual(game.score, 0, 'Score should be reset to 0');
+      assert(!game.over, 'Game over should be reset');
+    });
+
+    runner.test('GameManager: tiles should merge when moving', () => {
+      const game = new GameManager(4);
+      // Clear grid
+      game.grid = new Grid(4);
+
+      // Set up two tiles that can merge
+      game.grid.insertTile(new Tile(2, 0, 0));
+      game.grid.insertTile(new Tile(2, 0, 1));
+
+      const initialScore = game.score;
+      game.move(1); // Move right
+
+      // Check if tiles merged (score should increase by 4)
+      assert(game.score > initialScore, 'Score should increase after merge');
+    });
+
+    runner.test('GameManager: should detect when no moves available', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Create a pattern with no possible merges
+      const pattern = [
+        [2, 4, 8, 16],
+        [16, 8, 4, 2],
+        [2, 4, 8, 16],
+        [16, 8, 4, 2]
+      ];
+
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          game.grid.insertTile(new Tile(pattern[row][col], row, col));
+        }
+      }
+
+      assert(!game.movesAvailable(), 'No moves should be available');
+    });
+
+    runner.test('GameManager: should detect when moves are available', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Add just one tile - moves should be available
+      game.grid.insertTile(new Tile(2, 0, 0));
+
+      assert(game.movesAvailable(), 'Moves should be available');
+    });
+
+    runner.test('GameManager: should detect win condition (2048)', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Set up tiles that merge to 2048
+      game.grid.insertTile(new Tile(1024, 0, 0));
+      game.grid.insertTile(new Tile(1024, 0, 1));
+
+      game.move(1); // Move right to merge
+
+      assert(game.won, 'Game should be won when 2048 is reached');
+    });
+
+    runner.test('GameManager: tile values should be 2 or 4', () => {
+      const game = new GameManager(4);
+      const values = new Set();
+
+      // Add many random tiles to test distribution
+      for (let i = 0; i < 100; i++) {
+        game.grid = new Grid(4);
+        const tile = game.addRandomTile();
+        if (tile) {
+          values.add(tile.value);
+        }
+      }
+
+      assert(values.has(2), 'Should generate tiles with value 2');
+      assert(values.size <= 2, 'Should only generate values 2 and 4');
+      values.forEach(v => {
+        assert(v === 2 || v === 4, `All values should be 2 or 4, got ${v}`);
+      });
+    });
+
+    runner.test('GameManager: should handle all four directions', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Test up (direction 0)
+      game.grid.insertTile(new Tile(2, 3, 0));
+      game.move(0);
+      assert(game.grid.cellOccupied({ row: 0, col: 0 }), 'Tile should move up');
+
+      // Test right (direction 1)
+      game.grid = new Grid(4);
+      game.grid.insertTile(new Tile(2, 0, 0));
+      game.move(1);
+      assert(game.grid.cellOccupied({ row: 0, col: 3 }), 'Tile should move right');
+
+      // Test down (direction 2)
+      game.grid = new Grid(4);
+      game.grid.insertTile(new Tile(2, 0, 0));
+      game.move(2);
+      assert(game.grid.cellOccupied({ row: 3, col: 0 }), 'Tile should move down');
+
+      // Test left (direction 3)
+      game.grid = new Grid(4);
+      game.grid.insertTile(new Tile(2, 0, 3));
+      game.move(3);
+      assert(game.grid.cellOccupied({ row: 0, col: 0 }), 'Tile should move left');
+    });
+
+    runner.test('GameManager: should not move tiles if no movement possible', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Place tile at left edge
+      game.grid.insertTile(new Tile(2, 0, 0));
+
+      const moved = game.move(3); // Try to move left
+      assert(!moved, 'Should not move when already at edge');
+    });
+
+    runner.test('GameManager: multiple tiles should merge in one move', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Set up: [2][2][4][4]
+      game.grid.insertTile(new Tile(2, 0, 0));
+      game.grid.insertTile(new Tile(2, 0, 1));
+      game.grid.insertTile(new Tile(4, 0, 2));
+      game.grid.insertTile(new Tile(4, 0, 3));
+
+      const initialScore = game.score;
+      game.move(1); // Move right
+
+      // Should result in [4][8] on the right side
+      // Score should increase by 4 (2+2) + 8 (4+4) = 12
+      assertEqual(game.score, initialScore + 12, 'Score should increase by 12 from two merges');
+    });
+
+    runner.test('GameManager: tiles should not merge twice in one move', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Set up: [2][2][2][ ]
+      game.grid.insertTile(new Tile(2, 0, 0));
+      game.grid.insertTile(new Tile(2, 0, 1));
+      game.grid.insertTile(new Tile(2, 0, 2));
+
+      game.move(1); // Move right
+
+      // Should result in [2][4] not [8]
+      let tileCount = 0;
+      let has4 = false;
+      let has2 = false;
+
+      for (let col = 0; col < 4; col++) {
+        const tile = game.grid.cells[0][col];
+        if (tile) {
+          tileCount++;
+          if (tile.value === 4) has4 = true;
+          if (tile.value === 2) has2 = true;
+        }
+      }
+
+      assertEqual(tileCount, 2, 'Should have 2 tiles after move');
+      assert(has4, 'Should have a tile with value 4');
+      assert(has2, 'Should have a tile with value 2');
+    });
+
+    runner.test('GameManager: should add new tile after successful move', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      game.grid.insertTile(new Tile(2, 0, 0));
+
+      let tileCount = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          if (game.grid.cells[row][col]) tileCount++;
+        }
+      }
+      assertEqual(tileCount, 1, 'Should have 1 tile initially');
+
+      game.move(1); // Move right
+
+      tileCount = 0;
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          if (game.grid.cells[row][col]) tileCount++;
+        }
+      }
+      assertEqual(tileCount, 2, 'Should have 2 tiles after move (original + new)');
+    });
+
+    runner.test('GameManager: should set game over when no moves available', () => {
+      const game = new GameManager(4);
+      game.grid = new Grid(4);
+
+      // Fill grid completely with no possible merges
+      const pattern = [2, 4, 8, 16];
+      for (let row = 0; row < 4; row++) {
+        for (let col = 0; col < 4; col++) {
+          const value = pattern[(row + col) % 4];
+          game.grid.insertTile(new Tile(value, row, col));
+        }
+      }
+
+      game.move(0); // Try to move
+
+      assert(game.over, 'Game should be over when grid is full and no merges possible');
+    });
+
+    // Run all tests
+    runner.run();
+  </script>
+</body>
+</html>

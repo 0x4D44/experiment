@@ -1,0 +1,64 @@
+================================================================================
+  FLAPPY BIRD - QUICK START GUIDE
+================================================================================
+
+HOW TO RUN THE GAME:
+-------------------
+1. Open 'index.html' in any modern web browser (Chrome, Firefox, Safari, Edge)
+   - Double-click the file, or
+   - Right-click → Open With → Browser
+
+2. Alternative (Local Server):
+   python3 -m http.server 8080
+   Then open: http://localhost:8080
+
+HOW TO PLAY:
+-----------
+• Press SPACE or CLICK to make the bird flap
+• Avoid hitting the pipes, ground, or ceiling
+• Score points by passing through pipe gaps
+• Try to beat your high score!
+
+HOW TO RUN TESTS:
+----------------
+• Open 'test.html' in your browser
+• All 21 tests should pass automatically
+• Green = Pass, Red = Fail
+
+FEATURES:
+---------
+✓ Smooth 60 FPS gameplay
+✓ Realistic physics engine
+✓ Infinite scrolling pipes
+✓ Particle effects & animations
+✓ Sound effects (toggle with button)
+✓ Day/night cycle
+✓ High score persistence
+✓ Progressive difficulty
+✓ Comprehensive test coverage
+
+FILES:
+------
+index.html   - Main game (236 lines)
+game.js      - Game engine (613 lines)
+test.html    - Test suite (785 lines)
+README.md    - Full documentation
+FEATURES.md  - Feature checklist
+
+CONTROLS:
+---------
+SPACE        - Flap
+CLICK        - Flap
+SOUND BUTTON - Toggle audio
+
+TIPS:
+-----
+• Time your flaps carefully
+• Don't over-flap - momentum matters
+• Watch for random pipe gaps
+• Game gets harder as you score
+• Aim for the high score!
+
+================================================================================
+  READY TO PLAY! Open index.html and start flapping!
+================================================================================

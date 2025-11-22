@@ -1,0 +1,167 @@
+{
+  "cars": {
+    "McLaren MP4/6": {
+      "name": "McLaren MP4/6",
+      "team": "McLaren",
+      "engine": {
+        "power_curve": [[5000.0, 400.0], [10000.0, 600.0], [15000.0, 550.0]],
+        "max_rpm": 15000.0,
+        "torque_curve": [[5000.0, 500.0], [10000.0, 600.0], [15000.0, 450.0]],
+        "response": 0.85
+      },
+      "aerodynamics": {
+        "downforce": 2.5,
+        "drag": 0.9,
+        "front_wing": 15.0,
+        "rear_wing": 20.0
+      },
+      "mass": 505.0,
+      "dimensions": {
+        "length": 4.5,
+        "width": 2.0,
+        "height": 0.95,
+        "wheelbase": 2.8
+      },
+      "livery_colors": [[255, 255, 255], [255, 0, 0]]
+    },
+    "Williams FW14": {
+      "name": "Williams FW14",
+      "team": "Williams",
+      "engine": {
+        "power_curve": [[5000.0, 390.0], [10000.0, 580.0], [15000.0, 540.0]],
+        "max_rpm": 15000.0,
+        "torque_curve": [[5000.0, 480.0], [10000.0, 580.0], [15000.0, 430.0]],
+        "response": 0.8
+      },
+      "aerodynamics": {
+        "downforce": 2.4,
+        "drag": 0.88,
+        "front_wing": 14.0,
+        "rear_wing": 19.0
+      },
+      "mass": 505.0,
+      "dimensions": {
+        "length": 4.55,
+        "width": 2.0,
+        "height": 0.95,
+        "wheelbase": 2.85
+      },
+      "livery_colors": [[0, 0, 255], [255, 255, 255]]
+    },
+    "Ferrari 643": {
+      "name": "Ferrari 643",
+      "team": "Ferrari",
+      "engine": {
+        "power_curve": [[5000.0, 395.0], [10000.0, 590.0], [15000.0, 545.0]],
+        "max_rpm": 15000.0,
+        "torque_curve": [[5000.0, 490.0], [10000.0, 590.0], [15000.0, 440.0]],
+        "response": 0.82
+      },
+      "aerodynamics": {
+        "downforce": 2.45,
+        "drag": 0.9,
+        "front_wing": 15.0,
+        "rear_wing": 20.0
+      },
+      "mass": 505.0,
+      "dimensions": {
+        "length": 4.48,
+        "width": 2.0,
+        "height": 0.96,
+        "wheelbase": 2.82
+      },
+      "livery_colors": [[255, 0, 0], [255, 255, 255]]
+    }
+  },
+  "teams": {
+    "McLaren": {
+      "name": "McLaren",
+      "colors": [[255, 255, 255], [255, 0, 0]],
+      "drivers": ["Ayrton Senna", "Gerhard Berger"]
+    },
+    "Williams": {
+      "name": "Williams",
+      "colors": [[0, 0, 255], [255, 255, 255]],
+      "drivers": ["Nigel Mansell", "Riccardo Patrese"]
+    },
+    "Ferrari": {
+      "name": "Ferrari",
+      "colors": [[255, 0, 0], [255, 255, 255]],
+      "drivers": ["Alain Prost", "Jean Alesi"]
+    }
+  },
+  "drivers": {
+    "Ayrton Senna": {
+      "name": "Ayrton Senna",
+      "number": 1,
+      "team": "McLaren",
+      "skills": {
+        "pace": 98,
+        "consistency": 95,
+        "wet_weather": 99,
+        "overtaking": 98,
+        "defending": 96
+      }
+    },
+    "Gerhard Berger": {
+      "name": "Gerhard Berger",
+      "number": 2,
+      "team": "McLaren",
+      "skills": {
+        "pace": 88,
+        "consistency": 85,
+        "wet_weather": 80,
+        "overtaking": 82,
+        "defending": 83
+      }
+    },
+    "Nigel Mansell": {
+      "name": "Nigel Mansell",
+      "number": 5,
+      "team": "Williams",
+      "skills": {
+        "pace": 95,
+        "consistency": 90,
+        "wet_weather": 88,
+        "overtaking": 92,
+        "defending": 89
+      }
+    },
+    "Riccardo Patrese": {
+      "name": "Riccardo Patrese",
+      "number": 6,
+      "team": "Williams",
+      "skills": {
+        "pace": 85,
+        "consistency": 88,
+        "wet_weather": 82,
+        "overtaking": 80,
+        "defending": 85
+      }
+    },
+    "Alain Prost": {
+      "name": "Alain Prost",
+      "number": 27,
+      "team": "Ferrari",
+      "skills": {
+        "pace": 96,
+        "consistency": 98,
+        "wet_weather": 95,
+        "overtaking": 90,
+        "defending": 94
+      }
+    },
+    "Jean Alesi": {
+      "name": "Jean Alesi",
+      "number": 28,
+      "team": "Ferrari",
+      "skills": {
+        "pace": 87,
+        "consistency": 80,
+        "wet_weather": 85,
+        "overtaking": 88,
+        "defending": 82
+      }
+    }
+  }
+}

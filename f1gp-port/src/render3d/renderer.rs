@@ -3,15 +3,15 @@
 // Stage 6.2: Track Rendering Integration
 
 use anyhow::Result;
-use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
 use glam::Mat4;
+use wgpu::util::DeviceExt;
 
-use crate::game::GameState;
-use crate::data::Track;
 use super::camera3d::Camera3D;
-use super::track_mesh::{TrackMesh, TrackVertex};
 use super::car_model::{CarModel, CarVertex};
+use super::track_mesh::{TrackMesh, TrackVertex};
+use crate::data::Track;
+use crate::game::GameState;
 
 /// Vertex for basic 3D rendering (test triangle)
 #[repr(C)]
@@ -72,10 +72,10 @@ struct LightUniforms {
 impl LightUniforms {
     fn new() -> Self {
         Self {
-            direction: [0.4, -0.8, 0.5],  // Sun from upper-right, more downward for better shadows
+            direction: [0.4, -0.8, 0.5], // Sun from upper-right, more downward for better shadows
             _padding: 0.0,
-            color: [1.0, 0.98, 0.92],     // Warmer sunlight (slightly orange-tinted)
-            ambient: 0.4,                  // 40% ambient light for better visibility
+            color: [1.0, 0.98, 0.92], // Warmer sunlight (slightly orange-tinted)
+            ambient: 0.4,             // 40% ambient light for better visibility
         }
     }
 }
@@ -143,10 +143,7 @@ pub struct Renderer3D {
 
 impl Renderer3D {
     /// Create new 3D renderer with track rendering support
-    pub fn new(
-        device: &wgpu::Device,
-        config: &wgpu::SurfaceConfiguration,
-    ) -> Result<Self> {
+    pub fn new(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration) -> Result<Self> {
         let aspect_ratio = config.width as f32 / config.height as f32;
         let camera = Camera3D::new(aspect_ratio);
 
@@ -399,16 +396,15 @@ impl Renderer3D {
         });
 
         // Create car render pipeline
-        let car_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Car Pipeline Layout"),
-                bind_group_layouts: &[
-                    &camera_bind_group_layout,
-                    &light_bind_group_layout,
-                    &model_bind_group_layout,
-                ],
-                push_constant_ranges: &[],
-            });
+        let car_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("Car Pipeline Layout"),
+            bind_group_layouts: &[
+                &camera_bind_group_layout,
+                &light_bind_group_layout,
+                &model_bind_group_layout,
+            ],
+            push_constant_ranges: &[],
+        });
 
         let car_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Car Pipeline"),
@@ -481,11 +477,13 @@ impl Renderer3D {
 
         let skybox_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Skybox Pipeline"),
-            layout: Some(&device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("Skybox Pipeline Layout"),
-                bind_group_layouts: &[&camera_bind_group_layout],
-                push_constant_ranges: &[],
-            })),
+            layout: Some(
+                &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                    label: Some("Skybox Pipeline Layout"),
+                    bind_group_layouts: &[&camera_bind_group_layout],
+                    push_constant_ranges: &[],
+                }),
+            ),
             vertex: wgpu::VertexState {
                 module: &skybox_shader,
                 entry_point: Some("vs_main"),
@@ -761,7 +759,11 @@ impl Renderer3D {
         let transform = CarModel::get_transform_matrix(player_car);
         let mut model_uniforms = ModelUniforms::new();
         model_uniforms.update(transform);
-        queue.write_buffer(&self.model_buffer, 0, bytemuck::cast_slice(&[model_uniforms]));
+        queue.write_buffer(
+            &self.model_buffer,
+            0,
+            bytemuck::cast_slice(&[model_uniforms]),
+        );
         render_pass.draw_indexed(0..self.car_index_count, 0, 0..1);
 
         // TODO: Render AI cars when we have access to them
@@ -789,11 +791,14 @@ impl Renderer3D {
                 sample_count: 1,
                 dimension: wgpu::TextureDimension::D2,
                 format: wgpu::TextureFormat::Depth32Float,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
                 view_formats: &[],
             });
 
-            self.depth_view = self.depth_texture.create_view(&wgpu::TextureViewDescriptor::default());
+            self.depth_view = self
+                .depth_texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
         }
     }
 }

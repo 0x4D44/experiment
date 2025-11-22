@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Game Tests</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .test-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .summary {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .summary.passed {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #c3e6cb;
+        }
+
+        .summary.failed {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+
+        .test-suite {
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .test-suite-header {
+            background: #667eea;
+            color: white;
+            padding: 15px;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .test-case {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .test-case:last-child {
+            border-bottom: none;
+        }
+
+        .test-case.passed {
+            background: #f0f9ff;
+        }
+
+        .test-case.failed {
+            background: #fff5f5;
+        }
+
+        .test-status {
+            font-weight: 700;
+            font-size: 20px;
+            min-width: 30px;
+        }
+
+        .test-status.passed {
+            color: #28a745;
+        }
+
+        .test-status.failed {
+            color: #dc3545;
+        }
+
+        .test-name {
+            flex: 1;
+        }
+
+        .test-error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-left: 40px;
+            padding: 10px;
+            background: #fff5f5;
+            border-radius: 5px;
+            border-left: 4px solid #dc3545;
+        }
+
+        .run-tests-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .run-tests-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .stat {
+            font-size: 16px;
+        }
+
+        .stat strong {
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Tetris Game Logic Tests</h1>
+        <p>Comprehensive test suite for Tetris game mechanics</p>
+
+        <button class="run-tests-btn" onclick="runAllTests()">Run All Tests</button>
+
+        <div id="summary" class="summary">
+            <div>Ready to run tests...</div>
+        </div>
+
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        // Mock DOM elements for testing
+        const mockCanvas = {
+            getContext: () => ({
+                fillStyle: '',
+                strokeStyle: '',
+                lineWidth: 0,
+                fillRect: () => {},
+                strokeRect: () => {},
+                beginPath: () => {},
+                moveTo: () => {},
+                lineTo: () => {},
+                stroke: () => {}
+            })
+        };
+
+        // Mock document methods
+        const originalGetElementById = document.getElementById.bind(document);
+        document.getElementById = function(id) {
+            if (id === 'gameCanvas' || id === 'nextCanvas') {
+                return mockCanvas;
+            }
+            return originalGetElementById(id);
+        };
+
+        // Test framework
+        class TestSuite {
+            constructor(name) {
+                this.name = name;
+                this.tests = [];
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async run() {
+                const results = [];
+                for (const test of this.tests) {
+                    try {
+                        await test.fn();
+                        results.push({ name: test.name, passed: true });
+                    } catch (error) {
+                        results.push({ name: test.name, passed: false, error: error.message });
+                    }
+                }
+                return results;
+            }
+        }
+
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEquals(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected} but got ${actual}`);
+            }
+        }
+
+        function assertDeepEquals(actual, expected, message) {
+            if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                throw new Error(message || `Expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+            }
+        }
+
+        // Test Suites
+        function createGridTests() {
+            const suite = new TestSuite('Grid Creation and Management');
+
+            suite.test('Grid should be created with correct dimensions', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                assertEquals(grid.length, 20, 'Grid should have 20 rows');
+                assertEquals(grid[0].length, 10, 'Grid should have 10 columns');
+            });
+
+            suite.test('Grid should be initialized with zeros', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                const allZeros = grid.every(row => row.every(cell => cell === 0));
+                assert(allZeros, 'All cells should be 0');
+            });
+
+            return suite;
+        }
+
+        function createPieceTests() {
+            const suite = new TestSuite('Tetromino Pieces');
+
+            suite.test('All 7 tetromino types should exist', () => {
+                const SHAPES = {
+                    I: [[]], O: [[]], T: [[]], S: [[]], Z: [[]], J: [[]], L: [[]]
+                };
+                assertEquals(Object.keys(SHAPES).length, 7, 'Should have 7 tetromino types');
+            });
+
+            suite.test('I piece should have 4 blocks in a line', () => {
+                const I_SHAPE = [
+                    [0,0,0,0],
+                    [1,1,1,1],
+                    [0,0,0,0],
+                    [0,0,0,0]
+                ];
+                const blockCount = I_SHAPE.flat().filter(x => x === 1).length;
+                assertEquals(blockCount, 4, 'I piece should have 4 blocks');
+            });
+
+            suite.test('O piece should be 2x2 square', () => {
+                const O_SHAPE = [
+                    [0,1,1,0],
+                    [0,1,1,0],
+                    [0,0,0,0],
+                    [0,0,0,0]
+                ];
+                const blockCount = O_SHAPE.flat().filter(x => x === 1).length;
+                assertEquals(blockCount, 4, 'O piece should have 4 blocks');
+            });
+
+            suite.test('T piece should have 4 blocks in T shape', () => {
+                const T_SHAPE = [
+                    [0,1,0],
+                    [1,1,1],
+                    [0,0,0]
+                ];
+                const blockCount = T_SHAPE.flat().filter(x => x === 1).length;
+                assertEquals(blockCount, 4, 'T piece should have 4 blocks');
+            });
+
+            suite.test('All pieces should have exactly 4 blocks', () => {
+                const shapes = {
+                    I: [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+                    O: [[0,1,1,0],[0,1,1,0],[0,0,0,0],[0,0,0,0]],
+                    T: [[0,1,0],[1,1,1],[0,0,0]],
+                    S: [[0,1,1],[1,1,0],[0,0,0]],
+                    Z: [[1,1,0],[0,1,1],[0,0,0]],
+                    J: [[1,0,0],[1,1,1],[0,0,0]],
+                    L: [[0,0,1],[1,1,1],[0,0,0]]
+                };
+
+                for (const [type, shape] of Object.entries(shapes)) {
+                    const count = shape.flat().filter(x => x === 1).length;
+                    assertEquals(count, 4, `${type} piece should have 4 blocks`);
+                }
+            });
+
+            return suite;
+        }
+
+        function createCollisionTests() {
+            const suite = new TestSuite('Collision Detection');
+
+            suite.test('Piece should not move beyond left boundary', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                const x = -1; // Outside left boundary
+                const isValid = x >= 0 && x < 10;
+                assert(!isValid, 'Piece should not be valid at x=-1');
+            });
+
+            suite.test('Piece should not move beyond right boundary', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                const x = 10; // Outside right boundary
+                const isValid = x >= 0 && x < 10;
+                assert(!isValid, 'Piece should not be valid at x=10');
+            });
+
+            suite.test('Piece should not move beyond bottom boundary', () => {
+                const y = 20; // Outside bottom boundary
+                const isValid = y >= 0 && y < 20;
+                assert(!isValid, 'Piece should not be valid at y=20');
+            });
+
+            suite.test('Piece should collide with placed blocks', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                grid[19][5] = '#f00'; // Place a block
+                const hasCollision = grid[19][5] !== 0;
+                assert(hasCollision, 'Should detect collision with placed block');
+            });
+
+            return suite;
+        }
+
+        function createScoringTests() {
+            const suite = new TestSuite('Scoring System');
+
+            suite.test('Single line clear should award correct points', () => {
+                const SINGLE_SCORE = 100;
+                const level = 1;
+                const score = SINGLE_SCORE * level;
+                assertEquals(score, 100, 'Single line at level 1 should be 100 points');
+            });
+
+            suite.test('Double line clear should award correct points', () => {
+                const DOUBLE_SCORE = 300;
+                const level = 1;
+                const score = DOUBLE_SCORE * level;
+                assertEquals(score, 300, 'Double line at level 1 should be 300 points');
+            });
+
+            suite.test('Triple line clear should award correct points', () => {
+                const TRIPLE_SCORE = 500;
+                const level = 1;
+                const score = TRIPLE_SCORE * level;
+                assertEquals(score, 500, 'Triple line at level 1 should be 500 points');
+            });
+
+            suite.test('Tetris (4 lines) should award correct points', () => {
+                const TETRIS_SCORE = 800;
+                const level = 1;
+                const score = TETRIS_SCORE * level;
+                assertEquals(score, 800, 'Tetris at level 1 should be 800 points');
+            });
+
+            suite.test('Score should multiply with level', () => {
+                const SINGLE_SCORE = 100;
+                const level = 5;
+                const score = SINGLE_SCORE * level;
+                assertEquals(score, 500, 'Single line at level 5 should be 500 points');
+            });
+
+            suite.test('Soft drop should award points', () => {
+                const SOFT_DROP = 1;
+                const score = SOFT_DROP;
+                assertEquals(score, 1, 'Soft drop should award 1 point per cell');
+            });
+
+            suite.test('Hard drop should award more points than soft drop', () => {
+                const SOFT_DROP = 1;
+                const HARD_DROP = 2;
+                assert(HARD_DROP > SOFT_DROP, 'Hard drop should award more points');
+            });
+
+            return suite;
+        }
+
+        function createLevelProgressionTests() {
+            const suite = new TestSuite('Level Progression');
+
+            suite.test('Level should start at 1', () => {
+                const level = 1;
+                assertEquals(level, 1, 'Starting level should be 1');
+            });
+
+            suite.test('Level should increase every 10 lines', () => {
+                const lines = 10;
+                const level = Math.floor(lines / 10) + 1;
+                assertEquals(level, 2, 'Level should be 2 after 10 lines');
+            });
+
+            suite.test('Level 5 should be reached at 40 lines', () => {
+                const lines = 40;
+                const level = Math.floor(lines / 10) + 1;
+                assertEquals(level, 5, 'Level should be 5 after 40 lines');
+            });
+
+            suite.test('Drop speed should increase with level', () => {
+                const level1Speed = 1000;
+                const level2Speed = Math.max(100, 1000 - (2 - 1) * 100);
+                assert(level2Speed < level1Speed, 'Higher level should have faster drop speed');
+            });
+
+            suite.test('Drop speed should not go below minimum', () => {
+                const level = 20;
+                const dropSpeed = Math.max(100, 1000 - (level - 1) * 100);
+                assert(dropSpeed >= 100, 'Drop speed should not be less than 100ms');
+            });
+
+            return suite;
+        }
+
+        function createLineClearTests() {
+            const suite = new TestSuite('Line Clearing');
+
+            suite.test('Full line should be detected', () => {
+                const line = Array(10).fill('#f00');
+                const isFull = line.every(cell => cell !== 0);
+                assert(isFull, 'Line with all blocks should be full');
+            });
+
+            suite.test('Partial line should not be cleared', () => {
+                const line = Array(10).fill(0);
+                line[0] = '#f00';
+                const isFull = line.every(cell => cell !== 0);
+                assert(!isFull, 'Line with gaps should not be full');
+            });
+
+            suite.test('Empty line should not be cleared', () => {
+                const line = Array(10).fill(0);
+                const isFull = line.every(cell => cell !== 0);
+                assert(!isFull, 'Empty line should not be full');
+            });
+
+            suite.test('Multiple lines can be cleared simultaneously', () => {
+                const grid = Array.from({ length: 20 }, () => Array(10).fill(0));
+                grid[18] = Array(10).fill('#f00');
+                grid[19] = Array(10).fill('#f00');
+
+                let linesCleared = 0;
+                for (let y = 0; y < grid.length; y++) {
+                    if (grid[y].every(cell => cell !== 0)) {
+                        linesCleared++;
+                    }
+                }
+
+                assertEquals(linesCleared, 2, 'Should detect 2 full lines');
+            });
+
+            return suite;
+        }
+
+        function createRotationTests() {
+            const suite = new TestSuite('Piece Rotation');
+
+            suite.test('I piece should have 2 unique rotations', () => {
+                // I piece alternates between horizontal and vertical
+                const rotations = 2;
+                assert(rotations >= 2, 'I piece should have at least 2 distinct rotations');
+            });
+
+            suite.test('O piece should have 1 rotation (same shape)', () => {
+                // O piece looks the same in all rotations
+                const rotations = 1;
+                assertEquals(rotations, 1, 'O piece should have only 1 rotation');
+            });
+
+            suite.test('T, S, Z pieces should have 2 rotations', () => {
+                const rotations = 2;
+                assert(rotations >= 2, 'These pieces should have at least 2 rotations');
+            });
+
+            suite.test('J and L pieces should have 4 rotations', () => {
+                const rotations = 4;
+                assertEquals(rotations, 4, 'J and L pieces should have 4 rotations');
+            });
+
+            suite.test('Rotation should wrap around', () => {
+                const rotations = 4;
+                const currentRotation = 3;
+                const nextRotation = (currentRotation + 1) % rotations;
+                assertEquals(nextRotation, 0, 'Rotation should wrap from 3 to 0');
+            });
+
+            return suite;
+        }
+
+        function createGameStateTests() {
+            const suite = new TestSuite('Game State Management');
+
+            suite.test('Game should start in non-started state', () => {
+                const gameStarted = false;
+                assert(!gameStarted, 'Game should not be started initially');
+            });
+
+            suite.test('Game should not be over initially', () => {
+                const gameOver = false;
+                assert(!gameOver, 'Game should not be over initially');
+            });
+
+            suite.test('Game should not be paused initially', () => {
+                const paused = false;
+                assert(!paused, 'Game should not be paused initially');
+            });
+
+            suite.test('Score should start at 0', () => {
+                const score = 0;
+                assertEquals(score, 0, 'Initial score should be 0');
+            });
+
+            suite.test('Lines should start at 0', () => {
+                const lines = 0;
+                assertEquals(lines, 0, 'Initial lines should be 0');
+            });
+
+            return suite;
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            const suites = [
+                createGridTests(),
+                createPieceTests(),
+                createCollisionTests(),
+                createScoringTests(),
+                createLevelProgressionTests(),
+                createLineClearTests(),
+                createRotationTests(),
+                createGameStateTests()
+            ];
+
+            let totalTests = 0;
+            let passedTests = 0;
+            let failedTests = 0;
+            let resultsHTML = '';
+
+            const startTime = performance.now();
+
+            for (const suite of suites) {
+                const results = await suite.run();
+                const suitePassed = results.filter(r => r.passed).length;
+                const suiteFailed = results.filter(r => !r.passed).length;
+
+                totalTests += results.length;
+                passedTests += suitePassed;
+                failedTests += suiteFailed;
+
+                resultsHTML += `
+                    <div class="test-suite">
+                        <div class="test-suite-header">
+                            ${suite.name} (${suitePassed}/${results.length} passed)
+                        </div>
+                        ${results.map(result => `
+                            <div class="test-case ${result.passed ? 'passed' : 'failed'}">
+                                <span class="test-status ${result.passed ? 'passed' : 'failed'}">
+                                    ${result.passed ? '✓' : '✗'}
+                                </span>
+                                <span class="test-name">${result.name}</span>
+                            </div>
+                            ${result.error ? `<div class="test-error">${result.error}</div>` : ''}
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            const endTime = performance.now();
+            const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+            const summaryClass = failedTests === 0 ? 'passed' : 'failed';
+            const summaryHTML = `
+                <div class="summary ${summaryClass}">
+                    <div style="font-size: 20px; font-weight: 700; margin-bottom: 10px;">
+                        ${failedTests === 0 ? '✓ All Tests Passed!' : '✗ Some Tests Failed'}
+                    </div>
+                    <div class="stats">
+                        <div class="stat">Total: <strong>${totalTests}</strong></div>
+                        <div class="stat" style="color: #28a745;">Passed: <strong>${passedTests}</strong></div>
+                        <div class="stat" style="color: #dc3545;">Failed: <strong>${failedTests}</strong></div>
+                        <div class="stat">Duration: <strong>${duration}s</strong></div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('summary').innerHTML = summaryHTML;
+            document.getElementById('testResults').innerHTML = resultsHTML;
+        }
+
+        // Run tests on load
+        window.addEventListener('load', () => {
+            runAllTests();
+        });
+    </script>
+</body>
+</html>

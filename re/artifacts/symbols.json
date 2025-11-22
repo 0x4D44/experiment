@@ -1,0 +1,19 @@
+{
+  "program_name": "GP.EXE",
+  "language": "x86:LE:16:Real Mode / default",
+  "binary_hash": "sha256:0ae54f7e095a05bf92197df6d3b54ffcbf4e3067d995d51e1cdba97ec2f4455b",
+  "generated_at": "2025-11-20T17:51:19Z",
+  "functions": [
+    {
+      "name": "entry",
+      "entry_linear": "0x5DBE0",
+      "size_bytes": 36,
+      "stack_frame_size": 0,
+      "subsystem": "unknown",
+      "callers": [],
+      "int_usage": [],
+      "source_recording_id": "",
+      "notes": ""
+    }
+  ]
+}

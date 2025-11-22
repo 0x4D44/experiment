@@ -10,11 +10,32 @@ use crate::game::session::RaceSession;
 use crate::game::weather::{WeatherCondition, WeatherSystem};
 use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
 use crate::platform::{Color, Renderer};
-use crate::render::{Camera, CarRenderer, CarState, Hud, ParticleSystem, Telemetry, TrackRenderer};
+use crate::render::{
+    Camera, CarRenderer, CarState, Hud, ParticleSystem, SpriteAtlas, SpriteSheet, Telemetry,
+    TrackRenderer,
+};
 use crate::render3d::Renderer3D;
+use crate::telemetry::{TelemetryRecording, TelemetrySample};
 use crate::ui::{Menu, MenuAction};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use glam::{Vec2, Vec3};
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+const TELEMETRY_ENV_VAR: &str = "F1GP_TELEMETRY";
+const TELEMETRY_DIR: &str = "telemetry";
+
+fn telemetry_is_enabled() -> bool {
+    match env::var(TELEMETRY_ENV_VAR) {
+        Ok(value) => {
+            let normalized = value.trim().to_ascii_lowercase();
+            !(normalized == "0" || normalized == "false" || normalized == "off")
+        }
+        Err(_) => true,
+    }
+}
 
 /// Game screen state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +65,17 @@ pub enum GameMode {
     Race,
     /// Time trial mode
     TimeTrial,
+}
+
+impl std::fmt::Display for GameMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let label = match self {
+            GameMode::Practice => "Practice",
+            GameMode::Race => "Race",
+            GameMode::TimeTrial => "TimeTrial",
+        };
+        write!(f, "{}", label)
+    }
 }
 
 /// Main game state
@@ -132,20 +164,62 @@ pub struct GameState {
 
     /// Particle system for visual effects
     particle_system: ParticleSystem,
+
+    /// Whether telemetry capture is enabled
+    telemetry_enabled: bool,
+
+    /// Active telemetry recording
+    telemetry_recording: Option<TelemetryRecording>,
+
+    /// Destination for the pending telemetry recording
+    telemetry_output_path: Option<PathBuf>,
 }
 
 impl GameState {
     /// Create a new game state
     pub fn new(viewport_width: u32, viewport_height: u32) -> Self {
         let physics_world = PhysicsWorld::new();
-        let car_database = CarDatabase::create_sample();
+        let car_database = match CarDatabase::load_from_disk() {
+            Ok(db) => {
+                log::info!(
+                    "Loaded driver database ({} drivers, {} teams)",
+                    db.driver_count(),
+                    db.team_count()
+                );
+                db
+            }
+            Err(err) => {
+                log::warn!("Falling back to built-in sample driver database: {}", err);
+                CarDatabase::create_sample()
+            }
+        };
+
+        let telemetry_enabled = telemetry_is_enabled();
+        if telemetry_enabled {
+            log::info!(
+                "Telemetry capture enabled (set {}=off to disable)",
+                TELEMETRY_ENV_VAR
+            );
+        } else {
+            log::info!(
+                "Telemetry capture disabled via {} environment override",
+                TELEMETRY_ENV_VAR
+            );
+        }
 
         // Create player car with first available car spec
         let car_spec = car_database.cars().next().unwrap().clone();
         let player_car = CarPhysics::new(BodyId(0), car_spec, Vec3::new(0.0, 1.0, 0.0));
 
         let camera = Camera::new(viewport_width, viewport_height);
-        let car_renderer = CarRenderer::new();
+        let mut car_renderer = CarRenderer::new();
+        if let Ok(atlas) =
+            SpriteAtlas::from_manifest(PathBuf::from("data/fixtures/sprites/sprite_manifest.json"))
+        {
+            if let Ok(sheet) = SpriteSheet::load(atlas.atlas_path()) {
+                car_renderer.set_sprite_resources(atlas, sheet);
+            }
+        }
         let hud = Hud::new(viewport_width, viewport_height);
         let input_manager = InputManager::new();
 
@@ -182,11 +256,23 @@ impl GameState {
             viewport_height,
             weather: WeatherSystem::default(),
             particle_system: ParticleSystem::new(viewport_width, viewport_height),
+            telemetry_enabled,
+            telemetry_recording: None,
+            telemetry_output_path: None,
         }
     }
 
     /// Load a track
     pub fn load_track(&mut self, track: Track) {
+        if let Err(err) = self.flush_telemetry_to_disk() {
+            log::warn!(
+                "Failed to flush telemetry before loading new track: {}",
+                err
+            );
+        }
+
+        let track_name = track.name.clone();
+
         // Create track renderer
         let track_renderer = TrackRenderer::new(&track);
 
@@ -202,6 +288,8 @@ impl GameState {
         self.track_renderer = Some(track_renderer);
         self.track_collision = Some(track_collision);
         self.track = Some(track);
+
+        self.start_telemetry_recording(&track_name);
     }
 
     /// Spawn AI opponents for race mode
@@ -361,10 +449,8 @@ impl GameState {
                             // Pause game
                             self.screen = GameScreen::Paused;
                             self.paused = true;
-                            self.menu = Some(Menu::pause_menu(
-                                self.viewport_width,
-                                self.viewport_height,
-                            ));
+                            self.menu =
+                                Some(Menu::pause_menu(self.viewport_width, self.viewport_height));
                         }
                         GameScreen::Paused => {
                             self.handle_menu_action(MenuAction::Resume);
@@ -383,7 +469,10 @@ impl GameState {
                             // Item 0: Opponents
                             if selected == 0 && self.num_opponents > 0 {
                                 self.num_opponents -= 1;
-                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                                menu.update_item_text(
+                                    0,
+                                    format!("OPPONENTS: {}", self.num_opponents),
+                                );
                             }
 
                             // Item 1: Weather
@@ -413,7 +502,10 @@ impl GameState {
                             // Item 0: Opponents
                             if selected == 0 && self.num_opponents < 5 {
                                 self.num_opponents += 1;
-                                menu.update_item_text(0, format!("OPPONENTS: {}", self.num_opponents));
+                                menu.update_item_text(
+                                    0,
+                                    format!("OPPONENTS: {}", self.num_opponents),
+                                );
                             }
 
                             // Item 1: Weather
@@ -476,8 +568,14 @@ impl GameState {
             // Check if race is finished
             if session.state == crate::game::session::RaceState::Finished {
                 self.screen = GameScreen::Results;
-                self.menu = Some(Menu::results_menu(self.viewport_width, self.viewport_height));
+                self.menu = Some(Menu::results_menu(
+                    self.viewport_width,
+                    self.viewport_height,
+                ));
                 log::info!("Race finished!");
+                if let Err(err) = self.flush_telemetry_to_disk() {
+                    log::warn!("Failed to write telemetry after race: {}", err);
+                }
             }
         }
 
@@ -485,11 +583,14 @@ impl GameState {
         self.weather.update(delta_time);
 
         // Update particle system based on weather
-        self.particle_system.update(delta_time, self.weather.condition);
+        self.particle_system
+            .update(delta_time, self.weather.condition);
 
         // Update timers
         self.total_time += delta_time;
         self.lap_time += delta_time;
+
+        self.capture_telemetry_frame();
     }
 
     /// Apply input to player car
@@ -572,7 +673,8 @@ impl GameState {
 
             // Apply collision detection for AI cars
             if let Some(collision_detector) = &self.track_collision {
-                let collision_result = collision_detector.check_collision(self.ai_cars[i].body.position);
+                let collision_result =
+                    collision_detector.check_collision(self.ai_cars[i].body.position);
 
                 // Calculate total grip (surface × weather)
                 let weather_grip = self.weather.effective_grip_multiplier();
@@ -582,7 +684,9 @@ impl GameState {
                 self.ai_cars[i].on_track = collision_result.on_track;
 
                 // Check for lap crossing (AI driver index = i + 1, since player is 0)
-                if collision_detector.check_lap_crossing(self.ai_prev_sections[i], collision_result.nearest_section) {
+                if collision_detector
+                    .check_lap_crossing(self.ai_prev_sections[i], collision_result.nearest_section)
+                {
                     // Notify race session
                     if let Some(ref mut session) = self.race_session {
                         session.complete_lap(i + 1);
@@ -598,7 +702,8 @@ impl GameState {
     fn update_physics(&mut self, delta_time: f32) {
         // Check collision and apply surface physics
         if let Some(collision_detector) = &self.track_collision {
-            let collision_result = collision_detector.check_collision(self.player_car.body.position);
+            let collision_result =
+                collision_detector.check_collision(self.player_car.body.position);
 
             // Calculate total grip (surface × weather)
             let weather_grip = self.weather.effective_grip_multiplier();
@@ -609,7 +714,9 @@ impl GameState {
             self.player_car.on_track = collision_result.on_track;
 
             // Check for lap crossing
-            if collision_detector.check_lap_crossing(self.prev_section, collision_result.nearest_section) {
+            if collision_detector
+                .check_lap_crossing(self.prev_section, collision_result.nearest_section)
+            {
                 // Record lap time
                 if self.lap_time > 1.0 {
                     self.set_best_lap(self.lap_time);
@@ -692,13 +799,17 @@ impl GameState {
                 // Cars with lower Y (further "back" in isometric) are drawn first
                 if self.camera.is_isometric() {
                     all_cars.sort_by(|a, b| {
-                        a.position.y.partial_cmp(&b.position.y).unwrap_or(std::cmp::Ordering::Equal)
+                        a.position
+                            .y
+                            .partial_cmp(&b.position.y)
+                            .unwrap_or(std::cmp::Ordering::Equal)
                     });
                 }
 
                 // Render all cars in sorted order
                 for car_state in &all_cars {
-                    self.car_renderer.render_car(renderer, car_state, &self.camera)?;
+                    self.car_renderer
+                        .render_car(renderer, car_state, &self.camera)?;
                 }
 
                 // Render particle effects (rain)
@@ -764,7 +875,8 @@ impl GameState {
                 } else {
                     "DNF".to_string()
                 };
-                let best_lap_text = result.best_lap
+                let best_lap_text = result
+                    .best_lap
                     .map(|t| format!("Best: {:.2}s", t))
                     .unwrap_or_else(|| "".to_string());
 
@@ -922,7 +1034,9 @@ impl GameState {
     pub fn update_3d_camera(&mut self, delta_time: f32) {
         if let Some(renderer_3d) = &mut self.renderer_3d {
             // Update camera from car
-            renderer_3d.camera.update_from_car(&self.player_car, delta_time);
+            renderer_3d
+                .camera
+                .update_from_car(&self.player_car, delta_time);
         }
     }
 
@@ -1005,6 +1119,144 @@ impl GameState {
     /// Get effective grip multiplier from weather
     pub fn get_weather_grip_multiplier(&self) -> f32 {
         self.weather.effective_grip_multiplier()
+    }
+
+    fn start_telemetry_recording(&mut self, track_name: &str) {
+        if !self.telemetry_enabled {
+            return;
+        }
+
+        let session_label = self.mode.to_string();
+        self.telemetry_recording = Some(TelemetryRecording::new(track_name, session_label.clone()));
+        self.telemetry_output_path = self.build_telemetry_output_path(track_name, &session_label);
+
+        if self.telemetry_output_path.is_none() {
+            log::warn!("Telemetry output directory unavailable; capture will remain in-memory");
+        }
+    }
+
+    fn capture_telemetry_frame(&mut self) {
+        if !self.telemetry_enabled {
+            return;
+        }
+
+        let timestamp_ms = (self.total_time.max(0.0) * 1000.0).round() as u64;
+        if let Some(recording) = self.telemetry_recording.as_mut() {
+            Self::record_car_sample(recording, timestamp_ms, 0, &self.player_car);
+            for (idx, ai_car) in self.ai_cars.iter().enumerate() {
+                let car_id = (idx + 1) as u8;
+                Self::record_car_sample(recording, timestamp_ms, car_id, ai_car);
+            }
+        }
+    }
+
+    fn record_car_sample(
+        recording: &mut TelemetryRecording,
+        timestamp_ms: u64,
+        car_id: u8,
+        car: &CarPhysics,
+    ) {
+        let mut sample = TelemetrySample::new(timestamp_ms, car_id);
+        sample.position = [
+            car.body.position.x,
+            car.body.position.y,
+            car.body.position.z,
+        ];
+        sample.velocity = [
+            car.body.velocity.x,
+            car.body.velocity.y,
+            car.body.velocity.z,
+        ];
+        sample.acceleration = [
+            car.body.acceleration.x,
+            car.body.acceleration.y,
+            car.body.acceleration.z,
+        ];
+        sample.orientation = [
+            car.body.orientation.x,
+            car.body.orientation.y,
+            car.body.orientation.z,
+            car.body.orientation.w,
+        ];
+        sample.speed = car.speed;
+        sample.rpm = car.engine_rpm;
+        sample.gear = car.gear;
+        sample.throttle = car.throttle;
+        sample.brake = car.brake;
+        sample.steering = car.steering;
+
+        recording.push_sample(sample);
+    }
+
+    fn build_telemetry_output_path(&self, track_name: &str, session: &str) -> Option<PathBuf> {
+        let track = Self::sanitize_label(track_name);
+        let session = Self::sanitize_label(session);
+        if track.is_empty() {
+            return None;
+        }
+
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let filename = format!("{}-{}-{}.bin", track, session, timestamp);
+        Some(PathBuf::from(TELEMETRY_DIR).join(filename))
+    }
+
+    fn sanitize_label(input: &str) -> String {
+        let mut label: String = input
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() {
+                    c.to_ascii_lowercase()
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        while label.ends_with('_') {
+            label.pop();
+        }
+        while label.starts_with('_') {
+            label.remove(0);
+        }
+        if label.is_empty() {
+            "session".to_string()
+        } else {
+            label
+        }
+    }
+
+    fn flush_telemetry_to_disk(&mut self) -> Result<()> {
+        if !self.telemetry_enabled {
+            self.telemetry_recording = None;
+            self.telemetry_output_path = None;
+            return Ok(());
+        }
+
+        if let Some(recording) = self.telemetry_recording.take() {
+            if let Some(path) = self.telemetry_output_path.take() {
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent).with_context(|| {
+                        format!("Failed to create telemetry directory {}", parent.display())
+                    })?;
+                }
+                recording
+                    .write_to_file(&path)
+                    .with_context(|| format!("Failed to write telemetry to {}", path.display()))?;
+                log::info!("Saved telemetry capture to {}", path.display());
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for GameState {
+    fn drop(&mut self) {
+        if let Err(err) = self.flush_telemetry_to_disk() {
+            log::warn!("Failed to finalize telemetry capture: {}", err);
+        }
     }
 }
 

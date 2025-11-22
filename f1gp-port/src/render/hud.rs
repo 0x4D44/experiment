@@ -69,7 +69,11 @@ impl Hud {
     }
 
     /// Draw telemetry panel (speed, RPM)
-    fn draw_telemetry_panel(&self, renderer: &mut dyn Renderer, telemetry: &Telemetry) -> Result<()> {
+    fn draw_telemetry_panel(
+        &self,
+        renderer: &mut dyn Renderer,
+        telemetry: &Telemetry,
+    ) -> Result<()> {
         let panel_x = 10.0;
         let panel_y = self.screen_height as f32 - 120.0;
         let panel_width = 200.0;
@@ -193,7 +197,11 @@ impl Hud {
     }
 
     /// Draw gear indicator
-    fn draw_gear_indicator(&self, renderer: &mut dyn Renderer, telemetry: &Telemetry) -> Result<()> {
+    fn draw_gear_indicator(
+        &self,
+        renderer: &mut dyn Renderer,
+        telemetry: &Telemetry,
+    ) -> Result<()> {
         let panel_x = self.screen_width as f32 - 100.0;
         let panel_y = self.screen_height as f32 - 100.0;
         let panel_size = 90.0;
@@ -221,7 +229,11 @@ impl Hud {
     }
 
     /// Draw status indicators (on/off track, etc.)
-    fn draw_status_indicators(&self, renderer: &mut dyn Renderer, telemetry: &Telemetry) -> Result<()> {
+    fn draw_status_indicators(
+        &self,
+        renderer: &mut dyn Renderer,
+        telemetry: &Telemetry,
+    ) -> Result<()> {
         // Weather indicator (top-left corner)
         let weather_x = 10.0;
         let weather_y = 10.0;
