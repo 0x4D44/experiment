@@ -1,0 +1,36 @@
+$schema: "http://json-schema.org/draft-07/schema#"
+title: F1GP Segment Artifact
+type: object
+required:
+  - binary_hash
+  - generated_at
+  - language
+  - segments
+properties:
+  binary_hash:
+    type: string
+    pattern: '^sha256:[0-9a-f]{64}$'
+  generated_at:
+    type: string
+  language:
+    type: string
+  segments:
+    type: array
+    items:
+      type: object
+      required: [name, start, size]
+      properties:
+        name:
+          type: string
+        start:
+          anyOf:
+            - type: string
+              pattern: '^0x[0-9A-Fa-f]+$'
+            - type: integer
+        size:
+          type: integer
+          minimum: 0
+        permissions:
+          type: string
+        comment:
+          type: string

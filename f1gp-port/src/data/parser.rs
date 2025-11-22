@@ -5,10 +5,12 @@
 //!
 //! Based on ArgData .NET library: https://github.com/codemeyer/ArgData
 
-use anyhow::{Context, Result, bail};
-use std::io::{Cursor, Read};
+use super::asset::TrackAsset;
+use super::loader;
 use super::objects::*;
 use super::track::*;
+use anyhow::{bail, Context, Result};
+use std::io::{Cursor, Read};
 
 // Unit conversion constants (from ArgData)
 /// Track section length: 1 unit = 16 feet ≈ 4.87 meters
@@ -46,6 +48,11 @@ impl TrackParser {
         self.file_size - (self.position() as usize)
     }
 
+    /// Borrow underlying raw bytes
+    pub fn data(&self) -> &[u8] {
+        self.cursor.get_ref()
+    }
+
     /// Seek to absolute position
     pub fn seek(&mut self, pos: u64) {
         self.cursor.set_position(pos);
@@ -54,7 +61,8 @@ impl TrackParser {
     /// Read a single byte
     pub fn read_u8(&mut self) -> Result<u8> {
         let mut buf = [0u8; 1];
-        self.cursor.read_exact(&mut buf)
+        self.cursor
+            .read_exact(&mut buf)
             .context("Failed to read u8")?;
         Ok(buf[0])
     }
@@ -67,7 +75,8 @@ impl TrackParser {
     /// Read u16 (little-endian)
     pub fn read_u16(&mut self) -> Result<u16> {
         let mut buf = [0u8; 2];
-        self.cursor.read_exact(&mut buf)
+        self.cursor
+            .read_exact(&mut buf)
             .context("Failed to read u16")?;
         Ok(u16::from_le_bytes(buf))
     }
@@ -80,7 +89,8 @@ impl TrackParser {
     /// Read u32 (little-endian)
     pub fn read_u32(&mut self) -> Result<u32> {
         let mut buf = [0u8; 4];
-        self.cursor.read_exact(&mut buf)
+        self.cursor
+            .read_exact(&mut buf)
             .context("Failed to read u32")?;
         Ok(u32::from_le_bytes(buf))
     }
@@ -93,7 +103,8 @@ impl TrackParser {
     /// Read f32 (little-endian)
     pub fn read_f32(&mut self) -> Result<f32> {
         let mut buf = [0u8; 4];
-        self.cursor.read_exact(&mut buf)
+        self.cursor
+            .read_exact(&mut buf)
             .context("Failed to read f32")?;
         Ok(f32::from_le_bytes(buf))
     }
@@ -111,7 +122,8 @@ impl TrackParser {
     /// Read bytes into buffer
     pub fn read_bytes(&mut self, count: usize) -> Result<Vec<u8>> {
         let mut buf = vec![0u8; count];
-        self.cursor.read_exact(&mut buf)
+        self.cursor
+            .read_exact(&mut buf)
             .with_context(|| format!("Failed to read {} bytes", count))?;
         Ok(buf)
     }
@@ -182,14 +194,14 @@ pub fn parse_graphical_element(parser: &mut TrackParser) -> Result<GraphicalElem
 
         ElementType::Polygon => {
             // Polygon: [color byte] [side1] ... [sideN] [0x00]
-            let color = flag;  // First byte is the color
+            let color = flag; // First byte is the color
             let mut sides = Vec::new();
 
             // Read sides until we hit 0x00 terminator
             loop {
                 let side = parser.read_i8()?;
                 if side == 0 {
-                    break;  // End of polygon
+                    break; // End of polygon
                 }
                 sides.push(side);
 
@@ -242,8 +254,15 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
             let left_verge_width = parser.read_u8()?;
 
             // Parse flags bitfield
-            let (has_left_kerb, has_right_kerb, kerb_height, pit_lane_entrance,
-                 pit_lane_exit, road_signs, road_sign_arrow) = parse_section_flags(flags);
+            let (
+                has_left_kerb,
+                has_right_kerb,
+                kerb_height,
+                pit_lane_entrance,
+                pit_lane_exit,
+                road_signs,
+                road_sign_arrow,
+            ) = parse_section_flags(flags);
 
             let section = TrackSection {
                 length: length_raw as f32 * UNIT_TO_METERS,
@@ -271,7 +290,11 @@ pub fn parse_track_sections(parser: &mut TrackParser) -> Result<Vec<TrackSection
 }
 
 /// Parse a track section command
-fn parse_track_command(parser: &mut TrackParser, command_id: u8, first_arg: u8) -> Result<TrackSectionCommand> {
+fn parse_track_command(
+    parser: &mut TrackParser,
+    command_id: u8,
+    first_arg: u8,
+) -> Result<TrackSectionCommand> {
     // Commands have variable number of int16 arguments based on command ID
     // Source: ArgData TrackSectionCommandFactory.cs
     let mut args = vec![first_arg as i16];
@@ -295,10 +318,7 @@ fn parse_track_command(parser: &mut TrackParser, command_id: u8, first_arg: u8) 
         args.push(parser.read_i16()?);
     }
 
-    Ok(TrackSectionCommand {
-        command_id,
-        args,
-    })
+    Ok(TrackSectionCommand { command_id, args })
 }
 
 /// Parse section flags bitfield
@@ -321,8 +341,15 @@ fn parse_section_flags(flags: u16) -> (bool, bool, KerbHeight, bool, bool, bool,
         KerbHeight::Low
     };
 
-    (has_left_kerb, has_right_kerb, kerb_height, pit_lane_entrance,
-     pit_lane_exit, road_signs, road_sign_arrow)
+    (
+        has_left_kerb,
+        has_right_kerb,
+        kerb_height,
+        pit_lane_entrance,
+        pit_lane_exit,
+        road_signs,
+        road_sign_arrow,
+    )
 }
 
 /// Parse racing line from binary data
@@ -351,7 +378,10 @@ pub fn parse_racing_line(parser: &mut TrackParser) -> Result<RacingLine> {
             // Wide radius segment
             let high_radius = parser.read_i16()?;
             let low_radius = parser.read_i16()?;
-            SegmentType::WideRadius { high_radius, low_radius }
+            SegmentType::WideRadius {
+                high_radius,
+                low_radius,
+            }
         } else {
             // Normal segment
             let radius = parser.read_i16()?;
@@ -368,7 +398,7 @@ pub fn parse_racing_line(parser: &mut TrackParser) -> Result<RacingLine> {
         let pos = parser.position();
         let next = parser.read_i16()?;
         if next == 0 {
-            break;  // End of racing line
+            break; // End of racing line
         } else {
             // Rewind and continue
             parser.seek(pos);
@@ -511,69 +541,103 @@ fn calculate_section_positions(sections: &mut [TrackSection]) {
         position.y = elevation;
     }
 
-    log::debug!("Track geometry: start (0,0,0), end ({:.1}, {:.1}, {:.1}), total elevation change: {:.1}m",
-                position.x, position.y, position.z, elevation);
+    log::debug!(
+        "Track geometry: start (0,0,0), end ({:.1}, {:.1}, {:.1}), total elevation change: {:.1}m",
+        position.x,
+        position.y,
+        position.z,
+        elevation
+    );
 }
 
 /// Parse a complete track file
 ///
 /// This is the main entry point for parsing .DAT files
 pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
+    parse_track_asset(data, name).map(TrackAsset::into_track)
+}
+
+pub fn parse_track_asset(data: Vec<u8>, name: String) -> Result<TrackAsset> {
     let mut parser = TrackParser::new(data);
 
-    // Basic validation
     if parser.file_size < 4 {
         bail!("File too small to be a valid track file");
     }
 
-    // Read checksum from last 4 bytes
     parser.seek((parser.file_size - 4) as u64);
     let checksum = parser.read_u32()?;
+    let computed_checksum = loader::calculate_checksum(parser.data());
 
-    // Parse offset table at 0x1000 to find data section locations
+    if checksum != computed_checksum {
+        log::warn!(
+            "Track '{}': checksum mismatch stored=0x{:08X} computed=0x{:08X}",
+            name,
+            checksum,
+            computed_checksum
+        );
+    }
+
     let offsets = parse_offsets(&mut parser)?;
-
-    // Calculate actual offset to track data (offset value + 0x1010)
     let track_data_offset = (offsets.track_data as i32 + 0x1010) as u64;
 
-    log::debug!("Track offsets: base={}, track_data={} (-> 0x{:04X})",
-                offsets.base_offset, offsets.track_data, track_data_offset);
+    log::debug!(
+        "Track offsets: base={}, track_data={} (-> 0x{:04X})",
+        offsets.base_offset,
+        offsets.track_data,
+        track_data_offset
+    );
 
-    // Seek to track data section
-    // NOTE: track_data offset points to header + other data, NOT directly to sections
-    // Empirical analysis shows sections start ~400-950 bytes after track_data offset
-    // For now, try multiple potential header sizes to find sections
     parser.seek(track_data_offset);
+    let header = match parse_track_section_header(&mut parser) {
+        Ok(header) => {
+            log::debug!(
+                "Track '{}': parsed section header (start_width={}, kerb_type={})",
+                name,
+                header.start_width,
+                header.kerb_type
+            );
+            Some(header)
+        }
+        Err(err) => {
+            log::warn!("Track '{}': failed to parse section header: {}", name, err);
+            None
+        }
+    };
 
-    // Try to find sections by testing different skip sizes
     let mut best_sections = Vec::new();
-    let test_skips = [
-        0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950,
-        1000, 1050, 1100, 1150, 1200, 1210, 1220, 1230, 1240, 1250, 1260, 1270, 1280, 1290,
-        1300, 1310, 1320, 1330, 1340, 1350, 1360, 1370, 1380, 1390, 1400,
-        1410, 1420, 1430, 1440, 1450, 1460, 1470, 1480, 1490, 1500,
-        1600, 1700, 1800, 1900, 2000,
-        2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800, 2900, 3000,
-        3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000,
-        4100, 4200, 4300, 4400, 4500, 4600, 4700, 4800, 4900, 5000,
+    let mut skip_candidates: Vec<u64> = Vec::new();
+    if let Some(_) = header {
+        let header_bytes = parser.position() - track_data_offset;
+        skip_candidates.push(header_bytes);
+    }
+
+    const SKIP_TABLE: &[u64] = &[
+        0, 19, 25, 31, 100, 200, 300, 400, 438, 500, 600, 700, 800, 900, 950, 1000, 1050, 1100,
+        1150, 1200, 1210, 1220, 1230, 1240, 1250, 1260, 1270, 1280, 1290, 1300, 1310, 1320, 1330,
+        1340, 1350, 1360, 1370, 1380, 1390, 1400, 1410, 1420, 1430, 1440, 1450, 1460, 1470, 1480,
+        1490, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500, 2600, 2700, 2800,
+        2900, 3000, 3100, 3200, 3300, 3400, 3500, 3600, 3700, 3800, 3900, 4000, 4100, 4200, 4300,
+        4400, 4500, 4600, 4700, 4800, 4900, 5000,
     ];
+    skip_candidates.extend(SKIP_TABLE.iter().copied());
 
     let mut best_skip = 0;
     let mut best_length = f32::MAX;
-    for &skip in &test_skips {
+    for skip in skip_candidates {
         parser.seek(track_data_offset + skip);
         if let Ok(sections) = parse_track_sections(&mut parser) {
             let total_len: f32 = sections.iter().map(|s| s.length).sum();
             let is_valid = total_len > 1500.0 && total_len < 8000.0;
-            log::debug!("Track '{}': skip {} -> {} sections, {}m ({})",
-                        name, skip, sections.len(), total_len as i32,
-                        if is_valid { "VALID" } else { "rejected" });
+            log::debug!(
+                "Track '{}': skip {} -> {} sections, {}m ({})",
+                name,
+                skip,
+                sections.len(),
+                total_len as i32,
+                if is_valid { "VALID" } else { "rejected" }
+            );
 
-            // Select the skip offset that gives us the SHORTEST valid track length
-            // This should give us the actual track sections without extra data
-            // Require at least 10 sections to avoid picking incomplete data
-            // (Montreal has fewer sections than other tracks)
-            if sections.len() >= 10 && total_len > 1500.0 && total_len < 8000.0 {
+            if sections.len() >= 10 && is_valid {
                 if total_len < best_length {
                     best_sections = sections;
                     best_skip = skip;
@@ -584,43 +648,52 @@ pub fn parse_track(data: Vec<u8>, name: String) -> Result<Track> {
     }
 
     let mut sections = best_sections;
-
-    // Calculate 3D positions for each section
     calculate_section_positions(&mut sections);
 
-    let track_length: f32 = sections.iter().map(|s| s.length).sum();
-
+    let section_data_offset = track_data_offset + best_skip;
     if sections.is_empty() {
         log::warn!("Track '{}': No valid sections found", name);
     } else {
-        log::info!("Parsed track '{}': {} sections, {:.2}km (skip={})",
-                   name, sections.len(), track_length / 1000.0, best_skip);
+        let track_length: f32 = sections.iter().map(|s| s.length).sum();
+        log::info!(
+            "Parsed track '{}': {} sections, {:.2}km (skip={})",
+            name,
+            sections.len(),
+            track_length / 1000.0,
+            best_skip
+        );
     }
 
-    // For now, skip racing line parsing (need to find its offset)
     let racing_line = RacingLine {
         displacement: 0,
         segments: Vec::new(),
     };
 
-    let track = Track {
+    Ok(TrackAsset {
         name,
-        length: track_length,
-        object_shapes: Vec::new(),
-        sections,
+        raw_size: parser.file_size,
+        checksum,
+        computed_checksum,
+        offsets,
+        header,
         racing_line,
-        ai_behavior: AIBehavior::default(),
+        sections,
         pit_lane: Vec::new(),
         cameras: Vec::new(),
-        checksum,
-    };
-
-    Ok(track)
+        object_shapes: Vec::new(),
+        section_data_offset,
+        section_skip_hint: best_skip,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::data::fixtures::{
+        synthetic_track_bytes, DEFAULT_SECTION_COUNT, DEFAULT_TRACK_DATA_OFFSET,
+    };
+    use crate::data::loader::calculate_checksum;
 
     #[test]
     fn test_parser_basic_reads() {
@@ -637,7 +710,7 @@ mod tests {
 
     #[test]
     fn test_parser_u16() {
-        let data = vec![0xAA, 0xBB];  // Little-endian
+        let data = vec![0xAA, 0xBB]; // Little-endian
         let mut parser = TrackParser::new(data);
 
         let value = parser.read_u16().unwrap();
@@ -659,7 +732,7 @@ mod tests {
         let parser = TrackParser::new(data);
 
         assert_eq!(parser.peek_u8().unwrap(), 0x42);
-        assert_eq!(parser.position(), 0);  // Position unchanged
+        assert_eq!(parser.position(), 0); // Position unchanged
     }
 
     #[test]
@@ -713,57 +786,31 @@ mod tests {
 
     #[test]
     fn test_parse_track_basic() {
-        const TRACK_DATA_OFFSET: usize = 0x1100;
-        const SECTION_COUNT: usize = 15;
-        const SECTION_BYTES: usize = 10; // length + padding + section fields
-
-        let section_block_size = SECTION_COUNT * SECTION_BYTES + 2; // + terminator
-        let total_size = TRACK_DATA_OFFSET + section_block_size + 4;
-        let mut data = vec![0u8; total_size];
-
-        // Write checksum at end (little endian)
-        let checksum: u32 = 0xDDCCBBAA;
-        let checksum_bytes = checksum.to_le_bytes();
-        let len = data.len();
-        data[len - 4..].copy_from_slice(&checksum_bytes);
-
-        // Populate offset table at 0x1000
-        let track_data_relative = (TRACK_DATA_OFFSET as i32 - 0x1010) as i16;
-        let mut cursor = 0x1000;
-        for value in [
-            0i16, 0i16, 0i16, 0i16, 0i16, 0i16, track_data_relative,
-        ] {
-            let bytes = value.to_le_bytes();
-            data[cursor..cursor + 2].copy_from_slice(&bytes);
-            cursor += 2;
-        }
-
-        // Write synthetic track sections at TRACK_DATA_OFFSET
-        let mut section_cursor = TRACK_DATA_OFFSET;
-        for _ in 0..SECTION_COUNT {
-            data[section_cursor] = 50; // length byte
-            data[section_cursor + 1] = 0; // indicates section data
-            // curvature (i16)
-            data[section_cursor + 2..section_cursor + 4].copy_from_slice(&0i16.to_le_bytes());
-            // height (i16)
-            data[section_cursor + 4..section_cursor + 6].copy_from_slice(&0i16.to_le_bytes());
-            // flags (u16)
-            data[section_cursor + 6..section_cursor + 8].copy_from_slice(&0u16.to_le_bytes());
-            // verge widths
-            data[section_cursor + 8] = 0;
-            data[section_cursor + 9] = 0;
-            section_cursor += SECTION_BYTES;
-        }
-
-        // Terminator
-        data[section_cursor] = 0xFF;
-        data[section_cursor + 1] = 0xFF;
-
+        let data = synthetic_track_bytes(DEFAULT_SECTION_COUNT, DEFAULT_TRACK_DATA_OFFSET);
+        let checksum = calculate_checksum(&data);
         let track = parse_track(data, "Test Track".to_string()).unwrap();
 
         assert_eq!(track.name, "Test Track");
         assert_eq!(track.checksum, checksum);
-        assert_eq!(track.sections.len(), SECTION_COUNT);
+        assert_eq!(track.sections.len(), DEFAULT_SECTION_COUNT);
         assert!(track.length > 2500.0);
+    }
+
+    #[test]
+    fn test_parse_track_asset_basic() {
+        let data = synthetic_track_bytes(DEFAULT_SECTION_COUNT, DEFAULT_TRACK_DATA_OFFSET);
+        let checksum = calculate_checksum(&data);
+        let asset = parse_track_asset(data, "Asset Track".to_string()).unwrap();
+        assert_eq!(asset.name, "Asset Track");
+        assert_eq!(asset.checksum, checksum);
+        assert_eq!(asset.computed_checksum, checksum);
+        assert_eq!(asset.sections.len(), DEFAULT_SECTION_COUNT);
+        assert!(asset.raw_size > 0);
+        assert!(asset.header.is_some());
+        assert!(asset.section_data_offset > DEFAULT_TRACK_DATA_OFFSET as u64);
+
+        let track = asset.clone().into_track();
+        assert_eq!(track.name, "Asset Track");
+        assert_eq!(track.sections.len(), DEFAULT_SECTION_COUNT);
     }
 }

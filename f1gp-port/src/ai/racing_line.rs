@@ -39,10 +39,7 @@ impl RacingLineFollower {
             let radius = 200.0;
             for i in 0..num_points {
                 let angle = (i as f32 / num_points as f32) * std::f32::consts::TAU;
-                line_points.push(Vec2::new(
-                    radius * angle.cos(),
-                    radius * angle.sin(),
-                ));
+                line_points.push(Vec2::new(radius * angle.cos(), radius * angle.sin()));
                 target_speeds.push(50.0);
             }
         }
@@ -128,7 +125,8 @@ impl RacingLineFollower {
         // Walk along the racing line until we've covered lookahead_distance
         for _ in 0..num_points {
             let next_idx = (current_idx + 1) % num_points;
-            let segment_length = (self.line_points[next_idx] - self.line_points[current_idx]).length();
+            let segment_length =
+                (self.line_points[next_idx] - self.line_points[current_idx]).length();
 
             accumulated_distance += segment_length;
 
@@ -152,7 +150,7 @@ impl RacingLineFollower {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::data::track::{TrackSection, SurfaceType};
+    use crate::data::track::{SurfaceType, TrackSection};
 
     fn create_test_track() -> Track {
         // Create a simple circular track for testing

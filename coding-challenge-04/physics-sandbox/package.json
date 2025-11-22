@@ -1,0 +1,26 @@
+{
+  "name": "physics-sandbox",
+  "version": "1.0.0",
+  "description": "An interactive physics sandbox web application with real-time physics simulation",
+  "main": "index.html",
+  "scripts": {
+    "test": "node physics-engine.test.js",
+    "start": "python3 -m http.server 8000",
+    "start-alt": "npx http-server -p 8000"
+  },
+  "keywords": [
+    "physics",
+    "sandbox",
+    "simulation",
+    "canvas",
+    "interactive",
+    "game",
+    "html5"
+  ],
+  "author": "Physics Sandbox Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "physics-sandbox"
+  }
+}

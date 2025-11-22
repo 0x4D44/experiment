@@ -1,0 +1,16 @@
+{
+  "traces": [
+    {
+      "run_id": "sample_boot",
+      "metadata": "f1gp-data/dos_traces/sample_boot/metadata.json",
+      "macro": "re/scripts/telemetry_macros/sample_boot.txt",
+      "binary": "f1gp-disasm/GP.EXE",
+      "status": 0,
+      "trace": {
+        "path": "f1gp-data/dos_traces/sample_boot/trace.bin",
+        "sha256": "b3ac12a7bc82952d895028fdc44119afa785ae0c1adc24d0d8b54212fd26b0fa",
+        "size": 22
+      }
+    }
+  ]
+}

@@ -26,18 +26,26 @@ fn main() -> Result<()> {
     println!("Checksum: 0x{:08X}", track.checksum);
     println!("Sections: {}", track.sections.len());
     println!("Racing line segments: {}", track.racing_line.segments.len());
-    println!("Racing line displacement: {}", track.racing_line.displacement);
+    println!(
+        "Racing line displacement: {}",
+        track.racing_line.displacement
+    );
 
     // Show first few sections
     println!("\n--- First 5 Sections ---");
     for (i, section) in track.sections.iter().take(5).enumerate() {
-        println!("Section {}: len={:.1}m, curv={}, height={}, flags=0x{:04X}",
-                 i, section.length, section.curvature, section.height, section.flags);
+        println!(
+            "Section {}: len={:.1}m, curv={}, height={}, flags=0x{:04X}",
+            i, section.length, section.curvature, section.height, section.flags
+        );
         if !section.commands.is_empty() {
             println!("  Commands: {} command(s)", section.commands.len());
         }
         if section.has_left_kerb || section.has_right_kerb {
-            println!("  Kerbs: L={} R={}", section.has_left_kerb, section.has_right_kerb);
+            println!(
+                "  Kerbs: L={} R={}",
+                section.has_left_kerb, section.has_right_kerb
+            );
         }
     }
 
@@ -46,12 +54,19 @@ fn main() -> Result<()> {
     for (i, segment) in track.racing_line.segments.iter().take(5).enumerate() {
         match &segment.segment_type {
             SegmentType::Normal { radius } => {
-                println!("Segment {}: len={}, corr={}, radius={}",
-                         i, segment.length, segment.correction, radius);
+                println!(
+                    "Segment {}: len={}, corr={}, radius={}",
+                    i, segment.length, segment.correction, radius
+                );
             }
-            SegmentType::WideRadius { high_radius, low_radius } => {
-                println!("Segment {}: len={}, corr={}, high={}, low={}",
-                         i, segment.length, segment.correction, high_radius, low_radius);
+            SegmentType::WideRadius {
+                high_radius,
+                low_radius,
+            } => {
+                println!(
+                    "Segment {}: len={}, corr={}, high={}, low={}",
+                    i, segment.length, segment.correction, high_radius, low_radius
+                );
             }
         }
     }
@@ -59,7 +74,11 @@ fn main() -> Result<()> {
     // Calculate total track length
     let total_length: f32 = track.sections.iter().map(|s| s.length).sum();
     println!("\n--- Track Metrics ---");
-    println!("Calculated length: {:.0}m ({:.2}km)", total_length, total_length / 1000.0);
+    println!(
+        "Calculated length: {:.0}m ({:.2}km)",
+        total_length,
+        total_length / 1000.0
+    );
     println!("Expected Monaco: ~3,340m (3.34km)");
 
     // Test all 16 tracks
@@ -92,8 +111,14 @@ fn main() -> Result<()> {
                 match parse_track(data, name.to_string()) {
                     Ok(track) => {
                         let length: f32 = track.sections.iter().map(|s| s.length).sum();
-                        println!("{:20} {:>6} bytes  {:>4} sections  {:>6.0}m  checksum: 0x{:08X}",
-                                 name, file_size, track.sections.len(), length, track.checksum);
+                        println!(
+                            "{:20} {:>6} bytes  {:>4} sections  {:>6.0}m  checksum: 0x{:08X}",
+                            name,
+                            file_size,
+                            track.sections.len(),
+                            length,
+                            track.checksum
+                        );
                     }
                     Err(e) => {
                         println!("{:20} PARSE ERROR: {}", name, e);

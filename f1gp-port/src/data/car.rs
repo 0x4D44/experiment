@@ -2,8 +2,19 @@
 //!
 //! Data structures for car performance characteristics, team data, and driver information.
 
+use anyhow::{anyhow, Context, Result};
 use serde::{Deserialize, Serialize};
+use serde_json;
 use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+/// Environment variable pointing to the sanitized driver database JSON file
+pub const DRIVER_DB_ENV: &str = "F1GP_DRIVER_DB_PATH";
+
+/// Default relative location for the sanitized driver database
+pub const DEFAULT_DRIVER_DB: &str = "data/samples/driver_db.json";
 
 /// Complete car specification
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +220,46 @@ impl CarDatabase {
         self.drivers.len()
     }
 
+    /// Load driver/car database from disk using environment overrides and fallbacks
+    pub fn load_from_disk() -> Result<Self> {
+        let path = Self::resolve_driver_db_path().ok_or_else(|| {
+            anyhow!(
+                "Driver database not found. Set {} or place a JSON file at {}",
+                DRIVER_DB_ENV,
+                DEFAULT_DRIVER_DB
+            )
+        })?;
+        Self::from_json_file(path)
+    }
+
+    /// Load a car database from a JSON string
+    pub fn from_json_str(json: &str) -> Result<Self> {
+        let db: CarDatabase =
+            serde_json::from_str(json).context("Failed to deserialize car database from JSON")?;
+        Ok(db)
+    }
+
+    /// Load a car database from a JSON file
+    pub fn from_json_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let path_ref = path.as_ref();
+        let contents = fs::read_to_string(path_ref)
+            .with_context(|| format!("Failed to read car database from {}", path_ref.display()))?;
+        Self::from_json_str(&contents)
+    }
+
+    /// Serialize the database to a JSON string
+    pub fn to_json_string(&self) -> Result<String> {
+        serde_json::to_string_pretty(self).context("Failed to serialize car database to JSON")
+    }
+
+    /// Write the database to a JSON file
+    pub fn to_json_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let json = self.to_json_string()?;
+        let path_ref = path.as_ref();
+        fs::write(path_ref, json)
+            .with_context(|| format!("Failed to write car database to {}", path_ref.display()))
+    }
+
     /// Create a sample database for testing
     pub fn create_sample() -> Self {
         let mut db = Self::new();
@@ -291,6 +342,36 @@ impl CarDatabase {
     }
 }
 
+impl CarDatabase {
+    fn resolve_driver_db_path() -> Option<PathBuf> {
+        for candidate in Self::driver_db_search_paths() {
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+        None
+    }
+
+    fn driver_db_search_paths() -> Vec<PathBuf> {
+        let mut paths = Vec::new();
+
+        if let Ok(env_path) = env::var(DRIVER_DB_ENV) {
+            if !env_path.is_empty() {
+                paths.push(PathBuf::from(env_path));
+            }
+        }
+
+        // Project-relative path (supports cargo test and developer workflows)
+        paths.push(PathBuf::from(DEFAULT_DRIVER_DB));
+
+        // Absolute path based on crate manifest
+        let manifest_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(DEFAULT_DRIVER_DB);
+        paths.push(manifest_path);
+
+        paths
+    }
+}
+
 impl Default for CarDatabase {
     fn default() -> Self {
         Self::new()
@@ -300,6 +381,8 @@ impl Default for CarDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
 
     #[test]
     fn test_car_database_creation() {
@@ -362,5 +445,47 @@ mod tests {
         let mclaren = db.get_team("McLaren");
         assert!(mclaren.is_some());
         assert_eq!(mclaren.unwrap().colors.len(), 2);
+    }
+
+    #[test]
+    fn test_json_roundtrip() {
+        let db = CarDatabase::create_sample();
+        let json = db.to_json_string().unwrap();
+        let loaded = CarDatabase::from_json_str(&json).unwrap();
+        assert_eq!(loaded.car_count(), db.car_count());
+        assert_eq!(loaded.team_count(), db.team_count());
+        assert_eq!(loaded.driver_count(), db.driver_count());
+    }
+
+    #[test]
+    fn test_load_sample_json_file() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("data/samples/driver_db.json");
+        let db = CarDatabase::from_json_file(&path).unwrap();
+        assert!(db.get_driver("Ayrton Senna").is_some());
+        assert_eq!(db.team_count(), 3);
+    }
+
+    #[test]
+    fn test_load_from_disk_prefers_env_path() {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let mut tmp_dir = std::env::temp_dir();
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        tmp_dir.push(format!("driver_db_test_{}", suffix));
+        fs::create_dir_all(&tmp_dir).unwrap();
+
+        let db_path = tmp_dir.join("driver_db.json");
+        let sample = CarDatabase::create_sample();
+        sample.to_json_file(&db_path).unwrap();
+
+        std::env::set_var(DRIVER_DB_ENV, &db_path);
+        let loaded = CarDatabase::load_from_disk().unwrap();
+        assert_eq!(loaded.driver_count(), sample.driver_count());
+
+        std::env::remove_var(DRIVER_DB_ENV);
+        let _ = fs::remove_dir_all(&tmp_dir);
     }
 }

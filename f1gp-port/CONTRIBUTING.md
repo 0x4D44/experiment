@@ -39,6 +39,9 @@ cargo test
 
 # Run the binary
 cargo run --bin f1gp
+
+# Full CI suite (fixtures + fmt + clippy + tests)
+./scripts/run_ci.sh
 ```
 
 #### Code Style

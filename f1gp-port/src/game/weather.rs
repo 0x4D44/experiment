@@ -163,8 +163,11 @@ impl WeatherSystem {
         loop {
             let new_condition = conditions[fastrand::usize(0..3)];
             if new_condition != self.condition {
-                log::info!("Weather changing: {} -> {}",
-                          self.condition.name(), new_condition.name());
+                log::info!(
+                    "Weather changing: {} -> {}",
+                    self.condition.name(),
+                    new_condition.name()
+                );
                 self.condition = new_condition;
                 break;
             }

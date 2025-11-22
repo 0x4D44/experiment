@@ -6,8 +6,8 @@ use anyhow::Result;
 use f1gp_port::audio::SoundEngine;
 use f1gp_port::data::Track;
 use f1gp_port::game::GameState;
-use f1gp_port::platform::{Color, Renderer, SdlRenderer};
 use f1gp_port::parse_track;
+use f1gp_port::platform::{Color, Renderer, SdlRenderer};
 use glam::Vec2;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -27,22 +27,67 @@ struct TrackInfo {
 
 /// All 15 working F1GP tracks
 const TRACKS: &[TrackInfo] = &[
-    TrackInfo { filename: "F1CT01.DAT", name: "Phoenix" },
-    TrackInfo { filename: "F1CT02.DAT", name: "Interlagos" },
-    TrackInfo { filename: "F1CT03.DAT", name: "Imola" },
-    TrackInfo { filename: "F1CT04.DAT", name: "Monaco" },
+    TrackInfo {
+        filename: "F1CT01.DAT",
+        name: "Phoenix",
+    },
+    TrackInfo {
+        filename: "F1CT02.DAT",
+        name: "Interlagos",
+    },
+    TrackInfo {
+        filename: "F1CT03.DAT",
+        name: "Imola",
+    },
+    TrackInfo {
+        filename: "F1CT04.DAT",
+        name: "Monaco",
+    },
     // Skip F1CT05 (Montreal - parser issue)
-    TrackInfo { filename: "F1CT06.DAT", name: "Mexico" },
-    TrackInfo { filename: "F1CT07.DAT", name: "Magny-Cours" },
-    TrackInfo { filename: "F1CT08.DAT", name: "Silverstone" },
-    TrackInfo { filename: "F1CT09.DAT", name: "Hockenheim" },
-    TrackInfo { filename: "F1CT10.DAT", name: "Hungaroring" },
-    TrackInfo { filename: "F1CT11.DAT", name: "Spa-Francorchamps" },
-    TrackInfo { filename: "F1CT12.DAT", name: "Monza" },
-    TrackInfo { filename: "F1CT13.DAT", name: "Estoril" },
-    TrackInfo { filename: "F1CT14.DAT", name: "Barcelona" },
-    TrackInfo { filename: "F1CT15.DAT", name: "Suzuka" },
-    TrackInfo { filename: "F1CT16.DAT", name: "Adelaide" },
+    TrackInfo {
+        filename: "F1CT06.DAT",
+        name: "Mexico",
+    },
+    TrackInfo {
+        filename: "F1CT07.DAT",
+        name: "Magny-Cours",
+    },
+    TrackInfo {
+        filename: "F1CT08.DAT",
+        name: "Silverstone",
+    },
+    TrackInfo {
+        filename: "F1CT09.DAT",
+        name: "Hockenheim",
+    },
+    TrackInfo {
+        filename: "F1CT10.DAT",
+        name: "Hungaroring",
+    },
+    TrackInfo {
+        filename: "F1CT11.DAT",
+        name: "Spa-Francorchamps",
+    },
+    TrackInfo {
+        filename: "F1CT12.DAT",
+        name: "Monza",
+    },
+    TrackInfo {
+        filename: "F1CT13.DAT",
+        name: "Estoril",
+    },
+    TrackInfo {
+        filename: "F1CT14.DAT",
+        name: "Barcelona",
+    },
+    TrackInfo {
+        filename: "F1CT15.DAT",
+        name: "Suzuka",
+    },
+    TrackInfo {
+        filename: "F1CT16.DAT",
+        name: "Adelaide",
+    },
 ];
 
 /// Game screen state
@@ -83,7 +128,12 @@ fn main() -> Result<()> {
     println!();
 
     log::info!("F1GP Modern Port v0.5 Starting");
-    log::info!("Window: {}x{} | Target: {} FPS", WINDOW_WIDTH, WINDOW_HEIGHT, TARGET_FPS);
+    log::info!(
+        "Window: {}x{} | Target: {} FPS",
+        WINDOW_WIDTH,
+        WINDOW_HEIGHT,
+        TARGET_FPS
+    );
     log::info!("");
     log::info!("Controls:");
     log::info!("  Menu: ↑/↓ Navigate, ENTER Select, ESC Back");
@@ -91,15 +141,16 @@ fn main() -> Result<()> {
     log::info!("");
 
     // Initialize SDL2 context
-    let sdl_context = sdl2::init()
-        .map_err(|e| anyhow::anyhow!("Failed to initialize SDL2: {}", e))?;
+    let sdl_context =
+        sdl2::init().map_err(|e| anyhow::anyhow!("Failed to initialize SDL2: {}", e))?;
 
     // Initialize SDL2 renderer
     let mut renderer = SdlRenderer::new("F1GP Modern Port", WINDOW_WIDTH, WINDOW_HEIGHT)?;
     log::info!("SDL2 initialized");
 
     // Initialize audio subsystem
-    let audio_subsystem = sdl_context.audio()
+    let audio_subsystem = sdl_context
+        .audio()
         .map_err(|e| anyhow::anyhow!("Failed to initialize audio subsystem: {}", e))?;
     let sound_engine = match SoundEngine::new(&audio_subsystem) {
         Ok(engine) => {
@@ -135,7 +186,10 @@ fn main() -> Result<()> {
         for event in renderer.event_pump.poll_iter() {
             match event {
                 Event::Quit { .. } => break 'main,
-                Event::KeyDown { keycode: Some(keycode), .. } => {
+                Event::KeyDown {
+                    keycode: Some(keycode),
+                    ..
+                } => {
                     // Global audio mute toggle
                     if keycode == Keycode::M {
                         if let Some(ref audio) = sound_engine {
@@ -153,8 +207,12 @@ fn main() -> Result<()> {
                     } else {
                         // Handle screen-specific input
                         match &mut app.screen {
-                            Screen::MainMenu => handle_main_menu(&mut app, keycode, sound_engine.as_ref()),
-                            Screen::TrackSelect => handle_track_select(&mut app, keycode, sound_engine.as_ref()),
+                            Screen::MainMenu => {
+                                handle_main_menu(&mut app, keycode, sound_engine.as_ref())
+                            }
+                            Screen::TrackSelect => {
+                                handle_track_select(&mut app, keycode, sound_engine.as_ref())
+                            }
                             Screen::Racing => {
                                 if let Some(ref mut g) = game {
                                     if keycode == Keycode::P {
@@ -172,7 +230,10 @@ fn main() -> Result<()> {
                         }
                     }
                 }
-                Event::KeyUp { keycode: Some(keycode), .. } => {
+                Event::KeyUp {
+                    keycode: Some(keycode),
+                    ..
+                } => {
                     if let Screen::Racing = app.screen {
                         if let Some(ref mut g) = game {
                             g.handle_key_up(keycode);
@@ -322,8 +383,8 @@ fn handle_main_menu(app: &mut App, keycode: Keycode, audio: Option<&SoundEngine>
             }
             match app.menu_selection {
                 0 => app.screen = Screen::TrackSelect, // Start Race
-                1 => {}, // Options (not implemented yet)
-                2 => std::process::exit(0), // Quit
+                1 => {}                                // Options (not implemented yet)
+                2 => std::process::exit(0),            // Quit
                 _ => {}
             }
         }
@@ -365,8 +426,18 @@ fn handle_track_select(app: &mut App, keycode: Keycode, audio: Option<&SoundEngi
 /// Render main menu
 fn render_main_menu(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
     // Title
-    renderer.draw_text("F1GP MODERN PORT", Vec2::new(450.0, 100.0), 3.0, Color::WHITE)?;
-    renderer.draw_text("v0.5 Preview", Vec2::new(540.0, 140.0), 1.5, Color::LIGHT_GRAY)?;
+    renderer.draw_text(
+        "F1GP MODERN PORT",
+        Vec2::new(450.0, 100.0),
+        3.0,
+        Color::WHITE,
+    )?;
+    renderer.draw_text(
+        "v0.5 Preview",
+        Vec2::new(540.0, 140.0),
+        1.5,
+        Color::LIGHT_GRAY,
+    )?;
 
     // Menu options
     let menu_items = ["Start Race", "Options", "Quit"];
@@ -387,8 +458,12 @@ fn render_main_menu(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
     }
 
     // Instructions
-    renderer.draw_text("↑/↓: Navigate  ENTER: Select  ESC: Quit",
-                      Vec2::new(400.0, 600.0), 1.0, Color::GRAY)?;
+    renderer.draw_text(
+        "↑/↓: Navigate  ENTER: Select  ESC: Quit",
+        Vec2::new(400.0, 600.0),
+        1.0,
+        Color::GRAY,
+    )?;
 
     Ok(())
 }
@@ -399,7 +474,11 @@ fn render_track_select(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
     renderer.draw_text("SELECT TRACK", Vec2::new(480.0, 50.0), 2.5, Color::WHITE)?;
 
     // Track list (show 10 at a time, scroll if needed)
-    let start_idx = if app.selected_track > 5 { app.selected_track - 5 } else { 0 };
+    let start_idx = if app.selected_track > 5 {
+        app.selected_track - 5
+    } else {
+        0
+    };
     let end_idx = (start_idx + 10).min(TRACKS.len());
 
     for i in start_idx..end_idx {
@@ -420,8 +499,12 @@ fn render_track_select(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
     }
 
     // Instructions
-    renderer.draw_text("↑/↓: Navigate  ENTER: Start  ESC: Back",
-                      Vec2::new(350.0, 650.0), 1.0, Color::GRAY)?;
+    renderer.draw_text(
+        "↑/↓: Navigate  ENTER: Start  ESC: Back",
+        Vec2::new(350.0, 650.0),
+        1.0,
+        Color::GRAY,
+    )?;
 
     Ok(())
 }
@@ -430,8 +513,18 @@ fn render_track_select(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
 fn render_pause_overlay(renderer: &mut SdlRenderer) -> Result<()> {
     // Semi-transparent overlay (we'll just draw text for now)
     renderer.draw_text("PAUSED", Vec2::new(560.0, 300.0), 3.0, Color::YELLOW)?;
-    renderer.draw_text("Press P to Resume", Vec2::new(500.0, 360.0), 1.5, Color::LIGHT_GRAY)?;
-    renderer.draw_text("Press ESC for Menu", Vec2::new(490.0, 400.0), 1.5, Color::LIGHT_GRAY)?;
+    renderer.draw_text(
+        "Press P to Resume",
+        Vec2::new(500.0, 360.0),
+        1.5,
+        Color::LIGHT_GRAY,
+    )?;
+    renderer.draw_text(
+        "Press ESC for Menu",
+        Vec2::new(490.0, 400.0),
+        1.5,
+        Color::LIGHT_GRAY,
+    )?;
 
     Ok(())
 }
@@ -446,8 +539,11 @@ fn load_track(track_index: usize) -> Result<Track> {
     let data = fs::read(&path)?;
     let track = parse_track(data, track_info.name.to_string())?;
 
-    log::info!("Track loaded: {} sections, {:.2}km",
-               track.sections.len(), track.length / 1000.0);
+    log::info!(
+        "Track loaded: {} sections, {:.2}km",
+        track.sections.len(),
+        track.length / 1000.0
+    );
 
     Ok(track)
 }

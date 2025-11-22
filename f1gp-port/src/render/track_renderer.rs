@@ -77,11 +77,7 @@ impl TrackRenderer {
     }
 
     /// Render the complete track
-    pub fn render(
-        &self,
-        renderer: &mut impl Renderer,
-        camera: &Camera,
-    ) -> Result<()> {
+    pub fn render(&self, renderer: &mut impl Renderer, camera: &Camera) -> Result<()> {
         // Render track surface
         self.render_track_surface(renderer, camera)?;
 
@@ -95,11 +91,7 @@ impl TrackRenderer {
     }
 
     /// Render track surface
-    fn render_track_surface(
-        &self,
-        renderer: &mut impl Renderer,
-        camera: &Camera,
-    ) -> Result<()> {
+    fn render_track_surface(&self, renderer: &mut impl Renderer, camera: &Camera) -> Result<()> {
         if self.track_points.len() < 2 {
             return Ok(());
         }
@@ -111,8 +103,9 @@ impl TrackRenderer {
             let p2 = camera.world_to_screen(self.track_points[next_i].extend(0.0));
 
             // Only draw if visible
-            if camera.is_visible(self.track_points[i].extend(0.0), 100.0) ||
-               camera.is_visible(self.track_points[next_i].extend(0.0), 100.0) {
+            if camera.is_visible(self.track_points[i].extend(0.0), 100.0)
+                || camera.is_visible(self.track_points[next_i].extend(0.0), 100.0)
+            {
                 renderer.draw_line(p1, p2, Color::DARK_GRAY)?;
             }
         }
@@ -121,11 +114,7 @@ impl TrackRenderer {
     }
 
     /// Render racing line
-    fn render_racing_line(
-        &self,
-        renderer: &mut impl Renderer,
-        camera: &Camera,
-    ) -> Result<()> {
+    fn render_racing_line(&self, renderer: &mut impl Renderer, camera: &Camera) -> Result<()> {
         if self.racing_line_points.len() < 2 {
             return Ok(());
         }
@@ -136,8 +125,9 @@ impl TrackRenderer {
             let p2 = camera.world_to_screen(self.racing_line_points[i + 1].extend(0.0));
 
             // Only draw if visible
-            if camera.is_visible(self.racing_line_points[i].extend(0.0), 100.0) ||
-               camera.is_visible(self.racing_line_points[i + 1].extend(0.0), 100.0) {
+            if camera.is_visible(self.racing_line_points[i].extend(0.0), 100.0)
+                || camera.is_visible(self.racing_line_points[i + 1].extend(0.0), 100.0)
+            {
                 renderer.draw_line(p1, p2, Color::GREEN)?;
             }
         }
@@ -155,11 +145,7 @@ impl TrackRenderer {
     }
 
     /// Render track details (kerbs, pit lane, etc.)
-    fn render_track_details(
-        &self,
-        renderer: &mut impl Renderer,
-        camera: &Camera,
-    ) -> Result<()> {
+    fn render_track_details(&self, renderer: &mut impl Renderer, camera: &Camera) -> Result<()> {
         // Draw start/finish line if we have track points
         if !self.track_points.is_empty() {
             let start_pos = camera.world_to_screen(self.track_points[0].extend(0.0));

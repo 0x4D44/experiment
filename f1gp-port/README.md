@@ -128,6 +128,37 @@ The game will launch with a main menu where you can:
 1. **Start Race** - Select from 15 authentic F1GP tracks
 2. **Quit** - Exit the game
 
+## 📦 Data & Asset Workflow
+
+- **Original tracks:** Use `cargo run -p asset_extractor -- --source <HARDDISK> --dest assets/original/tracks` to copy and
+  checksum DAT files. The tool writes `asset_manifest.json`, which documents provenance for QA/CI.
+- **Sanitized fixtures:** Run `cargo run --bin generate_fixtures` (or `scripts/build_fixtures.sh`) to create
+  `data/fixtures/track_stub.bin` and the sanitized `driver_db.json` used by tests.
+- **Audio/UI extractor:** Use `cargo run -p audio_ui_extractor -- pcm --source <HARDDISK/SAMPLES> --dest build/audio`
+  to convert PCM blobs into WAV + manifest files, or the `font` subcommand to turn packed fonts into PNG atlases with
+  hashed metadata (see `docs/audio_ui_extractor.md` for detailed parameters).
+- **Racing-line exporter:** Run `cargo run -p racing_line_cli -- summary --input assets/original/F1CT01.DAT` for quick
+  inspection or `--export --output build/tracks/` to write JSON metadata for AI/parity analysis (schema detailed in
+  `wrk_docs/2025.11.19 - Racing Line Schema.md`).
+- **Sprite atlas builder:** Use `cargo run -p sprite_atlas_cli -- pack --source data/sprites/sanitized --dest build/sprites`
+  to pack sanitized PNG sprites into a single atlas + manifest; `--generate-fixtures` emits placeholder sprites for tests.
+  `scripts/generate_sprite_fixtures.sh` automates placeholder generation for CI.
+- **Driver database:** Runtime now loads `data/samples/driver_db.json` automatically; override with
+  `F1GP_DRIVER_DB_PATH=/path/to/driver_db.json` to test alternate rosters.
+- **Telemetry capture:** Telemetry recordings are written to `telemetry/` whenever races complete. Disable capture for
+  lightweight sessions with `F1GP_TELEMETRY=off`. Inspect captures with `cargo run -p telemetry_cli -- summary --input <file>`
+  or export/diff them with `telemetry_cli export-*` / `telemetry_cli diff` for parity runs. Follow
+  `docs/dos_capture_playbook.md` when collecting DOS baselines.
+- **DOS serial parser:** Convert DOSBox raw serial logs into CSV/JSON with
+  `cargo run -p dos_capture_parser -- export-csv --input captures/<track>/dos_capture.log --output exports/dos.csv`
+  before running telemetry diffs.
+- Full, step-by-step instructions live in `docs/data_pipeline.md`.
+
+### CI / Preflight
+
+Run `scripts/run_ci.sh` before opening a PR. It regenerates sanitized fixtures, runs `cargo fmt --check`,
+`cargo clippy -- -D warnings`, and executes the full workspace test suite so CI sees the same environment you'll push.
+
 ## 📊 Project Statistics
 
 - **Total Lines of Code**: ~8,500

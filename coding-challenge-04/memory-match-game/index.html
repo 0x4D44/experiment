@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Match - Card Matching Game</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="game-header">
+            <h1 class="game-title">
+                <span class="title-icon">🧠</span>
+                Memory Match
+                <span class="title-icon">🎮</span>
+            </h1>
+            <p class="game-subtitle">Test your memory and match all the cards!</p>
+        </header>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <div class="control-group">
+                <label for="difficulty">Difficulty:</label>
+                <select id="difficulty" class="difficulty-select">
+                    <option value="easy">Easy (4×4)</option>
+                    <option value="medium" selected>Medium (6×6)</option>
+                    <option value="hard">Hard (8×8)</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="theme">Theme:</label>
+                <select id="theme" class="theme-select">
+                    <option value="emojis">🎭 Emojis</option>
+                    <option value="animals">🐾 Animals</option>
+                    <option value="food">🍕 Food</option>
+                    <option value="space">🚀 Space</option>
+                    <option value="sports">⚽ Sports</option>
+                </select>
+            </div>
+
+            <button id="newGame" class="btn btn-primary">
+                <span class="btn-icon">🎯</span>
+                New Game
+            </button>
+
+            <button id="soundToggle" class="btn btn-secondary">
+                <span id="soundIcon">🔊</span>
+            </button>
+        </div>
+
+        <!-- Game Stats -->
+        <div class="game-stats">
+            <div class="stat-card">
+                <div class="stat-label">Moves</div>
+                <div class="stat-value" id="moves">0</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Time</div>
+                <div class="stat-value" id="timer">0:00</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Best Score</div>
+                <div class="stat-value" id="bestScore">--</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Matches</div>
+                <div class="stat-value" id="matches">0/<span id="totalPairs">0</span></div>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div class="game-board-container">
+            <div id="gameBoard" class="game-board"></div>
+        </div>
+
+        <!-- Win Modal -->
+        <div id="winModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🎉 Congratulations! 🎉</h2>
+                </div>
+                <div class="modal-body">
+                    <p class="win-message">You matched all the cards!</p>
+                    <div class="win-stats">
+                        <div class="win-stat">
+                            <span class="win-stat-label">Moves:</span>
+                            <span class="win-stat-value" id="finalMoves">0</span>
+                        </div>
+                        <div class="win-stat">
+                            <span class="win-stat-label">Time:</span>
+                            <span class="win-stat-value" id="finalTime">0:00</span>
+                        </div>
+                        <div class="win-stat">
+                            <span class="win-stat-label">Score:</span>
+                            <span class="win-stat-value" id="finalScore">0</span>
+                        </div>
+                    </div>
+                    <div id="newRecord" class="new-record hidden">
+                        🏆 New Best Score! 🏆
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="playAgain" class="btn btn-primary btn-large">
+                        Play Again
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confetti Canvas -->
+        <canvas id="confetti"></canvas>
+    </div>
+
+    <footer class="game-footer">
+        <p>Made with ❤️ for the Coding Challenge</p>
+    </footer>
+
+    <script src="js/game.js"></script>
+    <script src="js/confetti.js"></script>
+    <script src="js/sounds.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

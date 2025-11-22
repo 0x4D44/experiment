@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TETRIS - Classic Block Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .info-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            min-width: 200px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .info-panel h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            color: #333;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .next-piece-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .next-piece-panel h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        #nextCanvas {
+            display: block;
+            background: #f5f5f5;
+            border-radius: 10px;
+            box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-panel {
+            position: relative;
+        }
+
+        #gameCanvas {
+            display: block;
+            background: #2a2a2a;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            border: 4px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .controls-panel h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 14px;
+        }
+
+        .control-key {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 5px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .control-action {
+            color: #666;
+        }
+
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+
+        .game-over-overlay.show {
+            display: flex;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .game-over-content {
+            text-align: center;
+            color: white;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-over-content h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff6b6b;
+            text-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .game-over-content .final-score {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: #ffd93d;
+        }
+
+        .restart-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .restart-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .restart-button:active {
+            transform: translateY(0);
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 999;
+        }
+
+        .start-screen.hidden {
+            display: none;
+        }
+
+        .start-content {
+            text-align: center;
+            color: white;
+            padding: 40px;
+        }
+
+        .start-content h1 {
+            font-size: 56px;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2, #f093fb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s infinite;
+        }
+
+        .start-content p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            color: #ddd;
+        }
+
+        .start-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 20px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: pulse 2s infinite;
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes shimmer {
+            0%, 100% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+        }
+
+        .paused-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            z-index: 998;
+        }
+
+        .paused-overlay.show {
+            display: flex;
+        }
+
+        .paused-content {
+            text-align: center;
+            color: white;
+            font-size: 48px;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                flex-direction: column;
+                padding: 15px;
+            }
+
+            .left-panel {
+                flex-direction: row;
+            }
+
+            .info-panel, .next-piece-panel, .controls-panel {
+                min-width: auto;
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="left-panel">
+            <div class="info-panel">
+                <h2>SCORE</h2>
+                <div class="stat">
+                    <span class="stat-label">Score</span>
+                    <span class="stat-value" id="score">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Lines</span>
+                    <span class="stat-value" id="lines">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Level</span>
+                    <span class="stat-value" id="level">1</span>
+                </div>
+            </div>
+
+            <div class="next-piece-panel">
+                <h2>NEXT</h2>
+                <canvas id="nextCanvas" width="120" height="120"></canvas>
+            </div>
+
+            <div class="controls-panel">
+                <h2>CONTROLS</h2>
+                <div class="control-item">
+                    <span class="control-key">←/→</span>
+                    <span class="control-action">Move</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↓</span>
+                    <span class="control-action">Soft Drop</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">SPACE</span>
+                    <span class="control-action">Hard Drop</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">↑</span>
+                    <span class="control-action">Rotate</span>
+                </div>
+                <div class="control-item">
+                    <span class="control-key">P</span>
+                    <span class="control-action">Pause</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-panel">
+            <canvas id="gameCanvas" width="300" height="600"></canvas>
+
+            <div class="start-screen" id="startScreen">
+                <div class="start-content">
+                    <h1>TETRIS</h1>
+                    <p>Classic Block Puzzle Game</p>
+                    <button class="start-button" id="startButton">START GAME</button>
+                </div>
+            </div>
+
+            <div class="paused-overlay" id="pausedOverlay">
+                <div class="paused-content">PAUSED</div>
+            </div>
+
+            <div class="game-over-overlay" id="gameOverOverlay">
+                <div class="game-over-content">
+                    <h1>GAME OVER</h1>
+                    <div class="final-score">Final Score: <span id="finalScore">0</span></div>
+                    <button class="restart-button" id="restartButton">PLAY AGAIN</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="tetris.js"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+[package]
+name = "rust-snake-game"
+version = "0.1.0"
+edition = "2021"
+authors = ["Snake Game Challenge"]
+description = "An amazing terminal-based Snake game with smooth gameplay and excellent features"
+
+[dependencies]
+crossterm = "0.27"
+rand = "0.8"
+
+[dev-dependencies]
+# No additional dev dependencies needed for now
+
+[[bin]]
+name = "snake"
+path = "src/main.rs"

@@ -1,0 +1,20 @@
+{
+  "name": "memory-match-game",
+  "version": "1.0.0",
+  "description": "Beautiful memory card matching game with multiple difficulty levels and themes",
+  "main": "index.html",
+  "scripts": {
+    "test": "node tests/game.test.js",
+    "start": "npx http-server -p 8000 -o",
+    "serve": "python3 -m http.server 8000"
+  },
+  "keywords": [
+    "memory-game",
+    "card-matching",
+    "puzzle",
+    "browser-game",
+    "vanilla-js"
+  ],
+  "author": "Coding Challenge Participant",
+  "license": "MIT"
+}

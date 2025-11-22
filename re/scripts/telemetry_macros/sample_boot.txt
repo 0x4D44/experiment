@@ -1,0 +1,8 @@
+# Sample macro: boots GP.EXE and waits 5 seconds before exiting
+mount c ../f1gp-orig
+mount d ../f1gp-disasm
+c:
+cd mps\gprix
+gp.exe
+sleep 5
+exit

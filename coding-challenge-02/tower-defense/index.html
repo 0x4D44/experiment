@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tower Defense - Epic Battle</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Header -->
+        <div id="header">
+            <h1>🏰 Tower Defense: Epic Battle</h1>
+            <div id="game-stats">
+                <div class="stat-item">
+                    <span class="stat-label">💰 Gold:</span>
+                    <span id="gold" class="stat-value">200</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">❤️ Lives:</span>
+                    <span id="lives" class="stat-value">20</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">🌊 Wave:</span>
+                    <span id="wave" class="stat-value">1/10</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">⭐ Score:</span>
+                    <span id="score" class="stat-value">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <div id="canvas-container">
+            <canvas id="game-canvas"></canvas>
+            <div id="game-overlay" class="hidden">
+                <div id="overlay-content">
+                    <h2 id="overlay-title">Game Paused</h2>
+                    <p id="overlay-message"></p>
+                    <div id="overlay-buttons"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tower Selection Panel -->
+        <div id="tower-panel">
+            <h2>🗼 Select Tower</h2>
+            <div id="tower-list">
+                <div class="tower-card" data-tower-type="basic">
+                    <div class="tower-icon">🎯</div>
+                    <div class="tower-info">
+                        <h3>Basic Tower</h3>
+                        <p class="tower-desc">Balanced damage and range</p>
+                        <p class="tower-stats">💰 50 | 💥 15 | 🎯 120 | ⚡ 1.0s</p>
+                    </div>
+                </div>
+                <div class="tower-card" data-tower-type="rapid">
+                    <div class="tower-icon">⚡</div>
+                    <div class="tower-info">
+                        <h3>Rapid Tower</h3>
+                        <p class="tower-desc">Fast firing rate</p>
+                        <p class="tower-stats">💰 70 | 💥 8 | 🎯 100 | ⚡ 0.3s</p>
+                    </div>
+                </div>
+                <div class="tower-card" data-tower-type="splash">
+                    <div class="tower-icon">💣</div>
+                    <div class="tower-info">
+                        <h3>Splash Tower</h3>
+                        <p class="tower-desc">Area damage</p>
+                        <p class="tower-stats">💰 100 | 💥 25 | 🎯 110 | ⚡ 1.5s</p>
+                    </div>
+                </div>
+                <div class="tower-card" data-tower-type="sniper">
+                    <div class="tower-icon">🔭</div>
+                    <div class="tower-info">
+                        <h3>Sniper Tower</h3>
+                        <p class="tower-desc">Long range, high damage</p>
+                        <p class="tower-stats">💰 120 | 💥 50 | 🎯 200 | ⚡ 2.0s</p>
+                    </div>
+                </div>
+                <div class="tower-card" data-tower-type="slow">
+                    <div class="tower-icon">❄️</div>
+                    <div class="tower-info">
+                        <h3>Frost Tower</h3>
+                        <p class="tower-desc">Slows enemies</p>
+                        <p class="tower-stats">💰 80 | 💥 10 | 🎯 90 | ⚡ 0.8s</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tower Detail Panel (shown when tower is selected on map) -->
+            <div id="tower-detail" class="hidden">
+                <h2>🔧 Tower Details</h2>
+                <div id="tower-detail-content">
+                    <div class="detail-row">
+                        <span class="detail-label">Type:</span>
+                        <span id="detail-type"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Level:</span>
+                        <span id="detail-level"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Damage:</span>
+                        <span id="detail-damage"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Range:</span>
+                        <span id="detail-range"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Fire Rate:</span>
+                        <span id="detail-firerate"></span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Kills:</span>
+                        <span id="detail-kills"></span>
+                    </div>
+                    <div id="upgrade-buttons">
+                        <button id="upgrade-btn" class="action-btn">⬆️ Upgrade (<span id="upgrade-cost">0</span>💰)</button>
+                        <button id="sell-btn" class="action-btn sell-btn">💸 Sell (<span id="sell-value">0</span>💰)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div id="control-panel">
+            <button id="start-wave-btn" class="control-btn primary">🚀 Start Wave</button>
+            <button id="pause-btn" class="control-btn">⏸️ Pause</button>
+            <button id="speed-btn" class="control-btn" title="Toggle game speed">▶️ 1x</button>
+            <button id="restart-btn" class="control-btn">🔄 Restart</button>
+        </div>
+
+        <!-- Info Panel -->
+        <div id="info-panel">
+            <h3>📚 Quick Guide</h3>
+            <ul>
+                <li>🖱️ <strong>Select tower</strong> from the left panel</li>
+                <li>🖱️ <strong>Click grid</strong> to place tower (avoid path)</li>
+                <li>🖱️ <strong>Click tower</strong> to upgrade or sell</li>
+                <li>🚀 <strong>Start waves</strong> to spawn enemies</li>
+                <li>🎯 <strong>Defend</strong> your base and survive all waves!</li>
+            </ul>
+            <div id="enemy-info">
+                <h4>Enemy Types:</h4>
+                <p>🔴 Basic (100 HP, 1x speed)</p>
+                <p>🟢 Fast (80 HP, 1.5x speed)</p>
+                <p>🔵 Tank (250 HP, 0.7x speed)</p>
+                <p>🟡 Swarm (50 HP, 1.2x speed)</p>
+                <p>🟣 Boss (500 HP, 0.5x speed)</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="game.js"></script>
+</body>
+</html>

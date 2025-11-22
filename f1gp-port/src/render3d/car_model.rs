@@ -1,9 +1,9 @@
 // Car Model Generator - Stage 6.3
 // Creates 3D car models for rendering
 
-use glam::{Mat4, Vec3};
-use bytemuck::{Pod, Zeroable};
 use crate::physics::CarPhysics;
+use bytemuck::{Pod, Zeroable};
+use glam::{Mat4, Vec3};
 
 /// Vertex for car rendering
 #[repr(C)]
@@ -49,9 +49,9 @@ impl CarModel {
         let mut indices = Vec::new();
 
         // F1 car dimensions (approximate)
-        let length = 4.5;   // 4.5m long
-        let width = 2.0;    // 2m wide
-        let height = 1.0;   // 1m tall
+        let length = 4.5; // 4.5m long
+        let width = 2.0; // 2m wide
+        let height = 1.0; // 1m tall
         let half_len = length * 0.5;
         let half_width = width * 0.5;
 
@@ -91,7 +91,11 @@ impl CarModel {
         Self::add_box(
             &mut vertices,
             &mut indices,
-            Vec3::new(-half_width - wheel_width * 0.5, wheel_radius, -half_len + 0.8),
+            Vec3::new(
+                -half_width - wheel_width * 0.5,
+                wheel_radius,
+                -half_len + 0.8,
+            ),
             Vec3::new(wheel_width, wheel_radius * 2.0, wheel_radius * 2.0),
             wheel_color,
         );
@@ -100,7 +104,11 @@ impl CarModel {
         Self::add_box(
             &mut vertices,
             &mut indices,
-            Vec3::new(half_width + wheel_width * 0.5, wheel_radius, -half_len + 0.8),
+            Vec3::new(
+                half_width + wheel_width * 0.5,
+                wheel_radius,
+                -half_len + 0.8,
+            ),
             Vec3::new(wheel_width, wheel_radius * 2.0, wheel_radius * 2.0),
             wheel_color,
         );
@@ -109,7 +117,11 @@ impl CarModel {
         Self::add_box(
             &mut vertices,
             &mut indices,
-            Vec3::new(-half_width - wheel_width * 0.5, wheel_radius, half_len - 0.8),
+            Vec3::new(
+                -half_width - wheel_width * 0.5,
+                wheel_radius,
+                half_len - 0.8,
+            ),
             Vec3::new(wheel_width, wheel_radius * 2.0, wheel_radius * 2.0),
             wheel_color,
         );
@@ -137,10 +149,7 @@ impl CarModel {
             cockpit_color,
         );
 
-        Self {
-            vertices,
-            indices,
-        }
+        Self { vertices, indices }
     }
 
     /// Add a box to the mesh
@@ -191,14 +200,7 @@ impl CarModel {
             }
 
             // Add 2 triangles for this face
-            indices.extend_from_slice(&[
-                start,
-                start + 1,
-                start + 2,
-                start,
-                start + 2,
-                start + 3,
-            ]);
+            indices.extend_from_slice(&[start, start + 1, start + 2, start, start + 2, start + 3]);
         }
     }
 
@@ -228,9 +230,9 @@ impl CarModel {
 /// LOD (Level of Detail) level for car rendering
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LODLevel {
-    High,    // < 50m
-    Medium,  // 50-200m
-    Low,     // 200-500m
+    High,      // < 50m
+    Medium,    // 50-200m
+    Low,       // 200-500m
     Billboard, // > 500m (not implemented yet)
 }
 

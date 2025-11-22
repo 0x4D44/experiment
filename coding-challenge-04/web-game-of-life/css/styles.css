@@ -1,0 +1,418 @@
+/**
+ * Styles for Conway's Game of Life
+ * Modern, dark theme with vibrant accents
+ */
+
+/* Reset and base styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+    color: #e0e6ed;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Container */
+.container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header */
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #1e2747 0%, #2a3556 100%);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+header h1 {
+    font-size: 3em;
+    background: linear-gradient(135deg, #00ff88 0%, #00d4ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 10px;
+    text-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+}
+
+.subtitle {
+    font-size: 1.2em;
+    color: #8b95a5;
+    font-weight: 300;
+}
+
+/* Main content */
+.main-content {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+@media (max-width: 1200px) {
+    .main-content {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Canvas wrapper */
+.canvas-wrapper {
+    position: relative;
+    background: #0f1329;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(0, 255, 136, 0.2);
+    min-height: 600px;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+/* Canvas overlay */
+.canvas-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+}
+
+.stats-panel {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: rgba(10, 14, 39, 0.8);
+    backdrop-filter: blur(10px);
+    border-bottom-right-radius: 10px;
+    border-right: 2px solid rgba(0, 255, 136, 0.3);
+    border-bottom: 2px solid rgba(0, 255, 136, 0.3);
+    width: fit-content;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.stat-label {
+    font-size: 0.85em;
+    color: #8b95a5;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-value {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #00ff88;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* Control panel */
+.control-panel {
+    background: linear-gradient(135deg, #1e2747 0%, #2a3556 100%);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    max-height: 800px;
+    overflow-y: auto;
+}
+
+.control-section {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(100, 150, 200, 0.2);
+}
+
+.control-section:last-child {
+    border-bottom: none;
+}
+
+.control-section h3 {
+    font-size: 1.1em;
+    margin-bottom: 15px;
+    color: #00d4ff;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Buttons */
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #2d3651 0%, #3a4461 100%);
+    color: #e0e6ed;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(100, 150, 200, 0.2);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    border-color: rgba(0, 212, 255, 0.5);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #00a86b 0%, #00c97a 100%);
+    color: white;
+    font-weight: bold;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #00c97a 0%, #00ff88 100%);
+    box-shadow: 0 6px 25px rgba(0, 255, 136, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #c41e3a 0%, #d93654 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #d93654 0%, #ff4069 100%);
+    box-shadow: 0 6px 25px rgba(255, 64, 105, 0.4);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #0066cc 0%, #0080ff 100%);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #0080ff 0%, #00a3ff 100%);
+    box-shadow: 0 6px 25px rgba(0, 163, 255, 0.4);
+}
+
+.btn-small {
+    padding: 8px 15px;
+    font-size: 0.85em;
+}
+
+.btn.active {
+    background: linear-gradient(135deg, #00a86b 0%, #00c97a 100%);
+    border-color: rgba(0, 255, 136, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 255, 136, 0.3);
+}
+
+.btn-toggle {
+    flex: 1;
+}
+
+/* Slider control */
+.slider-control {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.slider {
+    flex: 1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 8px;
+    border-radius: 5px;
+    background: linear-gradient(to right, #2d3651, #00ff88);
+    outline: none;
+    opacity: 0.9;
+    transition: opacity 0.2s;
+}
+
+.slider:hover {
+    opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #00ff88;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+.slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #00ff88;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+/* Pattern categories */
+.pattern-categories {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.pattern-category h4 {
+    font-size: 0.9em;
+    color: #8b95a5;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pattern-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.pattern-btn {
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #2d3651 0%, #3a4461 100%);
+    color: #e0e6ed;
+    font-size: 0.85em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(100, 150, 200, 0.2);
+}
+
+.pattern-btn:hover {
+    background: linear-gradient(135deg, #3a4461 0%, #4a5570 100%);
+    border-color: rgba(0, 212, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2);
+}
+
+/* Checkbox */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #00ff88;
+}
+
+/* Footer */
+footer {
+    background: linear-gradient(135deg, #1e2747 0%, #2a3556 100%);
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+}
+
+.rules-info h3 {
+    font-size: 1.5em;
+    margin-bottom: 15px;
+    color: #00d4ff;
+}
+
+.rules-info ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.rules-info li {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(100, 150, 200, 0.1);
+    font-size: 1.05em;
+    line-height: 1.6;
+}
+
+.rules-info li:last-child {
+    border-bottom: none;
+}
+
+.rules-info strong {
+    color: #00ff88;
+    font-weight: 600;
+}
+
+/* Scrollbar styling */
+.control-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.control-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+.control-panel::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #00a86b 0%, #00c97a 100%);
+    border-radius: 10px;
+}
+
+.control-panel::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #00c97a 0%, #00ff88 100%);
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    header h1 {
+        font-size: 2em;
+    }
+
+    .subtitle {
+        font-size: 1em;
+    }
+
+    .stats-panel {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .pattern-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .control-panel {
+        max-height: none;
+    }
+}

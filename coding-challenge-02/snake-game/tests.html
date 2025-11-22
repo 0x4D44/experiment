@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Test Suite</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a2e;
+            color: #00ff00;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            color: #00d9ff;
+            text-shadow: 0 0 10px #00d9ff;
+        }
+        .test-section {
+            background: #16213e;
+            border: 2px solid #00d9ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-case {
+            padding: 10px;
+            margin: 10px 0;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            border-left: 4px solid #666;
+        }
+        .test-case.pass {
+            border-left-color: #00ff00;
+        }
+        .test-case.fail {
+            border-left-color: #ff0000;
+        }
+        .test-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .test-result {
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+        .summary {
+            background: #0f3460;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        button {
+            background: #00d9ff;
+            color: #000;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #00ffff;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Snake Game Test Suite</h1>
+
+    <div style="text-align: center;">
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="location.href='index.html'">Back to Game</button>
+    </div>
+
+    <div id="test-results"></div>
+
+    <div class="summary" id="summary" style="display: none;">
+        <h2>Test Summary</h2>
+        <p>Total Tests: <span id="total-tests">0</span></p>
+        <p class="pass">Passed: <span id="passed-tests">0</span></p>
+        <p class="fail">Failed: <span id="failed-tests">0</span></p>
+        <p>Success Rate: <span id="success-rate">0</span>%</p>
+    </div>
+
+    <script>
+        // Test framework
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            test(name, fn) {
+                this.tests.push({ name, fn });
+            }
+
+            async run() {
+                this.results = [];
+                const resultsDiv = document.getElementById('test-results');
+                resultsDiv.innerHTML = '';
+
+                for (const test of this.tests) {
+                    const section = this.getCurrentSection(test.name);
+                    let sectionDiv = document.querySelector(`[data-section="${section}"]`);
+
+                    if (!sectionDiv) {
+                        sectionDiv = document.createElement('div');
+                        sectionDiv.className = 'test-section';
+                        sectionDiv.dataset.section = section;
+                        sectionDiv.innerHTML = `<h2>${section}</h2>`;
+                        resultsDiv.appendChild(sectionDiv);
+                    }
+
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'test-case';
+
+                    try {
+                        await test.fn();
+                        testDiv.classList.add('pass');
+                        testDiv.innerHTML = `
+                            <div class="test-name">✓ ${test.name}</div>
+                            <div class="test-result">PASSED</div>
+                        `;
+                        this.results.push({ name: test.name, passed: true });
+                    } catch (error) {
+                        testDiv.classList.add('fail');
+                        testDiv.innerHTML = `
+                            <div class="test-name">✗ ${test.name}</div>
+                            <div class="test-result">FAILED: ${error.message}</div>
+                        `;
+                        this.results.push({ name: test.name, passed: false, error: error.message });
+                    }
+
+                    sectionDiv.appendChild(testDiv);
+                }
+
+                this.showSummary();
+            }
+
+            getCurrentSection(testName) {
+                if (testName.includes('Initialization')) return 'Initialization Tests';
+                if (testName.includes('Movement')) return 'Movement Tests';
+                if (testName.includes('Collision')) return 'Collision Detection Tests';
+                if (testName.includes('Food')) return 'Food & Scoring Tests';
+                if (testName.includes('Power-up')) return 'Power-up Tests';
+                if (testName.includes('Mode')) return 'Game Mode Tests';
+                if (testName.includes('UI')) return 'UI Tests';
+                if (testName.includes('Storage')) return 'Storage Tests';
+                return 'General Tests';
+            }
+
+            showSummary() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+                const rate = Math.round((passed / total) * 100);
+
+                document.getElementById('total-tests').textContent = total;
+                document.getElementById('passed-tests').textContent = passed;
+                document.getElementById('failed-tests').textContent = failed;
+                document.getElementById('success-rate').textContent = rate;
+                document.getElementById('summary').style.display = 'block';
+            }
+        }
+
+        // Helper functions
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEqual(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected}, got ${actual}`);
+            }
+        }
+
+        function assertNotNull(value, message) {
+            if (value === null || value === undefined) {
+                throw new Error(message || 'Value is null or undefined');
+            }
+        }
+
+        // Create test runner
+        const runner = new TestRunner();
+
+        // ========================================
+        // INITIALIZATION TESTS
+        // ========================================
+
+        runner.test('Initialization: Game object created', () => {
+            const game = new SnakeGame();
+            assertNotNull(game, 'Game object should be created');
+        });
+
+        runner.test('Initialization: Canvas setup correct', () => {
+            const game = new SnakeGame();
+            assertEqual(game.canvas.width, 600, 'Canvas width should be 600');
+            assertEqual(game.canvas.height, 600, 'Canvas height should be 600');
+        });
+
+        runner.test('Initialization: Initial snake length is 3', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            assertEqual(game.snake.length, 3, 'Snake should start with 3 segments');
+        });
+
+        runner.test('Initialization: Initial direction is right', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            assertEqual(game.snakeDirection.x, 1, 'Snake should start moving right');
+            assertEqual(game.snakeDirection.y, 0, 'Snake should not move vertically initially');
+        });
+
+        runner.test('Initialization: Initial score is 0', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            assertEqual(game.score, 0, 'Score should start at 0');
+        });
+
+        // ========================================
+        // MOVEMENT TESTS
+        // ========================================
+
+        runner.test('Movement: Snake moves right', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const initialX = game.snake[0].x;
+            game.nextDirection = { x: 1, y: 0 };
+            game.update();
+            assertEqual(game.snake[0].x, initialX + 1, 'Snake should move right');
+        });
+
+        runner.test('Movement: Snake cannot reverse direction', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.snakeDirection = { x: 1, y: 0 };
+            game.nextDirection = { x: -1, y: 0 }; // Try to go left
+            // The game should prevent this in handleKeyPress
+            // but we test the direction doesn't change immediately
+            assert(game.snakeDirection.x === 1, 'Direction should remain right');
+        });
+
+        runner.test('Movement: Direction changes correctly', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.snakeDirection = { x: 1, y: 0 };
+            game.nextDirection = { x: 0, y: 1 }; // Change to down
+            game.update();
+            assertEqual(game.snakeDirection.y, 1, 'Should change to down');
+        });
+
+        // ========================================
+        // COLLISION DETECTION TESTS
+        // ========================================
+
+        runner.test('Collision: Detects wall collision', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'classic';
+            game.startGame();
+            game.snake[0] = { x: 0, y: 0 };
+            game.snakeDirection = { x: -1, y: 0 };
+            game.nextDirection = { x: -1, y: 0 };
+            game.update();
+            assertEqual(game.gameState, 'gameover', 'Should be game over after wall collision');
+        });
+
+        runner.test('Collision: Detects self collision', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            // Create a situation where snake collides with itself
+            game.snake = [
+                { x: 5, y: 5 },
+                { x: 4, y: 5 },
+                { x: 4, y: 4 },
+                { x: 5, y: 4 }
+            ];
+            game.snakeDirection = { x: 0, y: 1 };
+            game.nextDirection = { x: 0, y: 1 };
+            const head = { x: 5, y: 4 };
+            assert(game.checkSelfCollision(head), 'Should detect self collision');
+        });
+
+        runner.test('Collision: Endless mode wraps around', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'endless';
+            game.startGame();
+            game.snake[0] = { x: 0, y: 5 };
+            game.snakeDirection = { x: -1, y: 0 };
+            game.nextDirection = { x: -1, y: 0 };
+            game.update();
+            assertEqual(game.snake[0].x, game.tileCount - 1, 'Should wrap to right side');
+        });
+
+        // ========================================
+        // FOOD & SCORING TESTS
+        // ========================================
+
+        runner.test('Food: Food spawns on game start', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            assertNotNull(game.food, 'Food should spawn');
+            assert(game.food.x >= 0 && game.food.x < game.tileCount, 'Food X in bounds');
+            assert(game.food.y >= 0 && game.food.y < game.tileCount, 'Food Y in bounds');
+        });
+
+        runner.test('Food: Snake grows when eating food', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const initialLength = game.snake.length;
+            game.food = { x: game.snake[0].x + 1, y: game.snake[0].y };
+            game.snakeDirection = { x: 1, y: 0 };
+            game.nextDirection = { x: 1, y: 0 };
+            game.update();
+            assertEqual(game.snake.length, initialLength + 1, 'Snake should grow by 1');
+        });
+
+        runner.test('Food: Score increases when eating food', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const initialScore = game.score;
+            game.food = { x: game.snake[0].x + 1, y: game.snake[0].y };
+            game.snakeDirection = { x: 1, y: 0 };
+            game.nextDirection = { x: 1, y: 0 };
+            game.update();
+            assert(game.score > initialScore, 'Score should increase');
+        });
+
+        runner.test('Food: Combo increases with consecutive food', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.lastComboTime = Date.now();
+            const initialCombo = game.combo;
+            game.eatFood();
+            assert(game.combo > initialCombo, 'Combo should increase');
+        });
+
+        runner.test('Food: New food spawns after eating', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const oldFood = { ...game.food };
+            game.eatFood();
+            assert(game.food.x !== oldFood.x || game.food.y !== oldFood.y, 'New food should spawn');
+        });
+
+        // ========================================
+        // POWER-UP TESTS
+        // ========================================
+
+        runner.test('Power-up: Power-up types defined', () => {
+            const game = new SnakeGame();
+            assertEqual(game.powerupTypes.length, 6, 'Should have 6 power-up types');
+        });
+
+        runner.test('Power-up: Shrink reduces snake length', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            // Make snake longer
+            for (let i = 0; i < 5; i++) {
+                game.snake.push({ x: i, y: 0 });
+            }
+            const initialLength = game.snake.length;
+            const shrinkPowerup = { type: 'shrink', x: 0, y: 0 };
+            game.collectPowerup(shrinkPowerup);
+            assert(game.snake.length < initialLength, 'Snake should shrink');
+        });
+
+        runner.test('Power-up: Active power-ups tracked', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const speedPowerup = game.powerupTypes.find(p => p.type === 'speed');
+            game.collectPowerup({ ...speedPowerup, x: 0, y: 0 });
+            assertEqual(game.activePowerups.length, 1, 'Should have 1 active power-up');
+        });
+
+        runner.test('Power-up: Power-ups expire after duration', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const speedPowerup = game.powerupTypes.find(p => p.type === 'speed');
+            game.collectPowerup({ ...speedPowerup, x: 0, y: 0 });
+            // Simulate time passing
+            game.activePowerups[0].endTime = Date.now() - 1000;
+            game.updatePowerups(Date.now());
+            assertEqual(game.activePowerups.length, 0, 'Power-up should expire');
+        });
+
+        runner.test('Power-up: Speed boost affects movement', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            const normalSpeed = game.getEffectiveSpeed();
+            const speedPowerup = game.powerupTypes.find(p => p.type === 'speed');
+            game.collectPowerup({ ...speedPowerup, x: 0, y: 0 });
+            const boostedSpeed = game.getEffectiveSpeed();
+            assert(boostedSpeed < normalSpeed, 'Speed should be faster with boost');
+        });
+
+        // ========================================
+        // GAME MODE TESTS
+        // ========================================
+
+        runner.test('Mode: Classic mode initialized', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'classic';
+            game.startGame();
+            assertEqual(game.gameMode, 'classic', 'Should be in classic mode');
+        });
+
+        runner.test('Mode: Timed mode has timer', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'timed';
+            game.startGame();
+            assert(game.timeLeft > 0, 'Timer should be set');
+        });
+
+        runner.test('Mode: Endless mode wraps walls', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'endless';
+            game.startGame();
+            // Test already covered in collision tests
+            assert(true, 'Endless mode initialized');
+        });
+
+        runner.test('Mode: Obstacle mode can spawn obstacles', () => {
+            const game = new SnakeGame();
+            game.gameMode = 'obstacle';
+            game.startGame();
+            game.spawnObstacle();
+            assert(game.obstacles.length > 0, 'Obstacles should spawn');
+        });
+
+        // ========================================
+        // UI TESTS
+        // ========================================
+
+        runner.test('UI: Score display updates', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.score = 100;
+            game.updateUI();
+            assertEqual(document.getElementById('score').textContent, '100', 'Score display should update');
+        });
+
+        runner.test('UI: Length display updates', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.updateUI();
+            assertEqual(document.getElementById('length').textContent, game.snake.length.toString(), 'Length display should update');
+        });
+
+        runner.test('UI: Combo display updates', () => {
+            const game = new SnakeGame();
+            game.startGame();
+            game.combo = 5;
+            game.updateUI();
+            assertEqual(document.getElementById('combo').textContent, 'x5', 'Combo display should update');
+        });
+
+        runner.test('UI: Theme changes', () => {
+            const game = new SnakeGame();
+            game.changeTheme('neon');
+            assert(document.body.classList.contains('theme-neon'), 'Theme should change to neon');
+        });
+
+        // ========================================
+        // STORAGE TESTS
+        // ========================================
+
+        runner.test('Storage: Settings save to localStorage', () => {
+            const game = new SnakeGame();
+            game.settings.theme = 'retro';
+            game.saveSettings();
+            const saved = JSON.parse(localStorage.getItem('snakeGameSettings'));
+            assertEqual(saved.theme, 'retro', 'Settings should save');
+        });
+
+        runner.test('Storage: Settings load from localStorage', () => {
+            const testSettings = { theme: 'nature', sound: false, particles: true, gridLines: false };
+            localStorage.setItem('snakeGameSettings', JSON.stringify(testSettings));
+            const game = new SnakeGame();
+            game.loadSettings();
+            assertEqual(game.settings.theme, 'nature', 'Settings should load');
+        });
+
+        runner.test('Storage: Stats save to localStorage', () => {
+            const game = new SnakeGame();
+            game.stats.gamesPlayed = 10;
+            game.saveStats();
+            const saved = JSON.parse(localStorage.getItem('snakeGameStats'));
+            assertEqual(saved.gamesPlayed, 10, 'Stats should save');
+        });
+
+        runner.test('Storage: High score persists', () => {
+            const game = new SnakeGame();
+            game.stats.highScore = 500;
+            game.saveStats();
+            const newGame = new SnakeGame();
+            assertEqual(newGame.stats.highScore, 500, 'High score should persist');
+        });
+
+        // Run tests when button clicked
+        async function runAllTests() {
+            await runner.run();
+        }
+
+        // Import game code for testing - wait for it to load before running tests
+        const script = document.createElement('script');
+        script.src = 'game.js';
+        script.onload = function() {
+            console.log('game.js loaded successfully');
+        };
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

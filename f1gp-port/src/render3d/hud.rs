@@ -2,16 +2,16 @@
 // Custom implementation to avoid egui/wgpu version conflicts
 
 use anyhow::Result;
-use wgpu::util::DeviceExt;
 use bytemuck::{Pod, Zeroable};
+use wgpu::util::DeviceExt;
 
 /// Vertex for HUD text rendering
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct HudVertex {
-    pub position: [f32; 2],    // Screen space position
-    pub tex_coords: [f32; 2],  // Texture coordinates
-    pub color: [f32; 4],       // Text color
+    pub position: [f32; 2],   // Screen space position
+    pub tex_coords: [f32; 2], // Texture coordinates
+    pub color: [f32; 4],      // Text color
 }
 
 impl HudVertex {
@@ -59,15 +59,15 @@ fn generate_font_atlas() -> Vec<u8> {
                 let is_pixel_on = get_char_pixel(char_code as u8, x, y);
 
                 if is_pixel_on {
-                    atlas[pixel_idx] = 255;     // R
+                    atlas[pixel_idx] = 255; // R
                     atlas[pixel_idx + 1] = 255; // G
                     atlas[pixel_idx + 2] = 255; // B
                     atlas[pixel_idx + 3] = 255; // A
                 } else {
-                    atlas[pixel_idx] = 0;       // R
-                    atlas[pixel_idx + 1] = 0;   // G
-                    atlas[pixel_idx + 2] = 0;   // B
-                    atlas[pixel_idx + 3] = 0;   // A (transparent)
+                    atlas[pixel_idx] = 0; // R
+                    atlas[pixel_idx + 1] = 0; // G
+                    atlas[pixel_idx + 2] = 0; // B
+                    atlas[pixel_idx + 3] = 0; // A (transparent)
                 }
             }
         }
@@ -98,8 +98,7 @@ fn get_char_pixel(char_code: u8, x: usize, y: usize) -> bool {
         }
         b':' => {
             // Colon
-            (y >= 5 && y <= 6 && x >= 3 && x <= 4) ||
-            (y >= 10 && y <= 11 && x >= 3 && x <= 4)
+            (y >= 5 && y <= 6 && x >= 3 && x <= 4) || (y >= 10 && y <= 11 && x >= 3 && x <= 4)
         }
         b'/' => {
             // Forward slash
@@ -145,8 +144,8 @@ impl HudRenderer {
         let font_atlas_data = generate_font_atlas();
 
         let texture_size = wgpu::Extent3d {
-            width: 128,  // 16 chars * 8 pixels
-            height: 96,  // 6 rows * 16 pixels
+            width: 128, // 16 chars * 8 pixels
+            height: 96, // 6 rows * 16 pixels
             depth_or_array_layers: 1,
         };
 

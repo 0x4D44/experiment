@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flappy Bird - Coding Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background: #70c5ce;
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .screen {
+            display: none;
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 400px;
+            pointer-events: all;
+        }
+
+        .screen.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            color: #333;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            color: #555;
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        p {
+            color: #666;
+            font-size: 18px;
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            margin-top: 10px;
+            pointer-events: all;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .score-display {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 48px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+
+        .high-score {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 20px;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+
+        .stats {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 18px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: bold;
+        }
+
+        .stat-value {
+            color: #333;
+        }
+
+        .instructions {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+
+        .key {
+            display: inline-block;
+            background: white;
+            padding: 5px 15px;
+            border-radius: 5px;
+            border: 2px solid #ddd;
+            font-weight: bold;
+            margin: 0 5px;
+        }
+
+        #soundToggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 25px;
+            z-index: 100;
+        }
+
+        #soundToggle:hover {
+            background: rgba(255, 255, 255, 1);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="480" height="640"></canvas>
+
+        <div id="ui">
+            <div id="startScreen" class="screen active">
+                <h1>🐦 Flappy Bird</h1>
+                <p>Guide the bird through the pipes!</p>
+                <div class="instructions">
+                    <p><span class="key">SPACE</span> or <span class="key">CLICK</span> to flap</p>
+                </div>
+                <button id="startButton">Start Game</button>
+            </div>
+
+            <div id="gameOverScreen" class="screen">
+                <h2>Game Over!</h2>
+                <div class="stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Score:</span>
+                        <span class="stat-value" id="finalScore">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">High Score:</span>
+                        <span class="stat-value" id="finalHighScore">0</span>
+                    </div>
+                </div>
+                <button id="restartButton">Play Again</button>
+            </div>
+        </div>
+
+        <div class="score-display" id="scoreDisplay" style="display: none;">0</div>
+        <div class="high-score" id="highScoreDisplay" style="display: none;">High: 0</div>
+        <button id="soundToggle">🔊 Sound ON</button>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+</html>

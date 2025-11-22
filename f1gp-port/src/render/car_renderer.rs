@@ -4,7 +4,7 @@
 
 use crate::data::car::CarSpec;
 use crate::platform::{Color, Rect, Renderer};
-use crate::render::Camera;
+use crate::render::{Camera, SpriteAtlas, SpriteSheet};
 use anyhow::Result;
 use glam::{Vec2, Vec3};
 
@@ -32,15 +32,35 @@ pub struct CarRenderer {
     /// Car dimensions for rendering (meters to pixels scale)
     car_length: f32,
     car_width: f32,
+    sprite: Option<SpriteResources>,
+}
+
+#[derive(Debug, Clone)]
+struct SpriteResources {
+    atlas: SpriteAtlas,
+    sheet: SpriteSheet,
 }
 
 impl CarRenderer {
     /// Create a new car renderer
     pub fn new() -> Self {
         Self {
-            car_length: 4.5,  // Approximate F1 car length in meters
-            car_width: 2.0,   // Approximate F1 car width in meters
+            car_length: 4.5, // Approximate F1 car length in meters
+            car_width: 2.0,  // Approximate F1 car width in meters
+            sprite: None,
         }
+    }
+
+    /// Create a renderer with a sprite atlas already loaded
+    pub fn with_sprite_atlas(atlas: SpriteAtlas, sheet: SpriteSheet) -> Self {
+        let mut renderer = Self::new();
+        renderer.sprite = Some(SpriteResources { atlas, sheet });
+        renderer
+    }
+
+    /// Set/replace the sprite atlas at runtime
+    pub fn set_sprite_resources(&mut self, atlas: SpriteAtlas, sheet: SpriteSheet) {
+        self.sprite = Some(SpriteResources { atlas, sheet });
     }
 
     /// Render a single car
@@ -58,12 +78,38 @@ impl CarRenderer {
         let screen_pos = camera.world_to_screen(car.position);
 
         // Calculate car dimensions in screen space
-        let _length = self.car_length * camera.zoom;  // Reserved for future sprite rendering
+        let _length = self.car_length * camera.zoom; // Reserved for future sprite rendering
         let width = self.car_width * camera.zoom;
 
-        // Draw car body as a simple rectangle
-        // For now, we'll use a simple rotated rectangle
-        // TODO: Add proper sprite rendering when we have assets
+        if let Some(resources) = &self.sprite {
+            if let Some(frame) = resources.atlas.frame("car_body") {
+                let src = Rect::new(
+                    frame.x as f32,
+                    frame.y as f32,
+                    frame.width as f32,
+                    frame.height as f32,
+                );
+                let scale = camera.zoom.max(0.1);
+                let dst_width = frame.width as f32 * scale;
+                let dst_height = frame.height as f32 * scale;
+                let dst = Rect::new(
+                    screen_pos.x - dst_width / 2.0,
+                    screen_pos.y - dst_height / 2.0,
+                    dst_width,
+                    dst_height,
+                );
+                renderer.draw_rgba_region(
+                    resources.sheet.cache_key(),
+                    resources.sheet.pixels(),
+                    resources.sheet.width(),
+                    resources.sheet.height(),
+                    src,
+                    dst,
+                    car.rotation.to_degrees(),
+                )?;
+                return Ok(());
+            }
+        }
 
         // Get team colors from livery
         let primary_color = if !car.spec.livery_colors.is_empty() {

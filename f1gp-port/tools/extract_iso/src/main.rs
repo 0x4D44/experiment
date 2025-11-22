@@ -42,22 +42,22 @@ fn main() -> Result<()> {
     }
 
     // Create output directory
-    fs::create_dir_all(&args.output)
-        .context("Failed to create output directory")?;
+    fs::create_dir_all(&args.output).context("Failed to create output directory")?;
 
     // Open ISO file
     info!("Opening ISO file...");
-    let iso_file = File::open(&args.input)
-        .context("Failed to open ISO file")?;
+    let iso_file = File::open(&args.input).context("Failed to open ISO file")?;
 
     // Read ISO filesystem
     info!("Reading ISO 9660 filesystem...");
-    let iso = cdfs::ISO9660Reader::new(iso_file)
-        .context("Failed to read ISO 9660 filesystem")?;
+    let iso = cdfs::ISO9660Reader::new(iso_file).context("Failed to read ISO 9660 filesystem")?;
 
     // Get root directory
     let root = iso.root();
-    info!("ISO filesystem loaded. Root directory entries: {}", root.len());
+    info!(
+        "ISO filesystem loaded. Root directory entries: {}",
+        root.len()
+    );
 
     // Extract all files recursively
     let mut total_files = 0;
@@ -92,14 +92,17 @@ fn extract_directory(
 
         if entry.is_dir() {
             // Create directory
-            fs::create_dir_all(&entry_path)
-                .context(format!("Failed to create directory: {}", entry_path.display()))?;
+            fs::create_dir_all(&entry_path).context(format!(
+                "Failed to create directory: {}",
+                entry_path.display()
+            ))?;
 
             *total_dirs += 1;
             info!("Created directory: {}", entry_path.display());
 
             // Recursively extract subdirectory
-            let sub_entries = iso.read_dir(entry)
+            let sub_entries = iso
+                .read_dir(entry)
                 .context(format!("Failed to read directory: {}", name))?;
             extract_directory(iso, &sub_entries, &entry_path, total_files, total_dirs)?;
         } else {
@@ -111,11 +114,16 @@ fn extract_directory(
             let mut output_file = File::create(&entry_path)
                 .context(format!("Failed to create file: {}", entry_path.display()))?;
 
-            output_file.write_all(&file_data)
+            output_file
+                .write_all(&file_data)
                 .context(format!("Failed to write file: {}", entry_path.display()))?;
 
             *total_files += 1;
-            info!("Extracted: {} ({} bytes)", entry_path.display(), file_data.len());
+            info!(
+                "Extracted: {} ({} bytes)",
+                entry_path.display(),
+                file_data.len()
+            );
         }
     }
 

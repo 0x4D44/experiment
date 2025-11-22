@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game - Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            color: #fff;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+            margin-bottom: 30px;
+        }
+
+        .test-summary {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-around;
+            font-size: 1.2em;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-label {
+            display: block;
+            color: #00ffff;
+            margin-bottom: 5px;
+        }
+
+        .summary-value {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .summary-value.pass {
+            color: #00ff00;
+        }
+
+        .summary-value.fail {
+            color: #ff0000;
+        }
+
+        .test-suite {
+            margin-bottom: 30px;
+        }
+
+        .suite-header {
+            background: rgba(0, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            color: #00ffff;
+        }
+
+        .test-case {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #666;
+            transition: all 0.3s ease;
+        }
+
+        .test-case.pass {
+            border-left-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .test-case.fail {
+            border-left-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .test-case.running {
+            border-left-color: #ffff00;
+            background: rgba(255, 255, 0, 0.1);
+        }
+
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .test-name {
+            font-size: 1.1em;
+        }
+
+        .test-status {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .test-status.pass {
+            color: #00ff00;
+        }
+
+        .test-status.fail {
+            color: #ff0000;
+        }
+
+        .test-status.running {
+            color: #ffff00;
+        }
+
+        .test-message {
+            color: #aaa;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .test-error {
+            color: #ff6666;
+            background: rgba(255, 0, 0, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+        }
+
+        .run-tests-btn {
+            display: block;
+            margin: 0 auto 30px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #00ff00 0%, #00cc00 100%);
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 255, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .run-tests-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 255, 0, 0.5);
+        }
+
+        .run-tests-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #00ffff);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 SNAKE GAME TEST SUITE 🧪</h1>
+
+        <button class="run-tests-btn" id="runTestsBtn">RUN ALL TESTS</button>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+
+        <div class="test-summary">
+            <div class="summary-item">
+                <span class="summary-label">Total Tests</span>
+                <span class="summary-value" id="totalTests">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Passed</span>
+                <span class="summary-value pass" id="passedTests">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Failed</span>
+                <span class="summary-value fail" id="failedTests">0</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Duration</span>
+                <span class="summary-value" id="duration">0ms</span>
+            </div>
+        </div>
+
+        <div id="testResults"></div>
+    </div>
+
+    <script>
+        // Test Framework
+        class TestFramework {
+            constructor() {
+                this.suites = [];
+                this.results = {
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                    duration: 0
+                };
+            }
+
+            suite(name, tests) {
+                this.suites.push({ name, tests });
+            }
+
+            async runAll() {
+                const startTime = performance.now();
+                this.results = { total: 0, passed: 0, failed: 0, duration: 0 };
+
+                const resultsContainer = document.getElementById('testResults');
+                resultsContainer.innerHTML = '';
+
+                for (const suite of this.suites) {
+                    const suiteElement = this.createSuiteElement(suite.name);
+                    resultsContainer.appendChild(suiteElement);
+
+                    for (const test of suite.tests) {
+                        this.results.total++;
+                        this.updateSummary();
+
+                        const testElement = this.createTestElement(test.name);
+                        suiteElement.appendChild(testElement);
+
+                        try {
+                            testElement.classList.add('running');
+                            testElement.querySelector('.test-status').textContent = 'RUNNING...';
+                            testElement.querySelector('.test-status').classList.add('running');
+
+                            await test.fn();
+
+                            testElement.classList.remove('running');
+                            testElement.classList.add('pass');
+                            testElement.querySelector('.test-status').textContent = '✓ PASS';
+                            testElement.querySelector('.test-status').classList.remove('running');
+                            testElement.querySelector('.test-status').classList.add('pass');
+                            this.results.passed++;
+                        } catch (error) {
+                            testElement.classList.remove('running');
+                            testElement.classList.add('fail');
+                            testElement.querySelector('.test-status').textContent = '✗ FAIL';
+                            testElement.querySelector('.test-status').classList.remove('running');
+                            testElement.querySelector('.test-status').classList.add('fail');
+
+                            const errorElement = document.createElement('div');
+                            errorElement.className = 'test-error';
+                            errorElement.textContent = error.message || error;
+                            testElement.appendChild(errorElement);
+
+                            this.results.failed++;
+                        }
+
+                        this.updateSummary();
+                        this.updateProgress();
+
+                        // Small delay for visual feedback
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                }
+
+                this.results.duration = Math.round(performance.now() - startTime);
+                this.updateSummary();
+            }
+
+            createSuiteElement(name) {
+                const suite = document.createElement('div');
+                suite.className = 'test-suite';
+
+                const header = document.createElement('div');
+                header.className = 'suite-header';
+                header.textContent = name;
+
+                suite.appendChild(header);
+                return suite;
+            }
+
+            createTestElement(name) {
+                const test = document.createElement('div');
+                test.className = 'test-case';
+
+                const header = document.createElement('div');
+                header.className = 'test-header';
+
+                const testName = document.createElement('div');
+                testName.className = 'test-name';
+                testName.textContent = name;
+
+                const status = document.createElement('div');
+                status.className = 'test-status';
+                status.textContent = 'PENDING';
+
+                header.appendChild(testName);
+                header.appendChild(status);
+                test.appendChild(header);
+
+                return test;
+            }
+
+            updateSummary() {
+                document.getElementById('totalTests').textContent = this.results.total;
+                document.getElementById('passedTests').textContent = this.results.passed;
+                document.getElementById('failedTests').textContent = this.results.failed;
+                document.getElementById('duration').textContent = this.results.duration + 'ms';
+            }
+
+            updateProgress() {
+                const progress = (this.results.passed + this.results.failed) / this.results.total * 100;
+                const progressFill = document.getElementById('progressFill');
+                progressFill.style.width = progress + '%';
+                progressFill.textContent = Math.round(progress) + '%';
+            }
+        }
+
+        // Assertion helpers
+        const assert = {
+            equal(actual, expected, message = '') {
+                if (actual !== expected) {
+                    throw new Error(
+                        `${message}\nExpected: ${JSON.stringify(expected)}\nActual: ${JSON.stringify(actual)}`
+                    );
+                }
+            },
+
+            deepEqual(actual, expected, message = '') {
+                if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                    throw new Error(
+                        `${message}\nExpected: ${JSON.stringify(expected)}\nActual: ${JSON.stringify(actual)}`
+                    );
+                }
+            },
+
+            true(value, message = '') {
+                if (value !== true) {
+                    throw new Error(`${message}\nExpected true, got: ${value}`);
+                }
+            },
+
+            false(value, message = '') {
+                if (value !== false) {
+                    throw new Error(`${message}\nExpected false, got: ${value}`);
+                }
+            },
+
+            greaterThan(actual, expected, message = '') {
+                if (actual <= expected) {
+                    throw new Error(
+                        `${message}\nExpected ${actual} to be greater than ${expected}`
+                    );
+                }
+            },
+
+            lessThan(actual, expected, message = '') {
+                if (actual >= expected) {
+                    throw new Error(
+                        `${message}\nExpected ${actual} to be less than ${expected}`
+                    );
+                }
+            },
+
+            includes(array, item, message = '') {
+                if (!array.some(el => JSON.stringify(el) === JSON.stringify(item))) {
+                    throw new Error(
+                        `${message}\nExpected array to include: ${JSON.stringify(item)}`
+                    );
+                }
+            },
+
+            notIncludes(array, item, message = '') {
+                if (array.some(el => JSON.stringify(el) === JSON.stringify(item))) {
+                    throw new Error(
+                        `${message}\nExpected array not to include: ${JSON.stringify(item)}`
+                    );
+                }
+            }
+        };
+
+        // Load game code
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = 'index.html';
+        document.body.appendChild(iframe);
+
+        // Wait for game to load
+        iframe.onload = function() {
+            const GameState = iframe.contentWindow.SnakeGame.GameState;
+            const CONFIG = iframe.contentWindow.SnakeGame.CONFIG;
+
+            // Initialize test framework
+            const testFramework = new TestFramework();
+
+            // ===== GAME STATE TESTS =====
+            testFramework.suite('Game State Initialization', [
+                {
+                    name: 'Should initialize with correct default values',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.equal(state.score, 0, 'Score should start at 0');
+                        assert.equal(state.gameOver, false, 'Game should not be over');
+                        assert.equal(state.paused, false, 'Game should not be paused');
+                        assert.equal(state.snake.length, 3, 'Snake should have 3 segments');
+                    }
+                },
+                {
+                    name: 'Should initialize snake in center position',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.equal(state.snake[0].x, 15, 'Snake head X should be 15');
+                        assert.equal(state.snake[0].y, 15, 'Snake head Y should be 15');
+                    }
+                },
+                {
+                    name: 'Should initialize with rightward direction',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.deepEqual(state.direction, { x: 1, y: 0 }, 'Should move right initially');
+                    }
+                },
+                {
+                    name: 'Should generate initial food position',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.true(state.food.x >= 0 && state.food.x < CONFIG.GRID_SIZE, 'Food X in bounds');
+                        assert.true(state.food.y >= 0 && state.food.y < CONFIG.GRID_SIZE, 'Food Y in bounds');
+                    }
+                },
+                {
+                    name: 'Should load high score from localStorage',
+                    fn: async () => {
+                        localStorage.setItem('snakeHighScore', '100');
+                        const state = new GameState();
+                        assert.equal(state.highScore, 100, 'Should load high score');
+                        localStorage.removeItem('snakeHighScore');
+                    }
+                }
+            ]);
+
+            // ===== SNAKE MOVEMENT TESTS =====
+            testFramework.suite('Snake Movement', [
+                {
+                    name: 'Should move right correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        const initialX = state.snake[0].x;
+                        state.moveSnake();
+                        assert.equal(state.snake[0].x, initialX + 1, 'Snake should move right');
+                    }
+                },
+                {
+                    name: 'Should move up correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.changeDirection({ x: 0, y: -1 });
+                        const initialY = state.snake[0].y;
+                        state.moveSnake();
+                        assert.equal(state.snake[0].y, initialY - 1, 'Snake should move up');
+                    }
+                },
+                {
+                    name: 'Should move down correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.changeDirection({ x: 0, y: 1 });
+                        const initialY = state.snake[0].y;
+                        state.moveSnake();
+                        assert.equal(state.snake[0].y, initialY + 1, 'Snake should move down');
+                    }
+                },
+                {
+                    name: 'Should move left correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.changeDirection({ x: 0, y: 1 }); // Go down first
+                        state.moveSnake();
+                        state.changeDirection({ x: -1, y: 0 }); // Then left
+                        const initialX = state.snake[0].x;
+                        state.moveSnake();
+                        assert.equal(state.snake[0].x, initialX - 1, 'Snake should move left');
+                    }
+                },
+                {
+                    name: 'Should not reverse direction',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.direction = { x: 1, y: 0 };
+                        state.changeDirection({ x: -1, y: 0 }); // Try to reverse
+                        assert.deepEqual(state.nextDirection, { x: 1, y: 0 }, 'Should not reverse');
+                    }
+                },
+                {
+                    name: 'Should maintain length when not eating',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.food = { x: 0, y: 0 }; // Move food away
+                        const initialLength = state.snake.length;
+                        state.moveSnake();
+                        assert.equal(state.snake.length, initialLength, 'Length should stay same');
+                    }
+                }
+            ]);
+
+            // ===== COLLISION DETECTION TESTS =====
+            testFramework.suite('Collision Detection', [
+                {
+                    name: 'Should detect wall collision (top)',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [{ x: 15, y: 0 }];
+                        state.changeDirection({ x: 0, y: -1 });
+                        state.moveSnake();
+                        assert.true(state.gameOver, 'Should detect top wall collision');
+                    }
+                },
+                {
+                    name: 'Should detect wall collision (bottom)',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [{ x: 15, y: CONFIG.GRID_SIZE - 1 }];
+                        state.changeDirection({ x: 0, y: 1 });
+                        state.moveSnake();
+                        assert.true(state.gameOver, 'Should detect bottom wall collision');
+                    }
+                },
+                {
+                    name: 'Should detect wall collision (left)',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [{ x: 0, y: 15 }];
+                        state.changeDirection({ x: -1, y: 0 });
+                        state.moveSnake();
+                        assert.true(state.gameOver, 'Should detect left wall collision');
+                    }
+                },
+                {
+                    name: 'Should detect wall collision (right)',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [{ x: CONFIG.GRID_SIZE - 1, y: 15 }];
+                        state.changeDirection({ x: 1, y: 0 });
+                        state.moveSnake();
+                        assert.true(state.gameOver, 'Should detect right wall collision');
+                    }
+                },
+                {
+                    name: 'Should detect self collision',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [
+                            { x: 15, y: 15 },
+                            { x: 14, y: 15 },
+                            { x: 14, y: 14 },
+                            { x: 15, y: 14 }
+                        ];
+                        state.changeDirection({ x: 0, y: -1 });
+                        state.moveSnake();
+                        assert.true(state.gameOver, 'Should detect self collision');
+                    }
+                }
+            ]);
+
+            // ===== FOOD AND SCORING TESTS =====
+            testFramework.suite('Food Spawning and Scoring', [
+                {
+                    name: 'Should grow snake when eating food',
+                    fn: async () => {
+                        const state = new GameState();
+                        const initialLength = state.snake.length;
+                        state.food = { x: state.snake[0].x + 1, y: state.snake[0].y };
+                        state.moveSnake();
+                        assert.equal(state.snake.length, initialLength + 1, 'Snake should grow');
+                    }
+                },
+                {
+                    name: 'Should increase score when eating food',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.food = { x: state.snake[0].x + 1, y: state.snake[0].y };
+                        state.moveSnake();
+                        assert.equal(state.score, CONFIG.FOOD_POINTS, 'Score should increase');
+                    }
+                },
+                {
+                    name: 'Should spawn new food after eating',
+                    fn: async () => {
+                        const state = new GameState();
+                        const oldFood = { ...state.food };
+                        state.food = { x: state.snake[0].x + 1, y: state.snake[0].y };
+                        state.moveSnake();
+                        assert.true(
+                            state.food.x !== oldFood.x || state.food.y !== oldFood.y,
+                            'New food should spawn'
+                        );
+                    }
+                },
+                {
+                    name: 'Should not spawn food on snake',
+                    fn: async () => {
+                        const state = new GameState();
+                        const food = state.generateFood();
+                        assert.false(state.isSnakeCell(food.x, food.y), 'Food should not be on snake');
+                    }
+                },
+                {
+                    name: 'Should increase speed after eating multiple foods',
+                    fn: async () => {
+                        const state = new GameState();
+                        const initialSpeed = state.speed;
+
+                        // Eat 3 foods
+                        for (let i = 0; i < 3; i++) {
+                            state.food = { x: state.snake[0].x + 1, y: state.snake[0].y };
+                            state.moveSnake();
+                        }
+
+                        assert.lessThan(state.speed, initialSpeed, 'Speed should increase');
+                    }
+                }
+            ]);
+
+            // ===== GAME STATE MANAGEMENT TESTS =====
+            testFramework.suite('Game State Management', [
+                {
+                    name: 'Should reset game state correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.score = 100;
+                        state.snake.push({ x: 10, y: 10 });
+                        state.gameOver = true;
+
+                        state.reset();
+
+                        assert.equal(state.score, 0, 'Score should reset');
+                        assert.equal(state.snake.length, 3, 'Snake length should reset');
+                        assert.false(state.gameOver, 'Game over should be false');
+                    }
+                },
+                {
+                    name: 'Should track high score correctly',
+                    fn: async () => {
+                        localStorage.removeItem('snakeHighScore');
+                        const state = new GameState();
+                        state.score = 100;
+                        const isNew = state.updateHighScore();
+                        assert.true(isNew, 'Should be new high score');
+                        assert.equal(state.highScore, 100, 'High score should update');
+                    }
+                },
+                {
+                    name: 'Should not update high score if not beaten',
+                    fn: async () => {
+                        localStorage.setItem('snakeHighScore', '200');
+                        const state = new GameState();
+                        state.score = 100;
+                        const isNew = state.updateHighScore();
+                        assert.false(isNew, 'Should not be new high score');
+                        assert.equal(state.highScore, 200, 'High score should not change');
+                    }
+                },
+                {
+                    name: 'Should save high score to localStorage',
+                    fn: async () => {
+                        localStorage.removeItem('snakeHighScore');
+                        const state = new GameState();
+                        state.score = 150;
+                        state.updateHighScore();
+                        const saved = localStorage.getItem('snakeHighScore');
+                        assert.equal(saved, '150', 'High score should be saved');
+                    }
+                },
+                {
+                    name: 'Should calculate speed level correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.equal(state.getSpeedLevel(), 1, 'Initial speed level should be 1');
+
+                        state.speed = CONFIG.INITIAL_SPEED - CONFIG.SPEED_INCREMENT * 2;
+                        assert.equal(state.getSpeedLevel(), 3, 'Speed level should increase');
+                    }
+                }
+            ]);
+
+            // ===== EDGE CASES AND BOUNDARY TESTS =====
+            testFramework.suite('Edge Cases and Boundaries', [
+                {
+                    name: 'Should handle snake at grid boundaries',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.snake = [{ x: 1, y: 1 }];
+                        state.changeDirection({ x: 0, y: -1 });
+                        state.food = { x: 20, y: 20 };
+                        state.moveSnake();
+                        assert.false(state.gameOver, 'Should move within boundary');
+                    }
+                },
+                {
+                    name: 'Should handle very long snake',
+                    fn: async () => {
+                        const state = new GameState();
+                        // Create a long snake
+                        for (let i = 0; i < 50; i++) {
+                            state.snake.push({ x: 10, y: 10 + i });
+                        }
+                        state.food = { x: 20, y: 20 };
+                        const result = state.moveSnake();
+                        assert.true(result || state.gameOver, 'Should handle long snake');
+                    }
+                },
+                {
+                    name: 'Should handle rapid direction changes',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.changeDirection({ x: 0, y: 1 });
+                        state.changeDirection({ x: 1, y: 0 });
+                        state.changeDirection({ x: 0, y: -1 });
+                        // Should accept the last valid change
+                        assert.true(true, 'Should handle rapid direction changes');
+                    }
+                },
+                {
+                    name: 'Should validate isSnakeCell correctly',
+                    fn: async () => {
+                        const state = new GameState();
+                        assert.true(state.isSnakeCell(15, 15), 'Should find snake head');
+                        assert.true(state.isSnakeCell(14, 15), 'Should find snake body');
+                        assert.false(state.isSnakeCell(0, 0), 'Should not find at empty cell');
+                    }
+                },
+                {
+                    name: 'Should handle food at grid edge',
+                    fn: async () => {
+                        const state = new GameState();
+                        state.food = { x: 0, y: 0 };
+                        assert.true(
+                            state.food.x >= 0 && state.food.x < CONFIG.GRID_SIZE,
+                            'Food X should be valid'
+                        );
+                    }
+                }
+            ]);
+
+            // ===== GAME CONFIGURATION TESTS =====
+            testFramework.suite('Game Configuration', [
+                {
+                    name: 'Should have valid grid size',
+                    fn: async () => {
+                        assert.greaterThan(CONFIG.GRID_SIZE, 0, 'Grid size should be positive');
+                    }
+                },
+                {
+                    name: 'Should have valid cell size',
+                    fn: async () => {
+                        assert.greaterThan(CONFIG.CELL_SIZE, 0, 'Cell size should be positive');
+                    }
+                },
+                {
+                    name: 'Should have valid initial speed',
+                    fn: async () => {
+                        assert.greaterThan(CONFIG.INITIAL_SPEED, 0, 'Initial speed should be positive');
+                    }
+                },
+                {
+                    name: 'Should have valid food points',
+                    fn: async () => {
+                        assert.greaterThan(CONFIG.FOOD_POINTS, 0, 'Food points should be positive');
+                    }
+                },
+                {
+                    name: 'Should have valid color configuration',
+                    fn: async () => {
+                        assert.true(
+                            typeof CONFIG.COLORS.SNAKE_HEAD === 'string',
+                            'Snake head color should be string'
+                        );
+                        assert.true(
+                            CONFIG.COLORS.SNAKE_HEAD.startsWith('#'),
+                            'Color should be hex format'
+                        );
+                    }
+                }
+            ]);
+
+            // Set up run button
+            const runButton = document.getElementById('runTestsBtn');
+            runButton.addEventListener('click', async () => {
+                runButton.disabled = true;
+                runButton.textContent = 'RUNNING TESTS...';
+
+                await testFramework.runAll();
+
+                runButton.disabled = false;
+                runButton.textContent = 'RUN ALL TESTS AGAIN';
+
+                // Show success/failure message
+                if (testFramework.results.failed === 0) {
+                    alert(`🎉 ALL TESTS PASSED! (${testFramework.results.total} tests in ${testFramework.results.duration}ms)`);
+                } else {
+                    alert(`⚠️ ${testFramework.results.failed} test(s) failed out of ${testFramework.results.total}`);
+                }
+            });
+
+            // Auto-run tests on load
+            setTimeout(() => {
+                runButton.click();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

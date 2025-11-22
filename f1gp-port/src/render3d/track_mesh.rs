@@ -1,9 +1,9 @@
 // Track Mesh Generator - Stage 6.2
 // Generates 3D mesh from track data
 
-use glam::{Vec2, Vec3};
+use crate::data::{SurfaceType, Track, TrackSection};
 use bytemuck::{Pod, Zeroable};
-use crate::data::{Track, TrackSection, SurfaceType};
+use glam::{Vec2, Vec3};
 
 /// Vertex for track rendering (with normals for lighting)
 #[repr(C)]
@@ -58,8 +58,7 @@ impl TrackMesh {
         // Generate mesh for each section
         let mut current_height = 0.0;
         for (i, section) in track.sections.iter().enumerate() {
-            let next_section = track.sections.get(i + 1)
-                .or_else(|| track.sections.first());
+            let next_section = track.sections.get(i + 1).or_else(|| track.sections.first());
 
             if let Some(next) = next_section {
                 Self::generate_section_mesh(
@@ -199,15 +198,39 @@ impl TrackMesh {
         let base_index = vertices.len() as u32;
 
         vertices.extend_from_slice(&[
-            TrackVertex::new(left_inner1 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(left_outer1 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(left_inner2 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(left_outer2 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
+            TrackVertex::new(
+                left_inner1 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                left_outer1 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                left_inner2 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                left_outer2 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
         ]);
 
         indices.extend_from_slice(&[
-            base_index, base_index + 1, base_index + 2,
-            base_index + 1, base_index + 3, base_index + 2,
+            base_index,
+            base_index + 1,
+            base_index + 2,
+            base_index + 1,
+            base_index + 3,
+            base_index + 2,
         ]);
 
         // Right kerb (similar)
@@ -219,15 +242,39 @@ impl TrackMesh {
         let base_index = vertices.len() as u32;
 
         vertices.extend_from_slice(&[
-            TrackVertex::new(right_inner1 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(right_outer1 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(right_inner2 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
-            TrackVertex::new(right_outer2 + Vec3::Y * kerb_height, Vec3::Y, Vec2::ZERO, kerb_color),
+            TrackVertex::new(
+                right_inner1 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                right_outer1 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                right_inner2 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
+            TrackVertex::new(
+                right_outer2 + Vec3::Y * kerb_height,
+                Vec3::Y,
+                Vec2::ZERO,
+                kerb_color,
+            ),
         ]);
 
         indices.extend_from_slice(&[
-            base_index, base_index + 1, base_index + 2,
-            base_index + 1, base_index + 3, base_index + 2,
+            base_index,
+            base_index + 1,
+            base_index + 2,
+            base_index + 1,
+            base_index + 3,
+            base_index + 2,
         ]);
     }
 
@@ -277,12 +324,12 @@ impl TrackMesh {
     /// Get color for surface type
     fn surface_color(surface: SurfaceType) -> [f32; 4] {
         match surface {
-            SurfaceType::Track => [0.3, 0.3, 0.35, 1.0],      // Dark gray asphalt
-            SurfaceType::Grass => [0.2, 0.6, 0.2, 1.0],       // Green
-            SurfaceType::Gravel => [0.7, 0.6, 0.4, 1.0],      // Tan/brown
-            SurfaceType::Kerb => [1.0, 0.2, 0.2, 1.0],        // Red
-            SurfaceType::PitLane => [0.4, 0.4, 0.45, 1.0],    // Lighter gray
-            SurfaceType::Wall => [0.6, 0.6, 0.6, 1.0],        // Light gray
+            SurfaceType::Track => [0.3, 0.3, 0.35, 1.0], // Dark gray asphalt
+            SurfaceType::Grass => [0.2, 0.6, 0.2, 1.0],  // Green
+            SurfaceType::Gravel => [0.7, 0.6, 0.4, 1.0], // Tan/brown
+            SurfaceType::Kerb => [1.0, 0.2, 0.2, 1.0],   // Red
+            SurfaceType::PitLane => [0.4, 0.4, 0.45, 1.0], // Lighter gray
+            SurfaceType::Wall => [0.6, 0.6, 0.6, 1.0],   // Light gray
         }
     }
 

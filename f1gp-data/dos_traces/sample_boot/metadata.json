@@ -1,0 +1,7 @@
+{
+  "run_id": "sample_boot",
+  "macro": "re/scripts/telemetry_macros/sample_boot.txt",
+  "binary": "f1gp-disasm/GP.EXE",
+  "dosbox_conf": "re/scripts/dosbox-x.conf",
+  "status": 0
+}

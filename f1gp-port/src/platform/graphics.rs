@@ -6,11 +6,12 @@ use anyhow::Result;
 use glam::Vec2;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color as SdlColor;
+use sdl2::pixels::{Color as SdlColor, PixelFormatEnum};
 use sdl2::rect::Rect as SdlRect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::EventPump;
+use std::collections::HashMap;
 use std::time::Duration;
 
 /// RGBA color
@@ -117,19 +118,32 @@ pub trait Renderer {
 
     /// Get viewport size
     fn viewport_size(&self) -> (u32, u32);
+
+    /// Draw raw RGBA image data (used for sprite atlases)
+    fn draw_rgba_region(
+        &mut self,
+        cache_key: &str,
+        pixels: &[u8],
+        image_width: u32,
+        image_height: u32,
+        src: Rect,
+        dst: Rect,
+        angle_deg: f32,
+    ) -> Result<()>;
 }
 
 /// SDL2-based renderer implementation
 pub struct SdlRenderer {
     canvas: Canvas<Window>,
     pub event_pump: EventPump,
+    texture_cache: HashMap<String, sdl2::render::Texture<'static>>,
 }
 
 impl SdlRenderer {
     /// Create a new SDL2 renderer with the specified window dimensions
     pub fn new(title: &str, width: u32, height: u32) -> Result<Self> {
-        let sdl_context = sdl2::init()
-            .map_err(|e| anyhow::anyhow!("Failed to initialize SDL2: {}", e))?;
+        let sdl_context =
+            sdl2::init().map_err(|e| anyhow::anyhow!("Failed to initialize SDL2: {}", e))?;
         let video_subsystem = sdl_context
             .video()
             .map_err(|e| anyhow::anyhow!("Failed to initialize video subsystem: {}", e))?;
@@ -152,7 +166,11 @@ impl SdlRenderer {
             .event_pump()
             .map_err(|e| anyhow::anyhow!("Failed to create event pump: {}", e))?;
 
-        Ok(Self { canvas, event_pump })
+        Ok(Self {
+            canvas,
+            event_pump,
+            texture_cache: HashMap::new(),
+        })
     }
 
     /// Poll for events and return true if should continue running
@@ -173,6 +191,23 @@ impl SdlRenderer {
     /// Delay for frame timing
     pub fn delay(&self, duration: Duration) {
         std::thread::sleep(duration);
+    }
+
+    fn create_texture(
+        &self,
+        pixels: &[u8],
+        width: u32,
+        height: u32,
+    ) -> sdl2::render::Texture<'static> {
+        let pitch = (width * 4) as usize;
+        let creator = self.canvas.texture_creator();
+        let mut texture = creator
+            .create_texture_static(PixelFormatEnum::RGBA32, width, height)
+            .expect("Failed to create texture");
+        texture
+            .update(None, pixels, pitch)
+            .expect("Failed to upload texture");
+        unsafe { std::mem::transmute::<_, sdl2::render::Texture<'static>>(texture) }
     }
 }
 
@@ -233,7 +268,13 @@ impl Renderer for SdlRenderer {
         let mut x_offset = 0.0;
 
         for ch in text.chars() {
-            draw_char(&mut self.canvas, ch, Vec2::new(position.x + x_offset, position.y), size, color)?;
+            draw_char(
+                &mut self.canvas,
+                ch,
+                Vec2::new(position.x + x_offset, position.y),
+                size,
+                color,
+            )?;
             x_offset += char_width + char_spacing;
         }
 
@@ -242,6 +283,54 @@ impl Renderer for SdlRenderer {
 
     fn viewport_size(&self) -> (u32, u32) {
         self.canvas.output_size().unwrap_or((800, 600))
+    }
+
+    fn draw_rgba_region(
+        &mut self,
+        cache_key: &str,
+        pixels: &[u8],
+        image_width: u32,
+        image_height: u32,
+        src: Rect,
+        dst: Rect,
+        angle_deg: f32,
+    ) -> Result<()> {
+        let key = cache_key.to_string();
+        if !self.texture_cache.contains_key(&key) {
+            let texture = self.create_texture(pixels, image_width, image_height);
+            self.texture_cache.insert(key.clone(), texture);
+        }
+        let texture = self
+            .texture_cache
+            .get_mut(&key)
+            .expect("texture should exist");
+
+        let src_rect = SdlRect::new(
+            src.x.round() as i32,
+            src.y.round() as i32,
+            src.width.max(1.0).round() as u32,
+            src.height.max(1.0).round() as u32,
+        );
+        let dst_rect = SdlRect::new(
+            dst.x.round() as i32,
+            dst.y.round() as i32,
+            dst.width.max(1.0).round() as u32,
+            dst.height.max(1.0).round() as u32,
+        );
+
+        self.canvas
+            .copy_ex(
+                texture,
+                Some(src_rect),
+                Some(dst_rect),
+                angle_deg as f64,
+                None,
+                false,
+                false,
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to draw texture: {}", e))?;
+
+        Ok(())
     }
 }
 
@@ -257,14 +346,30 @@ fn draw_circle_outline(canvas: &mut Canvas<Window>, center: Vec2, radius: f32) -
 
     while x <= y {
         // Draw 8 symmetric points
-        canvas.draw_point((cx + x, cy + y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx - x, cy + y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx + x, cy - y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx - x, cy - y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx + y, cy + x)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx - y, cy + x)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx + y, cy - x)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_point((cx - y, cy - x)).map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx + x, cy + y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx - x, cy + y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx + x, cy - y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx - x, cy - y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx + y, cy + x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx - y, cy + x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx + y, cy - x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_point((cx - y, cy - x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
 
         if d < 0 {
             d = d + 4 * x + 6;
@@ -290,10 +395,18 @@ fn draw_circle_filled(canvas: &mut Canvas<Window>, center: Vec2, radius: f32) ->
 
     while x <= y {
         // Draw horizontal lines for filled circle
-        canvas.draw_line((cx - x, cy + y), (cx + x, cy + y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_line((cx - x, cy - y), (cx + x, cy - y)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_line((cx - y, cy + x), (cx + y, cy + x)).map_err(|e| anyhow::anyhow!("{}", e))?;
-        canvas.draw_line((cx - y, cy - x), (cx + y, cy - x)).map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_line((cx - x, cy + y), (cx + x, cy + y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_line((cx - x, cy - y), (cx + x, cy - y))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_line((cx - y, cy + x), (cx + y, cy + x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        canvas
+            .draw_line((cx - y, cy - x), (cx + y, cy - x))
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
 
         if d < 0 {
             d = d + 4 * x + 6;
@@ -309,7 +422,13 @@ fn draw_circle_filled(canvas: &mut Canvas<Window>, center: Vec2, radius: f32) ->
 
 /// Draw a single character using simple pixel-based rendering
 /// Characters are rendered on a 5x7 pixel grid
-fn draw_char(canvas: &mut Canvas<Window>, ch: char, position: Vec2, size: f32, color: Color) -> Result<()> {
+fn draw_char(
+    canvas: &mut Canvas<Window>,
+    ch: char,
+    position: Vec2,
+    size: f32,
+    color: Color,
+) -> Result<()> {
     canvas.set_draw_color(SdlColor::from(color));
 
     let pixel_size = size / 7.0;
@@ -327,7 +446,9 @@ fn draw_char(canvas: &mut Canvas<Window>, ch: char, position: Vec2, size: f32, c
                     pixel_size.ceil() as u32,
                     pixel_size.ceil() as u32,
                 );
-                canvas.fill_rect(rect).map_err(|e| anyhow::anyhow!("{}", e))?;
+                canvas
+                    .fill_rect(rect)
+                    .map_err(|e| anyhow::anyhow!("{}", e))?;
             }
         }
     }
@@ -475,13 +596,7 @@ fn get_char_pattern(ch: char) -> [[bool; 5]; 7] {
             [true, false, false, false, false],
         ],
         ' ' => [
-            [false; 5],
-            [false; 5],
-            [false; 5],
-            [false; 5],
-            [false; 5],
-            [false; 5],
-            [false; 5],
+            [false; 5], [false; 5], [false; 5], [false; 5], [false; 5], [false; 5], [false; 5],
         ],
         // Letters A-Z (abbreviated set - add more as needed)
         'A' => [

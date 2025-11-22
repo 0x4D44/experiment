@@ -3,7 +3,7 @@
 //! A playable demo of the F1GP Modern Port with physics, rendering, and input.
 
 use anyhow::Result;
-use f1gp_port::data::track::{Track, TrackSection, RacingLine, AIBehavior, SurfaceType};
+use f1gp_port::data::track::{AIBehavior, RacingLine, SurfaceType, Track, TrackSection};
 use f1gp_port::game::GameState;
 use f1gp_port::platform::{Renderer, SdlRenderer};
 use glam::Vec3;
@@ -116,11 +116,7 @@ fn main() -> Result<()> {
     let total_time = start_time.elapsed();
     let avg_fps = frame_count as f64 / total_time.as_secs_f64();
     log::info!("Shutting down");
-    log::info!(
-        "Total frames: {}, Average FPS: {:.2}",
-        frame_count,
-        avg_fps
-    );
+    log::info!("Total frames: {}, Average FPS: {:.2}", frame_count, avg_fps);
 
     Ok(())
 }

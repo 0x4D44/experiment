@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "F1GP Symbol Artifact",
+  "type": "object",
+  "required": ["program_name", "language", "binary_hash", "generated_at", "functions"],
+  "properties": {
+    "program_name": {"type": "string"},
+    "language": {"type": "string"},
+    "binary_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "generated_at": {"type": "string"},
+    "functions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "entry_linear"],
+        "properties": {
+          "name": {"type": "string"},
+          "entry_linear": {"type": "string", "pattern": "^0x[0-9A-Fa-f]+$"},
+          "size_bytes": {"type": "integer", "minimum": 0},
+          "stack_frame_size": {"type": "integer"},
+          "subsystem": {"type": "string"},
+          "callers": {"type": "array", "items": {"type": "string"}},
+          "int_usage": {"type": "array", "items": {"type": "string"}},
+          "source_recording_id": {"type": "string"},
+          "notes": {"type": "string"}
+        }
+      }
+    }
+  }
+}

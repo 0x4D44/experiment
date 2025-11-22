@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Sokoban Puzzle Master - Championship Edition</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Main Menu Screen -->
+    <div id="mainMenu" class="screen active">
+        <div class="menu-container">
+            <h1 class="game-title">
+                <span class="title-icon">📦</span>
+                Sokoban Puzzle Master
+                <span class="title-icon">🎯</span>
+            </h1>
+            <div class="subtitle">Championship Edition</div>
+
+            <div class="menu-buttons">
+                <button class="menu-btn primary" onclick="game.showLevelSelect()">
+                    <span class="btn-icon">🎮</span>
+                    Play Game
+                </button>
+                <button class="menu-btn" onclick="game.showLevelEditor()">
+                    <span class="btn-icon">🔨</span>
+                    Level Editor
+                </button>
+                <button class="menu-btn" onclick="game.showStatistics()">
+                    <span class="btn-icon">📊</span>
+                    Statistics
+                </button>
+                <button class="menu-btn" onclick="game.showAchievements()">
+                    <span class="btn-icon">🏆</span>
+                    Achievements
+                </button>
+                <button class="menu-btn" onclick="game.showSettings()">
+                    <span class="btn-icon">⚙️</span>
+                    Settings
+                </button>
+                <button class="menu-btn" onclick="game.showHelp()">
+                    <span class="btn-icon">❓</span>
+                    How to Play
+                </button>
+            </div>
+
+            <div class="quick-stats">
+                <div class="stat-item">
+                    <div class="stat-label">Levels Completed</div>
+                    <div class="stat-value" id="totalCompleted">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total Moves</div>
+                    <div class="stat-value" id="totalMoves">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Play Time</div>
+                    <div class="stat-value" id="totalTime">0:00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Select Screen -->
+    <div id="levelSelect" class="screen">
+        <div class="level-select-container">
+            <h2>Select Level Pack</h2>
+
+            <div class="level-packs" id="levelPacks"></div>
+
+            <div class="level-grid" id="levelGrid"></div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="gameScreen" class="screen">
+        <div class="game-container">
+            <!-- Game Header -->
+            <div class="game-header">
+                <div class="header-left">
+                    <button class="icon-btn" onclick="game.showLevelSelect()" title="Back to Levels">🏠</button>
+                    <div class="level-info">
+                        <div class="level-title" id="levelTitle">Level 1</div>
+                        <div class="level-difficulty" id="levelDifficulty">Easy</div>
+                    </div>
+                </div>
+
+                <div class="header-center">
+                    <div class="stat-display">
+                        <span class="stat-icon">👣</span>
+                        <span id="moveCounter">0</span>
+                        <span class="stat-label">moves</span>
+                    </div>
+                    <div class="stat-display">
+                        <span class="stat-icon">⏱️</span>
+                        <span id="timer">0:00</span>
+                    </div>
+                    <div class="star-display" id="starDisplay">
+                        <span class="star">⭐</span>
+                        <span class="star">⭐</span>
+                        <span class="star">⭐</span>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <button class="icon-btn" onclick="game.undo()" title="Undo (U)">↶</button>
+                    <button class="icon-btn" onclick="game.redo()" title="Redo (R)">↷</button>
+                    <button class="icon-btn" onclick="game.resetLevel()" title="Reset (Shift+R)">🔄</button>
+                    <button class="icon-btn" onclick="game.showHint()" title="Hint (H)">💡</button>
+                </div>
+            </div>
+
+            <!-- Game Canvas -->
+            <div class="game-canvas-wrapper">
+                <canvas id="gameCanvas"></canvas>
+
+                <!-- Mobile Controls -->
+                <div class="mobile-controls" id="mobileControls">
+                    <div class="dpad">
+                        <button class="dpad-btn up" data-dir="up">▲</button>
+                        <button class="dpad-btn left" data-dir="left">◄</button>
+                        <button class="dpad-btn center">⊙</button>
+                        <button class="dpad-btn right" data-dir="right">►</button>
+                        <button class="dpad-btn down" data-dir="down">▼</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Footer -->
+            <div class="game-footer">
+                <div class="progress-info">
+                    Boxes on Target: <span id="boxesOnTarget">0</span> / <span id="totalBoxes">0</span>
+                </div>
+                <div class="optimal-moves">
+                    Optimal: <span id="optimalMoves">-</span> moves
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Level Editor Screen -->
+    <div id="levelEditor" class="screen">
+        <div class="editor-container">
+            <h2>Level Editor</h2>
+
+            <div class="editor-toolbar">
+                <div class="tool-group">
+                    <button class="tool-btn active" data-tool="wall">🧱 Wall</button>
+                    <button class="tool-btn" data-tool="floor">⬜ Floor</button>
+                    <button class="tool-btn" data-tool="box">📦 Box</button>
+                    <button class="tool-btn" data-tool="target">🎯 Target</button>
+                    <button class="tool-btn" data-tool="player">🤖 Player</button>
+                </div>
+
+                <div class="tool-group">
+                    <button class="tool-btn" onclick="editor.clearGrid()">🗑️ Clear</button>
+                    <button class="tool-btn" onclick="editor.testLevel()">▶️ Test</button>
+                    <button class="tool-btn" onclick="editor.saveLevel()">💾 Save</button>
+                    <button class="tool-btn" onclick="editor.loadLevel()">📁 Load</button>
+                    <button class="tool-btn" onclick="editor.exportLevel()">📤 Export</button>
+                </div>
+
+                <div class="tool-group">
+                    <label>Grid Size:</label>
+                    <input type="number" id="gridWidth" value="10" min="5" max="20">
+                    <span>×</span>
+                    <input type="number" id="gridHeight" value="10" min="5" max="20">
+                    <button class="tool-btn" onclick="editor.resizeGrid()">↔️ Resize</button>
+                </div>
+            </div>
+
+            <canvas id="editorCanvas"></canvas>
+
+            <div class="editor-info">
+                <p>Click to place tiles. Right-click to erase.</p>
+                <p><strong>Requirements:</strong> Exactly 1 player, at least 1 box, equal boxes and targets.</p>
+            </div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Statistics Screen -->
+    <div id="statistics" class="screen">
+        <div class="stats-container">
+            <h2>Statistics</h2>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-card-icon">✅</div>
+                    <div class="stat-card-value" id="statsCompleted">0</div>
+                    <div class="stat-card-label">Levels Completed</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon">👣</div>
+                    <div class="stat-card-value" id="statsMoves">0</div>
+                    <div class="stat-card-label">Total Moves</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon">⏱️</div>
+                    <div class="stat-card-value" id="statsTime">0:00</div>
+                    <div class="stat-card-label">Total Play Time</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon">⭐</div>
+                    <div class="stat-card-value" id="statsStars">0</div>
+                    <div class="stat-card-label">Total Stars</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon">🔄</div>
+                    <div class="stat-card-value" id="statsUndos">0</div>
+                    <div class="stat-card-label">Total Undos</div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-icon">🎯</div>
+                    <div class="stat-card-value" id="statsPerfect">0</div>
+                    <div class="stat-card-label">Perfect Clears</div>
+                </div>
+            </div>
+
+            <h3>Best Times</h3>
+            <div class="best-times" id="bestTimes"></div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Achievements Screen -->
+    <div id="achievements" class="screen">
+        <div class="achievements-container">
+            <h2>Achievements</h2>
+
+            <div class="achievements-grid" id="achievementsGrid"></div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Settings Screen -->
+    <div id="settings" class="screen">
+        <div class="settings-container">
+            <h2>Settings</h2>
+
+            <div class="settings-group">
+                <h3>Visual Theme</h3>
+                <div class="theme-buttons">
+                    <button class="theme-btn active" data-theme="classic" onclick="game.setTheme('classic')">
+                        <span class="theme-preview classic-preview"></span>
+                        Classic
+                    </button>
+                    <button class="theme-btn" data-theme="modern" onclick="game.setTheme('modern')">
+                        <span class="theme-preview modern-preview"></span>
+                        Modern
+                    </button>
+                    <button class="theme-btn" data-theme="pixel" onclick="game.setTheme('pixel')">
+                        <span class="theme-preview pixel-preview"></span>
+                        Pixel Art
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <h3>Audio</h3>
+                <label class="setting-item">
+                    <span>Sound Effects</span>
+                    <input type="checkbox" id="soundToggle" checked onchange="game.toggleSound()">
+                </label>
+                <label class="setting-item">
+                    <span>Volume</span>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="70" onchange="game.setVolume(this.value)">
+                </label>
+            </div>
+
+            <div class="settings-group">
+                <h3>Gameplay</h3>
+                <label class="setting-item">
+                    <span>Show Hints</span>
+                    <input type="checkbox" id="hintsToggle" checked onchange="game.toggleHints()">
+                </label>
+                <label class="setting-item">
+                    <span>Animations</span>
+                    <input type="checkbox" id="animationsToggle" checked onchange="game.toggleAnimations()">
+                </label>
+                <label class="setting-item">
+                    <span>Show Mobile Controls</span>
+                    <input type="checkbox" id="mobileToggle" onchange="game.toggleMobileControls()">
+                </label>
+            </div>
+
+            <div class="settings-group">
+                <h3>Data</h3>
+                <button class="danger-btn" onclick="game.resetProgress()">Reset All Progress</button>
+                <button class="menu-btn" onclick="game.exportProgress()">Export Progress</button>
+                <button class="menu-btn" onclick="game.importProgress()">Import Progress</button>
+            </div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Help Screen -->
+    <div id="help" class="screen">
+        <div class="help-container">
+            <h2>How to Play</h2>
+
+            <div class="help-section">
+                <h3>Objective</h3>
+                <p>Push all boxes (📦) onto the target locations (🎯) to complete each level. You can only push boxes, not pull them!</p>
+            </div>
+
+            <div class="help-section">
+                <h3>Controls</h3>
+                <div class="controls-grid">
+                    <div class="control-item">
+                        <kbd>↑ ↓ ← →</kbd>
+                        <span>Move player (Arrow Keys)</span>
+                    </div>
+                    <div class="control-item">
+                        <kbd>W A S D</kbd>
+                        <span>Move player (WASD)</span>
+                    </div>
+                    <div class="control-item">
+                        <kbd>U</kbd>
+                        <span>Undo move</span>
+                    </div>
+                    <div class="control-item">
+                        <kbd>Shift + R</kbd>
+                        <span>Redo move</span>
+                    </div>
+                    <div class="control-item">
+                        <kbd>R</kbd>
+                        <span>Reset level</span>
+                    </div>
+                    <div class="control-item">
+                        <kbd>H</kbd>
+                        <span>Show hint</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section">
+                <h3>Star Ratings</h3>
+                <p>Complete levels efficiently to earn stars:</p>
+                <ul>
+                    <li>⭐ Bronze: Complete the level</li>
+                    <li>⭐⭐ Silver: Complete within 150% of optimal moves</li>
+                    <li>⭐⭐⭐ Gold: Complete within 120% of optimal moves</li>
+                </ul>
+            </div>
+
+            <div class="help-section">
+                <h3>Tips</h3>
+                <ul>
+                    <li>Plan your moves carefully - boxes can't be pulled!</li>
+                    <li>Don't push boxes into corners unless there's a target there</li>
+                    <li>Use the undo button liberally to experiment</li>
+                    <li>Watch for patterns in level design</li>
+                    <li>Try to minimize your moves for better scores</li>
+                </ul>
+            </div>
+
+            <button class="back-btn" onclick="game.showMainMenu()">← Back to Menu</button>
+        </div>
+    </div>
+
+    <!-- Completion Modal -->
+    <div id="completionModal" class="modal">
+        <div class="modal-content celebration">
+            <div class="confetti" id="confetti"></div>
+
+            <h2>🎉 Level Complete! 🎉</h2>
+
+            <div class="completion-stars" id="completionStars"></div>
+
+            <div class="completion-stats">
+                <div class="completion-stat">
+                    <span class="completion-label">Moves:</span>
+                    <span class="completion-value" id="completionMoves">0</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-label">Time:</span>
+                    <span class="completion-value" id="completionTime">0:00</span>
+                </div>
+                <div class="completion-stat">
+                    <span class="completion-label">Optimal:</span>
+                    <span class="completion-value" id="completionOptimal">0</span>
+                </div>
+            </div>
+
+            <div class="new-achievement" id="newAchievement" style="display: none;">
+                <div class="achievement-unlock">
+                    🏆 Achievement Unlocked! 🏆
+                    <div class="achievement-name" id="achievementName"></div>
+                </div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="menu-btn primary" onclick="game.nextLevel()">Next Level →</button>
+                <button class="menu-btn" onclick="game.retryLevel()">Retry Level</button>
+                <button class="menu-btn" onclick="game.showLevelSelect()">Level Select</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="game.js"></script>
+    <script src="editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physics Sandbox - Interactive Physics Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: #0a0e27;
+            color: white;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Control Panel */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(26, 30, 55, 0.95);
+            border: 2px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            min-width: 250px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-panel h2 {
+            color: #6496ff;
+            margin-bottom: 15px;
+            font-size: 20px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+        }
+
+        .control-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(100, 150, 255, 0.2);
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .control-section h3 {
+            color: #8ab4ff;
+            margin-bottom: 10px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .tool-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .tool-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(100, 150, 255, 0.2);
+            border: 2px solid rgba(100, 150, 255, 0.4);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .tool-btn:hover {
+            background: rgba(100, 150, 255, 0.3);
+            border-color: rgba(100, 150, 255, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .tool-btn.active {
+            background: rgba(100, 150, 255, 0.5);
+            border-color: #6496ff;
+            box-shadow: 0 0 20px rgba(100, 150, 255, 0.4);
+        }
+
+        .slider-control {
+            margin-top: 10px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #8ab4ff;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: rgba(100, 150, 255, 0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6496ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: #8ab4ff;
+            box-shadow: 0 0 15px rgba(100, 150, 255, 0.7);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #6496ff;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 10px rgba(100, 150, 255, 0.5);
+        }
+
+        .control-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: rgba(100, 150, 255, 0.2);
+            border: 2px solid rgba(100, 150, 255, 0.4);
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .control-btn:hover {
+            background: rgba(100, 150, 255, 0.3);
+            border-color: rgba(100, 150, 255, 0.6);
+            transform: translateX(5px);
+        }
+
+        .control-btn.active {
+            background: rgba(100, 255, 150, 0.3);
+            border-color: rgba(100, 255, 150, 0.6);
+        }
+
+        .control-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        .control-btn.danger {
+            background: rgba(255, 100, 100, 0.2);
+            border-color: rgba(255, 100, 100, 0.4);
+        }
+
+        .control-btn.danger:hover {
+            background: rgba(255, 100, 100, 0.3);
+            border-color: rgba(255, 100, 100, 0.6);
+        }
+
+        .control-btn.special {
+            background: rgba(255, 200, 100, 0.2);
+            border-color: rgba(255, 200, 100, 0.4);
+        }
+
+        .control-btn.special:hover {
+            background: rgba(255, 200, 100, 0.3);
+            border-color: rgba(255, 200, 100, 0.6);
+        }
+
+        /* Title */
+        .title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(26, 30, 55, 0.95);
+            border: 2px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title h1 {
+            font-size: 28px;
+            color: #6496ff;
+            text-shadow: 0 0 20px rgba(100, 150, 255, 0.5);
+            margin: 0;
+        }
+
+        .title p {
+            font-size: 12px;
+            color: #8ab4ff;
+            margin: 5px 0 0 0;
+        }
+
+        /* Keyboard shortcuts hint */
+        .shortcuts {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(26, 30, 55, 0.95);
+            border: 2px solid rgba(100, 150, 255, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            backdrop-filter: blur(10px);
+            font-size: 12px;
+            max-width: 250px;
+        }
+
+        .shortcuts h3 {
+            color: #6496ff;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            color: #8ab4ff;
+        }
+
+        .key {
+            background: rgba(100, 150, 255, 0.3);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* Loading animation */
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .loading {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .control-panel {
+                top: 10px;
+                right: 10px;
+                padding: 15px;
+                min-width: 200px;
+            }
+
+            .title {
+                top: 10px;
+                left: 10px;
+                padding: 10px 15px;
+            }
+
+            .title h1 {
+                font-size: 20px;
+            }
+
+            .shortcuts {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Title -->
+    <div class="title">
+        <h1>Physics Sandbox</h1>
+        <p>Interactive Physics Simulation</p>
+    </div>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <h2>Controls</h2>
+
+        <!-- Tool Selection -->
+        <div class="control-section">
+            <h3>Select Tool</h3>
+            <div class="tool-buttons">
+                <button id="tool-circle" class="tool-btn active">Circle</button>
+                <button id="tool-box" class="tool-btn">Box</button>
+            </div>
+        </div>
+
+        <!-- Size Control -->
+        <div class="control-section">
+            <h3>Object Size</h3>
+            <div class="slider-control">
+                <div class="slider-label">
+                    <span>Size:</span>
+                    <span id="size-value">30</span>
+                </div>
+                <input type="range" id="size-slider" min="10" max="80" value="30">
+            </div>
+        </div>
+
+        <!-- Physics Controls -->
+        <div class="control-section">
+            <h3>Physics</h3>
+            <button id="btn-gravity" class="control-btn active">Gravity: ON</button>
+            <button id="btn-trails" class="control-btn active">Trails: ON</button>
+            <button id="btn-pause" class="control-btn">Pause</button>
+        </div>
+
+        <!-- Actions -->
+        <div class="control-section">
+            <h3>Actions</h3>
+            <button id="btn-spawn-rain" class="control-btn special">Spawn Rain</button>
+            <button id="btn-clear" class="control-btn danger">Clear All</button>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts -->
+    <div class="shortcuts">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="shortcut-item">
+            <span>Toggle Gravity</span>
+            <span class="key">G</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Toggle Trails</span>
+            <span class="key">T</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Pause/Resume</span>
+            <span class="key">Space</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Clear All</span>
+            <span class="key">C</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Spawn Rain</span>
+            <span class="key">R</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Circle Tool</span>
+            <span class="key">1</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Box Tool</span>
+            <span class="key">2</span>
+        </div>
+    </div>
+
+    <!-- Canvas -->
+    <canvas id="canvas"></canvas>
+
+    <!-- Scripts -->
+    <script src="physics-engine.js"></script>
+    <script src="renderer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

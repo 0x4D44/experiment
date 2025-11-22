@@ -1,0 +1,16 @@
+[package]
+name = "rust-connect-four"
+version = "1.0.0"
+edition = "2021"
+authors = ["Connect Four Challenge"]
+description = "An amazing Connect Four game with AI opponent"
+
+[dependencies]
+crossterm = "0.27"
+rand = "0.8"
+
+[dev-dependencies]
+
+[[bin]]
+name = "connect-four"
+path = "src/main.rs"

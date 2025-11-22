@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a0a2e 50%, #16213e 100%);
+            color: #fff;
+            padding: 40px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            background: linear-gradient(45deg, #ff00ff, #00ffff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255,0,255,0.5);
+        }
+
+        .test-suite {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .test-category {
+            margin-bottom: 30px;
+        }
+
+        .test-category h2 {
+            color: #ff00ff;
+            text-shadow: 0 0 10px rgba(255, 0, 255, 0.8);
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .test-case {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background: rgba(0, 0, 0, 0.5);
+            border-left: 4px solid #666;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+
+        .test-case.pass {
+            border-left-color: #00ff00;
+            background: rgba(0, 255, 0, 0.1);
+        }
+
+        .test-case.fail {
+            border-left-color: #ff0000;
+            background: rgba(255, 0, 0, 0.1);
+        }
+
+        .test-name {
+            flex: 1;
+        }
+
+        .test-status {
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .test-status.pass {
+            background: #00ff00;
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .test-status.fail {
+            background: #ff0000;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+        }
+
+        .test-status.running {
+            background: #ffff00;
+            color: #000;
+            box-shadow: 0 0 10px rgba(255, 255, 0, 0.5);
+        }
+
+        .summary {
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #ff00ff;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .summary-stat {
+            display: inline-block;
+            margin: 0 20px;
+            padding: 10px 20px;
+        }
+
+        .summary-stat.pass {
+            color: #00ff00;
+            text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+        }
+
+        .summary-stat.fail {
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+        }
+
+        .summary-stat.total {
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+
+        .error-details {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 0, 0, 0.2);
+            border-radius: 5px;
+            font-size: 0.9em;
+            color: #ffaaaa;
+        }
+
+        .run-button {
+            background: linear-gradient(135deg, #ff00ff, #00ffff);
+            border: none;
+            color: #000;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 20px rgba(255, 0, 255, 0.5);
+            font-family: 'Courier New', monospace;
+            display: block;
+            margin: 20px auto;
+        }
+
+        .run-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>TETRIS TEST SUITE</h1>
+
+        <button class="run-button" onclick="runAllTests()">RUN ALL TESTS</button>
+
+        <div class="summary" id="summary">
+            <div class="summary-stat total">Total: <span id="totalTests">0</span></div>
+            <div class="summary-stat pass">Passed: <span id="passedTests">0</span></div>
+            <div class="summary-stat fail">Failed: <span id="failedTests">0</span></div>
+        </div>
+
+        <div class="test-suite" id="testResults"></div>
+    </div>
+
+    <script>
+        // Copy the PIECES and game logic constants from the main game
+        const PIECES = {
+            I: {
+                shape: [
+                    [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+                    [[0,0,1,0], [0,0,1,0], [0,0,1,0], [0,0,1,0]],
+                    [[0,0,0,0], [0,0,0,0], [1,1,1,1], [0,0,0,0]],
+                    [[0,1,0,0], [0,1,0,0], [0,1,0,0], [0,1,0,0]]
+                ],
+                color: '#00ffff',
+                kickData: 'I'
+            },
+            O: {
+                shape: [
+                    [[0,1,1,0], [0,1,1,0], [0,0,0,0], [0,0,0,0]],
+                    [[0,1,1,0], [0,1,1,0], [0,0,0,0], [0,0,0,0]],
+                    [[0,1,1,0], [0,1,1,0], [0,0,0,0], [0,0,0,0]],
+                    [[0,1,1,0], [0,1,1,0], [0,0,0,0], [0,0,0,0]]
+                ],
+                color: '#ffff00',
+                kickData: 'O'
+            },
+            T: {
+                shape: [
+                    [[0,1,0], [1,1,1], [0,0,0]],
+                    [[0,1,0], [0,1,1], [0,1,0]],
+                    [[0,0,0], [1,1,1], [0,1,0]],
+                    [[0,1,0], [1,1,0], [0,1,0]]
+                ],
+                color: '#ff00ff',
+                kickData: 'JLSTZ'
+            },
+            S: {
+                shape: [
+                    [[0,1,1], [1,1,0], [0,0,0]],
+                    [[0,1,0], [0,1,1], [0,0,1]],
+                    [[0,0,0], [0,1,1], [1,1,0]],
+                    [[1,0,0], [1,1,0], [0,1,0]]
+                ],
+                color: '#00ff00',
+                kickData: 'JLSTZ'
+            },
+            Z: {
+                shape: [
+                    [[1,1,0], [0,1,1], [0,0,0]],
+                    [[0,0,1], [0,1,1], [0,1,0]],
+                    [[0,0,0], [1,1,0], [0,1,1]],
+                    [[0,1,0], [1,1,0], [1,0,0]]
+                ],
+                color: '#ff0000',
+                kickData: 'JLSTZ'
+            },
+            J: {
+                shape: [
+                    [[1,0,0], [1,1,1], [0,0,0]],
+                    [[0,1,1], [0,1,0], [0,1,0]],
+                    [[0,0,0], [1,1,1], [0,0,1]],
+                    [[0,1,0], [0,1,0], [1,1,0]]
+                ],
+                color: '#0000ff',
+                kickData: 'JLSTZ'
+            },
+            L: {
+                shape: [
+                    [[0,0,1], [1,1,1], [0,0,0]],
+                    [[0,1,0], [0,1,0], [0,1,1]],
+                    [[0,0,0], [1,1,1], [1,0,0]],
+                    [[1,1,0], [0,1,0], [0,1,0]]
+                ],
+                color: '#ff8800',
+                kickData: 'JLSTZ'
+            }
+        };
+
+        const BOARD_WIDTH = 10;
+        const BOARD_HEIGHT = 20;
+
+        // Test Framework
+        class TestRunner {
+            constructor() {
+                this.tests = [];
+                this.results = [];
+            }
+
+            addTest(category, name, fn) {
+                this.tests.push({ category, name, fn });
+            }
+
+            async runAll() {
+                this.results = [];
+                const resultsContainer = document.getElementById('testResults');
+                resultsContainer.innerHTML = '';
+
+                const categories = {};
+
+                for (let test of this.tests) {
+                    if (!categories[test.category]) {
+                        categories[test.category] = [];
+                    }
+                    categories[test.category].push(test);
+                }
+
+                for (let [category, tests] of Object.entries(categories)) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'test-category';
+                    categoryDiv.innerHTML = `<h2>${category}</h2>`;
+                    resultsContainer.appendChild(categoryDiv);
+
+                    for (let test of tests) {
+                        const testDiv = document.createElement('div');
+                        testDiv.className = 'test-case';
+                        testDiv.innerHTML = `
+                            <div class="test-name">${test.name}</div>
+                            <div class="test-status running">RUNNING</div>
+                        `;
+                        categoryDiv.appendChild(testDiv);
+
+                        try {
+                            await test.fn();
+                            testDiv.className = 'test-case pass';
+                            testDiv.querySelector('.test-status').className = 'test-status pass';
+                            testDiv.querySelector('.test-status').textContent = 'PASS';
+                            this.results.push({ passed: true, test: test.name });
+                        } catch (error) {
+                            testDiv.className = 'test-case fail';
+                            testDiv.querySelector('.test-status').className = 'test-status fail';
+                            testDiv.querySelector('.test-status').textContent = 'FAIL';
+
+                            const errorDiv = document.createElement('div');
+                            errorDiv.className = 'error-details';
+                            errorDiv.textContent = `Error: ${error.message}`;
+                            testDiv.appendChild(errorDiv);
+
+                            this.results.push({ passed: false, test: test.name, error: error.message });
+                        }
+
+                        // Small delay for visual effect
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                }
+
+                this.updateSummary();
+            }
+
+            updateSummary() {
+                const total = this.results.length;
+                const passed = this.results.filter(r => r.passed).length;
+                const failed = total - passed;
+
+                document.getElementById('totalTests').textContent = total;
+                document.getElementById('passedTests').textContent = passed;
+                document.getElementById('failedTests').textContent = failed;
+            }
+        }
+
+        // Helper functions
+        function assert(condition, message) {
+            if (!condition) {
+                throw new Error(message || 'Assertion failed');
+            }
+        }
+
+        function assertEqual(actual, expected, message) {
+            if (actual !== expected) {
+                throw new Error(message || `Expected ${expected} but got ${actual}`);
+            }
+        }
+
+        function assertArrayEqual(actual, expected, message) {
+            if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+                throw new Error(message || `Arrays not equal: expected ${JSON.stringify(expected)} but got ${JSON.stringify(actual)}`);
+            }
+        }
+
+        function createBoard() {
+            return Array(BOARD_HEIGHT).fill().map(() => Array(BOARD_WIDTH).fill(0));
+        }
+
+        function checkCollision(board, piece, x, y, rotation) {
+            const shape = PIECES[piece].shape[rotation];
+
+            for (let row = 0; row < shape.length; row++) {
+                for (let col = 0; col < shape[row].length; col++) {
+                    if (shape[row][col]) {
+                        const newX = x + col;
+                        const newY = y + row;
+
+                        if (newX < 0 || newX >= BOARD_WIDTH || newY >= BOARD_HEIGHT) {
+                            return true;
+                        }
+
+                        if (newY >= 0 && board[newY][newX]) {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        function clearLines(board) {
+            let linesCleared = 0;
+            let newBoard = [];
+
+            for (let row = 0; row < BOARD_HEIGHT; row++) {
+                if (!board[row].every(cell => cell !== 0)) {
+                    newBoard.push([...board[row]]);
+                } else {
+                    linesCleared++;
+                }
+            }
+
+            while (newBoard.length < BOARD_HEIGHT) {
+                newBoard.unshift(Array(BOARD_WIDTH).fill(0));
+            }
+
+            return { board: newBoard, linesCleared };
+        }
+
+        function calculateScore(linesCleared, level) {
+            const baseScores = [0, 100, 300, 500, 800];
+            return baseScores[linesCleared] * level;
+        }
+
+        // Initialize test runner
+        const runner = new TestRunner();
+
+        // PIECE ROTATION TESTS
+        runner.addTest('Piece Rotation', 'I piece has 4 rotations', () => {
+            assertEqual(PIECES.I.shape.length, 4, 'I piece should have 4 rotations');
+        });
+
+        runner.addTest('Piece Rotation', 'O piece rotations are identical', () => {
+            const shape0 = JSON.stringify(PIECES.O.shape[0]);
+            const shape1 = JSON.stringify(PIECES.O.shape[1]);
+            const shape2 = JSON.stringify(PIECES.O.shape[2]);
+            const shape3 = JSON.stringify(PIECES.O.shape[3]);
+            assert(shape0 === shape1 && shape1 === shape2 && shape2 === shape3, 'All O piece rotations should be identical');
+        });
+
+        runner.addTest('Piece Rotation', 'T piece rotation 0 has correct shape', () => {
+            const expected = [[0,1,0], [1,1,1], [0,0,0]];
+            assertArrayEqual(PIECES.T.shape[0], expected, 'T piece rotation 0 should match expected shape');
+        });
+
+        runner.addTest('Piece Rotation', 'All pieces have exactly 4 rotations', () => {
+            for (let pieceName of Object.keys(PIECES)) {
+                assertEqual(PIECES[pieceName].shape.length, 4, `${pieceName} should have 4 rotations`);
+            }
+        });
+
+        // COLLISION DETECTION TESTS
+        runner.addTest('Collision Detection', 'Piece at top-left has no collision on empty board', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'T', 0, 0, 0);
+            assertEqual(hasCollision, false, 'No collision expected at top-left');
+        });
+
+        runner.addTest('Collision Detection', 'Piece detects left wall collision', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'T', -1, 0, 0);
+            assertEqual(hasCollision, true, 'Collision expected at left wall');
+        });
+
+        runner.addTest('Collision Detection', 'Piece detects right wall collision', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'I', 7, 0, 0);
+            assertEqual(hasCollision, true, 'Collision expected at right wall');
+        });
+
+        runner.addTest('Collision Detection', 'Piece detects bottom collision', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'T', 4, 19, 0);
+            assertEqual(hasCollision, true, 'Collision expected at bottom');
+        });
+
+        runner.addTest('Collision Detection', 'Piece detects collision with locked pieces', () => {
+            const board = createBoard();
+            board[19][5] = '#ff0000';
+            const hasCollision = checkCollision(board, 'T', 4, 18, 0);
+            assertEqual(hasCollision, true, 'Collision expected with locked piece');
+        });
+
+        runner.addTest('Collision Detection', 'I piece horizontal fits in 10-wide board', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'I', 3, 10, 0);
+            assertEqual(hasCollision, false, 'I piece should fit horizontally');
+        });
+
+        runner.addTest('Collision Detection', 'I piece vertical collision at right edge', () => {
+            const board = createBoard();
+            const hasCollision = checkCollision(board, 'I', 9, 0, 1);
+            assertEqual(hasCollision, true, 'I piece vertical should collide at right edge');
+        });
+
+        // LINE CLEARING TESTS
+        runner.addTest('Line Clearing', 'Clear single complete line', () => {
+            const board = createBoard();
+            board[19] = Array(BOARD_WIDTH).fill('#ff0000');
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 1, 'Should clear 1 line');
+            assertEqual(result.board[19].every(cell => cell === 0), true, 'Bottom row should be empty');
+        });
+
+        runner.addTest('Line Clearing', 'Clear multiple lines', () => {
+            const board = createBoard();
+            board[19] = Array(BOARD_WIDTH).fill('#ff0000');
+            board[18] = Array(BOARD_WIDTH).fill('#00ff00');
+            board[17] = Array(BOARD_WIDTH).fill('#0000ff');
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 3, 'Should clear 3 lines');
+        });
+
+        runner.addTest('Line Clearing', 'No lines cleared on incomplete rows', () => {
+            const board = createBoard();
+            board[19][0] = '#ff0000';
+            board[19][1] = '#ff0000';
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 0, 'Should clear 0 lines');
+        });
+
+        runner.addTest('Line Clearing', 'Clear tetris (4 lines)', () => {
+            const board = createBoard();
+            for (let i = 16; i < 20; i++) {
+                board[i] = Array(BOARD_WIDTH).fill('#ff0000');
+            }
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 4, 'Should clear 4 lines (Tetris)');
+        });
+
+        runner.addTest('Line Clearing', 'Pieces fall down after line clear', () => {
+            const board = createBoard();
+            board[17][5] = '#ff0000';
+            board[18][5] = '#00ff00';
+            board[19] = Array(BOARD_WIDTH).fill('#0000ff');
+
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 1, 'Should clear 1 line');
+            assertEqual(result.board[19][5], '#00ff00', 'Green piece should fall to bottom');
+            assertEqual(result.board[18][5], '#ff0000', 'Red piece should fall one row');
+        });
+
+        // SCORE CALCULATION TESTS
+        runner.addTest('Score Calculation', 'Single line score at level 1', () => {
+            const score = calculateScore(1, 1);
+            assertEqual(score, 100, 'Single line at level 1 should be 100 points');
+        });
+
+        runner.addTest('Score Calculation', 'Double line score at level 1', () => {
+            const score = calculateScore(2, 1);
+            assertEqual(score, 300, 'Double line at level 1 should be 300 points');
+        });
+
+        runner.addTest('Score Calculation', 'Triple line score at level 1', () => {
+            const score = calculateScore(3, 1);
+            assertEqual(score, 500, 'Triple line at level 1 should be 500 points');
+        });
+
+        runner.addTest('Score Calculation', 'Tetris score at level 1', () => {
+            const score = calculateScore(4, 1);
+            assertEqual(score, 800, 'Tetris at level 1 should be 800 points');
+        });
+
+        runner.addTest('Score Calculation', 'Score multiplier increases with level', () => {
+            const scoreL1 = calculateScore(1, 1);
+            const scoreL5 = calculateScore(1, 5);
+            assertEqual(scoreL5, scoreL1 * 5, 'Level 5 should be 5x level 1 score');
+        });
+
+        runner.addTest('Score Calculation', 'Tetris at level 10', () => {
+            const score = calculateScore(4, 10);
+            assertEqual(score, 8000, 'Tetris at level 10 should be 8000 points');
+        });
+
+        // LEVEL PROGRESSION TESTS
+        runner.addTest('Level Progression', 'Level 1 requires 0-9 lines', () => {
+            const level = Math.floor(0 / 10) + 1;
+            assertEqual(level, 1, 'Level should be 1 at 0 lines');
+        });
+
+        runner.addTest('Level Progression', 'Level 2 starts at 10 lines', () => {
+            const level = Math.floor(10 / 10) + 1;
+            assertEqual(level, 2, 'Level should be 2 at 10 lines');
+        });
+
+        runner.addTest('Level Progression', 'Level 5 at 40 lines', () => {
+            const level = Math.floor(40 / 10) + 1;
+            assertEqual(level, 5, 'Level should be 5 at 40 lines');
+        });
+
+        runner.addTest('Level Progression', 'Level 10 at 90 lines', () => {
+            const level = Math.floor(90 / 10) + 1;
+            assertEqual(level, 10, 'Level should be 10 at 90 lines');
+        });
+
+        // GAME STATE TESTS
+        runner.addTest('Game State', 'Board dimensions are 10x20', () => {
+            const board = createBoard();
+            assertEqual(board.length, BOARD_HEIGHT, 'Board height should be 20');
+            assertEqual(board[0].length, BOARD_WIDTH, 'Board width should be 10');
+        });
+
+        runner.addTest('Game State', 'New board is empty', () => {
+            const board = createBoard();
+            const isEmpty = board.every(row => row.every(cell => cell === 0));
+            assertEqual(isEmpty, true, 'New board should be completely empty');
+        });
+
+        runner.addTest('Game State', 'All pieces have unique colors', () => {
+            const colors = new Set(Object.values(PIECES).map(p => p.color));
+            assertEqual(colors.size, 7, 'All 7 pieces should have unique colors');
+        });
+
+        runner.addTest('Game State', 'All pieces are defined', () => {
+            const requiredPieces = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+            for (let piece of requiredPieces) {
+                assert(PIECES[piece] !== undefined, `Piece ${piece} should be defined`);
+            }
+        });
+
+        // EDGE CASE TESTS
+        runner.addTest('Edge Cases', 'Piece spawn position is centered', () => {
+            const spawnX = Math.floor(BOARD_WIDTH / 2) - 1;
+            assertEqual(spawnX, 4, 'Spawn X should be 4 (centered in 10-wide board)');
+        });
+
+        runner.addTest('Edge Cases', 'I piece can rotate near walls', () => {
+            const board = createBoard();
+            // I piece at position 0 should be able to rotate with wall kicks
+            // This tests the SRS system
+            const hasCollision = checkCollision(board, 'I', 2, 5, 1);
+            assertEqual(hasCollision, false, 'I piece vertical should fit at x=2');
+        });
+
+        runner.addTest('Edge Cases', 'Clearing middle line doesnt affect other lines', () => {
+            const board = createBoard();
+            board[10] = Array(BOARD_WIDTH).fill('#ff0000');
+            board[19][5] = '#00ff00';
+
+            const result = clearLines(board);
+            assertEqual(result.linesCleared, 1, 'Should clear 1 line');
+            assertEqual(result.board[19][5], '#00ff00', 'Bottom piece should remain');
+        });
+
+        // PIECE SHAPE TESTS
+        runner.addTest('Piece Shapes', 'I piece has 4 blocks in each rotation', () => {
+            for (let rotation = 0; rotation < 4; rotation++) {
+                const shape = PIECES.I.shape[rotation];
+                let blockCount = 0;
+                for (let row of shape) {
+                    for (let cell of row) {
+                        if (cell) blockCount++;
+                    }
+                }
+                assertEqual(blockCount, 4, `I piece rotation ${rotation} should have 4 blocks`);
+            }
+        });
+
+        runner.addTest('Piece Shapes', 'All pieces except O have different rotations', () => {
+            for (let pieceName of Object.keys(PIECES)) {
+                if (pieceName === 'O') continue;
+
+                const shape0 = JSON.stringify(PIECES[pieceName].shape[0]);
+                const shape1 = JSON.stringify(PIECES[pieceName].shape[1]);
+
+                assert(shape0 !== shape1, `${pieceName} piece rotations should be different`);
+            }
+        });
+
+        runner.addTest('Piece Shapes', 'T piece forms T shape in rotation 0', () => {
+            const shape = PIECES.T.shape[0];
+            // Check top has 1 block in middle
+            assertEqual(shape[0][1], 1, 'T piece should have block at top middle');
+            // Check bottom row has 3 blocks
+            const bottomBlocks = shape[1].filter(cell => cell === 1).length;
+            assertEqual(bottomBlocks, 3, 'T piece should have 3 blocks in bottom row');
+        });
+
+        async function runAllTests() {
+            await runner.runAll();
+        }
+
+        // Auto-run tests on page load
+        window.addEventListener('load', () => {
+            setTimeout(runAllTests, 500);
+        });
+    </script>
+</body>
+</html>

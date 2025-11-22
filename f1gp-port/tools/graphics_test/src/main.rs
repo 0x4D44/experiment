@@ -64,20 +64,12 @@ fn main() -> Result<()> {
     let total_time = start_time.elapsed();
     let avg_fps = frame_count as f64 / total_time.as_secs_f64();
     log::info!("Shutting down");
-    log::info!(
-        "Total frames: {}, Average FPS: {:.2}",
-        frame_count,
-        avg_fps
-    );
+    log::info!("Total frames: {}, Average FPS: {:.2}", frame_count, avg_fps);
 
     Ok(())
 }
 
-fn draw_test_shapes(
-    renderer: &mut impl Renderer,
-    _camera: &Camera,
-    frame: u64,
-) -> Result<()> {
+fn draw_test_shapes(renderer: &mut impl Renderer, _camera: &Camera, frame: u64) -> Result<()> {
     let (width, height) = renderer.viewport_size();
     let center_x = width as f32 / 2.0;
     let center_y = height as f32 / 2.0;
@@ -126,13 +118,10 @@ fn draw_test_shapes(
 
     for i in 0..star_points {
         let angle1 = rotation + (i as f32 * 2.0 * std::f32::consts::PI / star_points as f32);
-        let angle2 = rotation
-            + ((i + 2) as f32 * 2.0 * std::f32::consts::PI / star_points as f32);
+        let angle2 = rotation + ((i + 2) as f32 * 2.0 * std::f32::consts::PI / star_points as f32);
 
-        let p1 = star_center
-            + Vec2::new(angle1.cos() * star_radius, angle1.sin() * star_radius);
-        let p2 = star_center
-            + Vec2::new(angle2.cos() * star_radius, angle2.sin() * star_radius);
+        let p1 = star_center + Vec2::new(angle1.cos() * star_radius, angle1.sin() * star_radius);
+        let p2 = star_center + Vec2::new(angle2.cos() * star_radius, angle2.sin() * star_radius);
 
         renderer.draw_line(p1, p2, Color::WHITE)?;
     }
