@@ -10,6 +10,7 @@ pub mod qualifying;
 pub mod session;
 pub mod state;
 pub mod weather;
+pub mod weekend;
 
 pub use championship::{Championship, DriverStanding, RaceResult, create_1991_season};
 pub use damage::{CarComponent, CollisionType, DamageLevel, DamageState, FailureType};
@@ -19,3 +20,4 @@ pub use qualifying::{QualifyingSession, QualifyingState, QualifyingResult, creat
 pub use session::{DriverResult, RaceFlag, RaceSession, RaceState};
 pub use state::{GameMode, GameState};
 pub use weather::{WeatherCondition, WeatherSystem};
+pub use weekend::{RaceWeekend, WeekendEntry, WeekendSession, WeekendState, create_weekend};
