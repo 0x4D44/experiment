@@ -82,7 +82,7 @@ def main():
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--timeout", type=int, default=300, help="Timeout seconds for DOSBox-X run")
     args = parser.parse_args()
-    capture(args.run_id, Path(args.macro), args.dry_run, args.timeout)
+    capture(args.run_id, Path(args.macro).resolve(), args.dry_run, args.timeout)
 
 
 if __name__ == "__main__":
