@@ -3,8 +3,6 @@
 //! Handles timed qualifying sessions where drivers compete for grid positions.
 //! F1GP uses a single 1-hour qualifying session where each driver can do unlimited laps.
 
-use std::collections::HashMap;
-
 /// Qualifying session state
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum QualifyingState {

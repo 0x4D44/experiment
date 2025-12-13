@@ -3,11 +3,10 @@
 //! Ties together Practice, Qualifying, and Race sessions for a complete F1 weekend.
 //! Manages the progression between sessions and carries over results.
 
-use super::championship::Championship;
 use super::damage::DamageState;
 use super::pitstop::{PitStopManager, RaceStrategy, TireCompound};
-use super::qualifying::{QualifyingSession, QualifyingState};
-use super::session::{RaceSession, RaceState};
+use super::qualifying::QualifyingSession;
+use super::session::RaceSession;
 
 /// Race weekend session type
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -267,8 +266,8 @@ impl RaceWeekend {
             }
             WeekendSession::Race => {
                 // Create race session with grid from qualifying
-                let grid = self.get_grid_order();
-                let mut race = RaceSession::new(self.entries.len(), self.race_laps);
+                let _grid = self.get_grid_order();
+                let race = RaceSession::new(self.entries.len(), self.race_laps);
 
                 // Set strategies based on race length
                 for entry in &mut self.entries {

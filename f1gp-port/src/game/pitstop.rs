@@ -196,10 +196,7 @@ impl TireSet {
 
     /// Get average wear across all tires
     pub fn average_wear(&self) -> f32 {
-        (self.front_left.wear
-            + self.front_right.wear
-            + self.rear_left.wear
-            + self.rear_right.wear)
+        (self.front_left.wear + self.front_right.wear + self.rear_left.wear + self.rear_right.wear)
             / 4.0
     }
 
@@ -365,17 +362,14 @@ impl PitStopManager {
 
     /// Update pit stop progress
     pub fn update(&mut self, dt: f32) {
-        match self.phase {
-            PitStopPhase::Working => {
-                self.stop_time_remaining -= dt;
-                self.total_pit_time += dt;
+        if self.phase == PitStopPhase::Working {
+            self.stop_time_remaining -= dt;
+            self.total_pit_time += dt;
 
-                if self.stop_time_remaining <= 0.0 {
-                    // Complete the pit stop
-                    self.complete_stop();
-                }
+            if self.stop_time_remaining <= 0.0 {
+                // Complete the pit stop
+                self.complete_stop();
             }
-            _ => {}
         }
     }
 
@@ -428,7 +422,10 @@ impl PitStopManager {
             let optimal_lap = current_lap + laps_on_tires.saturating_sub(3);
             let window_start = optimal_lap.saturating_sub(2);
             let window_end = optimal_lap + 2;
-            Some((window_start.max(current_lap + 1), window_end.min(total_laps - 1)))
+            Some((
+                window_start.max(current_lap + 1),
+                window_end.min(total_laps - 1),
+            ))
         }
     }
 }
@@ -524,8 +521,18 @@ mod tests {
         tire.wear = 0.2;
         let low_grip = tire.grip_level();
 
-        assert!(initial_grip > mid_grip, "Initial grip {} should be > mid grip {}", initial_grip, mid_grip);
-        assert!(mid_grip > low_grip, "Mid grip {} should be > low grip {}", mid_grip, low_grip);
+        assert!(
+            initial_grip > mid_grip,
+            "Initial grip {} should be > mid grip {}",
+            initial_grip,
+            mid_grip
+        );
+        assert!(
+            mid_grip > low_grip,
+            "Mid grip {} should be > low grip {}",
+            mid_grip,
+            low_grip
+        );
     }
 
     #[test]

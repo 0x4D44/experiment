@@ -339,11 +339,11 @@ mod tests {
         assert_eq!(session.red_lights, 0);
 
         // Advance 3 seconds
-        session.update(3.0, &vec![]);
+        session.update(3.0, &[]);
         assert_eq!(session.red_lights, 3);
 
         // Advance to lights out
-        session.update(3.0, &vec![]);
+        session.update(3.0, &[]);
         assert_eq!(session.state, RaceState::Racing);
     }
 

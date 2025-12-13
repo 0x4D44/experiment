@@ -907,8 +907,8 @@ impl GameState {
     fn get_car_rotation(&self, orientation: glam::Quat) -> f32 {
         // Extract yaw from quaternion
         let q = orientation;
-        let yaw = (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z));
-        yaw
+
+        (2.0 * (q.w * q.z + q.x * q.y)).atan2(1.0 - 2.0 * (q.y * q.y + q.z * q.z))
     }
 
     /// Handle keyboard input

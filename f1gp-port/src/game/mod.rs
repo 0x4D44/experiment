@@ -12,12 +12,14 @@ pub mod state;
 pub mod weather;
 pub mod weekend;
 
-pub use championship::{Championship, DriverStanding, RaceResult, create_1991_season};
+pub use championship::{create_1991_season, Championship, DriverStanding, RaceResult};
 pub use damage::{CarComponent, CollisionType, DamageLevel, DamageState, FailureType};
 pub use input::{CarInput, InputManager};
 pub use pitstop::{PitStopManager, PitStopRequest, RaceStrategy, TireCompound, TireSet};
-pub use qualifying::{QualifyingSession, QualifyingState, QualifyingResult, create_1991_qualifying};
+pub use qualifying::{
+    create_1991_qualifying, QualifyingResult, QualifyingSession, QualifyingState,
+};
 pub use session::{DriverResult, RaceFlag, RaceSession, RaceState};
 pub use state::{GameMode, GameState};
 pub use weather::{WeatherCondition, WeatherSystem};
-pub use weekend::{RaceWeekend, WeekendEntry, WeekendSession, WeekendState, create_weekend};
+pub use weekend::{create_weekend, RaceWeekend, WeekendEntry, WeekendSession, WeekendState};

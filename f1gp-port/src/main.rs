@@ -425,21 +425,21 @@ fn handle_track_select(app: &mut App, keycode: Keycode, audio: Option<&SoundEngi
 
 /// Render main menu
 fn render_main_menu(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
-    // Title
+    // Title - size 28 gives ~4 pixel characters
     renderer.draw_text(
         "F1GP MODERN PORT",
-        Vec2::new(450.0, 100.0),
-        3.0,
+        Vec2::new(350.0, 100.0),
+        28.0,
         Color::WHITE,
     )?;
     renderer.draw_text(
         "v0.5 Preview",
-        Vec2::new(540.0, 140.0),
-        1.5,
+        Vec2::new(480.0, 150.0),
+        14.0,
         Color::LIGHT_GRAY,
     )?;
 
-    // Menu options
+    // Menu options - size 21 gives ~3 pixel characters
     let menu_items = ["Start Race", "Options", "Quit"];
     for (i, item) in menu_items.iter().enumerate() {
         let color = if i == app.menu_selection {
@@ -451,17 +451,17 @@ fn render_main_menu(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
         let prefix = if i == app.menu_selection { "> " } else { "  " };
         renderer.draw_text(
             &format!("{}{}", prefix, item),
-            Vec2::new(500.0, 300.0 + (i as f32 * 50.0)),
-            2.0,
+            Vec2::new(480.0, 300.0 + (i as f32 * 60.0)),
+            21.0,
             color,
         )?;
     }
 
-    // Instructions
+    // Instructions - size 14 for smaller text
     renderer.draw_text(
-        "↑/↓: Navigate  ENTER: Select  ESC: Quit",
-        Vec2::new(400.0, 600.0),
-        1.0,
+        "UP/DOWN: Navigate  ENTER: Select  ESC: Quit",
+        Vec2::new(320.0, 600.0),
+        14.0,
         Color::GRAY,
     )?;
 
@@ -471,38 +471,44 @@ fn render_main_menu(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
 /// Render track selection menu
 fn render_track_select(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
     // Title
-    renderer.draw_text("SELECT TRACK", Vec2::new(480.0, 50.0), 2.5, Color::WHITE)?;
+    renderer.draw_text("SELECT TRACK", Vec2::new(420.0, 50.0), 24.0, Color::WHITE)?;
 
     // Track list (show 10 at a time, scroll if needed)
-    let start_idx = if app.selected_track > 5 {
-        app.selected_track - 5
-    } else {
-        0
-    };
+    let start_idx = app.selected_track.saturating_sub(5);
     let end_idx = (start_idx + 10).min(TRACKS.len());
 
-    for i in start_idx..end_idx {
-        let track = &TRACKS[i];
-        let color = if i == app.selected_track {
+    for (display_idx, (track_idx, track)) in TRACKS
+        .iter()
+        .enumerate()
+        .skip(start_idx)
+        .take(end_idx - start_idx)
+        .enumerate()
+    {
+        let actual_idx = start_idx + display_idx;
+        let color = if actual_idx == app.selected_track {
             Color::YELLOW
         } else {
             Color::LIGHT_GRAY
         };
 
-        let prefix = if i == app.selected_track { "> " } else { "  " };
+        let prefix = if actual_idx == app.selected_track {
+            "> "
+        } else {
+            "  "
+        };
         renderer.draw_text(
-            &format!("{}{:2}. {}", prefix, i + 1, track.name),
-            Vec2::new(400.0, 120.0 + ((i - start_idx) as f32 * 40.0)),
-            1.5,
+            &format!("{}{:2}. {}", prefix, track_idx + 1, track.name),
+            Vec2::new(350.0, 120.0 + (display_idx as f32 * 50.0)),
+            18.0,
             color,
         )?;
     }
 
     // Instructions
     renderer.draw_text(
-        "↑/↓: Navigate  ENTER: Start  ESC: Back",
-        Vec2::new(350.0, 650.0),
-        1.0,
+        "UP/DOWN: Navigate  ENTER: Start  ESC: Back",
+        Vec2::new(300.0, 650.0),
+        14.0,
         Color::GRAY,
     )?;
 
@@ -512,17 +518,17 @@ fn render_track_select(renderer: &mut SdlRenderer, app: &App) -> Result<()> {
 /// Render pause overlay
 fn render_pause_overlay(renderer: &mut SdlRenderer) -> Result<()> {
     // Semi-transparent overlay (we'll just draw text for now)
-    renderer.draw_text("PAUSED", Vec2::new(560.0, 300.0), 3.0, Color::YELLOW)?;
+    renderer.draw_text("PAUSED", Vec2::new(520.0, 300.0), 28.0, Color::YELLOW)?;
     renderer.draw_text(
         "Press P to Resume",
-        Vec2::new(500.0, 360.0),
-        1.5,
+        Vec2::new(450.0, 370.0),
+        18.0,
         Color::LIGHT_GRAY,
     )?;
     renderer.draw_text(
         "Press ESC for Menu",
-        Vec2::new(490.0, 400.0),
-        1.5,
+        Vec2::new(440.0, 420.0),
+        18.0,
         Color::LIGHT_GRAY,
     )?;
 
@@ -532,7 +538,20 @@ fn render_pause_overlay(renderer: &mut SdlRenderer) -> Result<()> {
 /// Load a track from .DAT file
 fn load_track(track_index: usize) -> Result<Track> {
     let track_info = &TRACKS[track_index];
-    let path = format!("assets/original/{}", track_info.filename);
+    // Try multiple possible locations for track data
+    let possible_paths = [
+        format!("../f1gp-data/tracks/{}", track_info.filename),
+        format!("data/tracks/{}", track_info.filename),
+        format!("assets/original/{}", track_info.filename),
+    ];
+
+    let path = possible_paths
+        .iter()
+        .find(|p| std::path::Path::new(p).exists())
+        .ok_or_else(|| {
+            anyhow::anyhow!("Track file not found. Tried: {}", possible_paths.join(", "))
+        })?
+        .clone();
 
     log::info!("Loading track: {} from {}", track_info.name, path);
 
