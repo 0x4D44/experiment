@@ -264,9 +264,9 @@ impl EngineAudioCallback {
         // Apply high-pass filter (tire squeal is high frequency)
         // Using a simple one-pole high-pass filter
         // Tire squeal is typically 1-4 kHz range
-        let filtered = noise * 0.7; // Simplified filtering
+        // Simplified filtering
 
-        filtered
+        noise * 0.7
     }
 
     /// Generate collision sound

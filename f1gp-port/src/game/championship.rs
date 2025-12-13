@@ -11,22 +11,22 @@ const POINTS_TABLE: [u32; 6] = [10, 6, 4, 3, 2, 1];
 
 /// 1991 F1 Season calendar (16 races)
 pub const SEASON_CALENDAR: [&str; 16] = [
-    "Phoenix",      // USA
-    "Interlagos",   // Brazil
-    "Imola",        // San Marino
-    "Monaco",       // Monaco
-    "Montreal",     // Canada
-    "Mexico City",  // Mexico
-    "Magny-Cours",  // France
-    "Silverstone",  // Great Britain
-    "Hockenheim",   // Germany
-    "Hungaroring",  // Hungary
-    "Spa",          // Belgium
-    "Monza",        // Italy
-    "Estoril",      // Portugal
-    "Barcelona",    // Spain
-    "Suzuka",       // Japan
-    "Adelaide",     // Australia
+    "Phoenix",     // USA
+    "Interlagos",  // Brazil
+    "Imola",       // San Marino
+    "Monaco",      // Monaco
+    "Montreal",    // Canada
+    "Mexico City", // Mexico
+    "Magny-Cours", // France
+    "Silverstone", // Great Britain
+    "Hockenheim",  // Germany
+    "Hungaroring", // Hungary
+    "Spa",         // Belgium
+    "Monza",       // Italy
+    "Estoril",     // Portugal
+    "Barcelona",   // Spain
+    "Suzuka",      // Japan
+    "Adelaide",    // Australia
 ];
 
 /// Maps track file names to circuit names
@@ -125,7 +125,7 @@ impl DriverStanding {
 
         if let Some(pos) = position {
             // Award points for positions 1-6
-            if pos >= 1 && pos <= 6 {
+            if (1..=6).contains(&pos) {
                 self.points += POINTS_TABLE[(pos - 1) as usize];
             }
 
@@ -291,7 +291,7 @@ impl Championship {
                     .iter_mut()
                     .find(|c| c.name == standing.team)
                 {
-                    let points = if pos >= 1 && pos <= 6 {
+                    let points = if (1..=6).contains(&pos) {
                         POINTS_TABLE[(pos - 1) as usize]
                     } else {
                         0
@@ -302,7 +302,7 @@ impl Championship {
         }
 
         // Record DNFs
-        for (driver_name, _reason) in &result.dnfs {
+        for driver_name in result.dnfs.keys() {
             if let Some(standing) = self
                 .driver_standings
                 .iter_mut()
@@ -336,9 +336,8 @@ impl Championship {
         });
 
         // Sort constructors by points
-        self.constructor_standings.sort_by(|a, b| {
-            b.points.cmp(&a.points).then_with(|| b.wins.cmp(&a.wins))
-        });
+        self.constructor_standings
+            .sort_by(|a, b| b.points.cmp(&a.points).then_with(|| b.wins.cmp(&a.wins)));
     }
 
     /// Get driver's current championship position (1-based)
@@ -457,7 +456,7 @@ mod tests {
     fn test_1991_season_creation() {
         let champ = create_1991_season();
         assert_eq!(champ.driver_standings.len(), 26);
-        assert!(champ.constructor_standings.len() > 0);
+        assert!(!champ.constructor_standings.is_empty());
     }
 
     #[test]

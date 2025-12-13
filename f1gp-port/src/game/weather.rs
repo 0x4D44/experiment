@@ -6,9 +6,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Weather conditions
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum WeatherCondition {
     /// Clear, dry conditions (100% grip)
+    #[default]
     Dry,
 
     /// Light rain (80% grip)
@@ -55,12 +56,6 @@ impl WeatherCondition {
             WeatherCondition::LightRain => "RAIN",
             WeatherCondition::HeavyRain => "STORM",
         }
-    }
-}
-
-impl Default for WeatherCondition {
-    fn default() -> Self {
-        WeatherCondition::Dry
     }
 }
 

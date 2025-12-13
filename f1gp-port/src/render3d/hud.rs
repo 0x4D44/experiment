@@ -90,15 +90,16 @@ fn get_char_pixel(char_code: u8, x: usize, y: usize) -> bool {
         }
         b'A'..=b'Z' | b'a'..=b'z' => {
             // Letters: draw a pattern
-            (x >= 1 && x <= 6) && (y >= 2 && y <= 13) && ((x + y) % 2 == 0)
+            (1..=6).contains(&x) && (2..=13).contains(&y) && (x + y).is_multiple_of(2)
         }
         b'.' => {
             // Period
-            y >= 13 && x >= 3 && x <= 4
+            y >= 13 && (3..=4).contains(&x)
         }
         b':' => {
             // Colon
-            (y >= 5 && y <= 6 && x >= 3 && x <= 4) || (y >= 10 && y <= 11 && x >= 3 && x <= 4)
+            ((5..=6).contains(&y) && (3..=4).contains(&x))
+                || ((10..=11).contains(&y) && (3..=4).contains(&x))
         }
         b'/' => {
             // Forward slash
@@ -110,7 +111,7 @@ fn get_char_pixel(char_code: u8, x: usize, y: usize) -> bool {
         }
         _ => {
             // Default: small box
-            (x >= 2 && x <= 5) && (y >= 6 && y <= 9)
+            (2..=5).contains(&x) && (6..=9).contains(&y)
         }
     }
 }
@@ -325,7 +326,7 @@ impl HudRenderer {
 
         for (i, ch) in text.chars().enumerate() {
             let char_code = ch as u8;
-            if char_code < 32 || char_code >= 128 {
+            if !(32..128).contains(&char_code) {
                 continue; // Skip non-printable characters
             }
 
@@ -413,7 +414,7 @@ impl HudRenderer {
         self.num_indices = all_indices.len() as u32;
 
         // Recreate buffers if size changed
-        if all_vertices.len() > 0 {
+        if !all_vertices.is_empty() {
             self.vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                 label: Some("HUD Vertex Buffer"),
                 contents: bytemuck::cast_slice(&all_vertices),

@@ -280,10 +280,7 @@ impl CollisionType {
                 CarComponent::SuspensionRL,
                 CarComponent::SuspensionRR,
             ],
-            CollisionType::Gravel => &[
-                CarComponent::Radiator,
-                CarComponent::Brakes,
-            ],
+            CollisionType::Gravel => &[CarComponent::Radiator, CarComponent::Brakes],
         }
     }
 }
@@ -380,7 +377,9 @@ impl DamageState {
 
     /// Get mutable component state
     pub fn get_component_mut(&mut self, component: CarComponent) -> Option<&mut ComponentState> {
-        self.components.iter_mut().find(|c| c.component == component)
+        self.components
+            .iter_mut()
+            .find(|c| c.component == component)
     }
 
     /// Apply collision damage
@@ -505,7 +504,7 @@ impl DamageState {
                 .unwrap_or(1.0))
             / 2.0;
 
-        (engine_perf * 0.6 + aero_perf * 0.4)
+        engine_perf * 0.6 + aero_perf * 0.4
     }
 
     /// Get downforce multiplier (affected by wing damage)
@@ -599,7 +598,7 @@ mod tests {
 
         assert!(damage.collision_count > 0);
         // Some components should be damaged
-        let damaged = damage.damaged_components();
+        let _damaged = damage.damaged_components();
         // Due to randomness, we just check the collision was recorded
         assert_eq!(damage.collision_count, 1);
     }
@@ -613,7 +612,10 @@ mod tests {
 
         assert!(!damage.can_continue());
         assert!(damage.is_retired);
-        assert_eq!(damage.retirement_reason, Some("Test retirement".to_string()));
+        assert_eq!(
+            damage.retirement_reason,
+            Some("Test retirement".to_string())
+        );
     }
 
     #[test]

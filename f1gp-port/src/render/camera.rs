@@ -65,13 +65,10 @@ impl Camera {
 
     /// Update camera position (for follow mode)
     pub fn update(&mut self, _delta_time: f32) {
-        match self.mode {
-            CameraMode::Follow => {
-                // Smoothly move camera towards target
-                let delta = self.target - self.position;
-                self.position += delta * self.smoothing.min(1.0);
-            }
-            _ => {}
+        if self.mode == CameraMode::Follow {
+            // Smoothly move camera towards target
+            let delta = self.target - self.position;
+            self.position += delta * self.smoothing.min(1.0);
         }
     }
 

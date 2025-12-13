@@ -300,7 +300,7 @@ fn parse_track_command(
     let mut args = vec![first_arg as i16];
 
     let arg_count = match command_id {
-        0x80 | 0x81 | 0x82 => 2,
+        0x80..=0x82 => 2,
         0x83 | 0x84 | 0x86 | 0x87 => 1,
         0x85 => 3,
         0x88 | 0x89 | 0x8c | 0x8d | 0x90..=0x95 | 0x98 | 0x99 | 0xa9 => 2,
@@ -606,7 +606,7 @@ pub fn parse_track_asset(data: Vec<u8>, name: String) -> Result<TrackAsset> {
 
     let mut best_sections = Vec::new();
     let mut skip_candidates: Vec<u64> = Vec::new();
-    if let Some(_) = header {
+    if header.is_some() {
         let header_bytes = parser.position() - track_data_offset;
         skip_candidates.push(header_bytes);
     }
@@ -637,12 +637,10 @@ pub fn parse_track_asset(data: Vec<u8>, name: String) -> Result<TrackAsset> {
                 if is_valid { "VALID" } else { "rejected" }
             );
 
-            if sections.len() >= 10 && is_valid {
-                if total_len < best_length {
-                    best_sections = sections;
-                    best_skip = skip;
-                    best_length = total_len;
-                }
+            if sections.len() >= 10 && is_valid && total_len < best_length {
+                best_sections = sections;
+                best_skip = skip;
+                best_length = total_len;
             }
         }
     }
