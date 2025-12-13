@@ -8,7 +8,7 @@ use crate::data::track::Track;
 use crate::game::input::{CarInput, InputManager};
 use crate::game::session::RaceSession;
 use crate::game::weather::{WeatherCondition, WeatherSystem};
-use crate::physics::{BodyId, CarPhysics, PhysicsWorld, TrackCollision};
+use crate::physics::{BodyId, CarPhysics, TrackCollision};
 use crate::platform::{Color, Renderer};
 use crate::render::{
     Camera, CarRenderer, CarState, Hud, ParticleSystem, SpriteAtlas, SpriteSheet, Telemetry,
@@ -26,6 +26,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 const TELEMETRY_ENV_VAR: &str = "F1GP_TELEMETRY";
 const TELEMETRY_DIR: &str = "telemetry";
+const TELEMETRY_SAMPLE_INTERVAL_MS: u64 = 100; // 10 Hz sampling
+const TELEMETRY_MAX_SAMPLES: usize = 100_000;
 
 fn telemetry_is_enabled() -> bool {
     match env::var(TELEMETRY_ENV_VAR) {
@@ -80,9 +82,6 @@ impl std::fmt::Display for GameMode {
 
 /// Main game state
 pub struct GameState {
-    /// Physics world
-    physics_world: PhysicsWorld,
-
     /// Player car physics
     player_car: CarPhysics,
 
@@ -173,12 +172,14 @@ pub struct GameState {
 
     /// Destination for the pending telemetry recording
     telemetry_output_path: Option<PathBuf>,
+
+    /// Next timestamp (ms) when a telemetry sample should be recorded
+    telemetry_next_sample_ms: u64,
 }
 
 impl GameState {
     /// Create a new game state
     pub fn new(viewport_width: u32, viewport_height: u32) -> Self {
-        let physics_world = PhysicsWorld::new();
         let car_database = match CarDatabase::load_from_disk() {
             Ok(db) => {
                 log::info!(
@@ -227,7 +228,6 @@ impl GameState {
         let menu = Menu::main_menu(viewport_width, viewport_height);
 
         Self {
-            physics_world,
             player_car,
             ai_cars: Vec::new(),
             ai_drivers: Vec::new(),
@@ -259,6 +259,7 @@ impl GameState {
             telemetry_enabled,
             telemetry_recording: None,
             telemetry_output_path: None,
+            telemetry_next_sample_ms: 0,
         }
     }
 
@@ -736,10 +737,6 @@ impl GameState {
 
         // Update player car physics
         self.player_car.update(delta_time);
-
-        // Add player car to physics world for this frame
-        // (In a real implementation, we'd keep it in the world)
-        self.physics_world.step(delta_time);
     }
 
     /// Update camera to follow player car
@@ -1129,6 +1126,7 @@ impl GameState {
         let session_label = self.mode.to_string();
         self.telemetry_recording = Some(TelemetryRecording::new(track_name, session_label.clone()));
         self.telemetry_output_path = self.build_telemetry_output_path(track_name, &session_label);
+        self.telemetry_next_sample_ms = 0;
 
         if self.telemetry_output_path.is_none() {
             log::warn!("Telemetry output directory unavailable; capture will remain in-memory");
@@ -1141,7 +1139,15 @@ impl GameState {
         }
 
         let timestamp_ms = (self.total_time.max(0.0) * 1000.0).round() as u64;
+        if timestamp_ms < self.telemetry_next_sample_ms {
+            return;
+        }
+        self.telemetry_next_sample_ms = timestamp_ms.saturating_add(TELEMETRY_SAMPLE_INTERVAL_MS);
+
         if let Some(recording) = self.telemetry_recording.as_mut() {
+            if recording.samples.len() >= TELEMETRY_MAX_SAMPLES {
+                return;
+            }
             Self::record_car_sample(recording, timestamp_ms, 0, &self.player_car);
             for (idx, ai_car) in self.ai_cars.iter().enumerate() {
                 let car_id = (idx + 1) as u8;
@@ -1300,5 +1306,25 @@ mod tests {
         let mut game = GameState::new(1920, 1080);
         game.player_car.speed = 50.0; // 50 m/s
         assert_eq!(game.get_speed_kmh(), 180.0); // Should be 180 km/h
+    }
+
+    #[test]
+    fn telemetry_rate_limiting() {
+        let mut game = GameState::new(800, 600);
+        game.telemetry_enabled = true;
+        game.telemetry_recording = Some(TelemetryRecording::new("Test", "Practice"));
+        game.telemetry_next_sample_ms = 0;
+
+        game.total_time = 0.0;
+        game.capture_telemetry_frame();
+        assert_eq!(game.telemetry_recording.as_ref().unwrap().samples.len(), 1);
+
+        game.total_time = 0.05; // 50ms
+        game.capture_telemetry_frame();
+        assert_eq!(game.telemetry_recording.as_ref().unwrap().samples.len(), 1);
+
+        game.total_time = 0.11; // 110ms
+        game.capture_telemetry_frame();
+        assert_eq!(game.telemetry_recording.as_ref().unwrap().samples.len(), 2);
     }
 }

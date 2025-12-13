@@ -79,6 +79,9 @@ pub struct CarPhysics {
     /// Tire grip levels
     pub tire_grip: TireGrip,
 
+    /// Surface grip multiplier applied this frame (track/weather)
+    surface_grip_multiplier: f32,
+
     /// Is car on track surface?
     pub on_track: bool,
 
@@ -102,6 +105,7 @@ impl CarPhysics {
             wheel_speeds: [0.0; 4],
             tire_temps: [80.0; 4], // Optimal temp around 80°C
             tire_grip: TireGrip::perfect(),
+            surface_grip_multiplier: 1.0,
             on_track: true,
             speed: 0.0,
         }
@@ -111,6 +115,15 @@ impl CarPhysics {
     pub fn update(&mut self, dt: f32) {
         // Calculate current speed
         self.speed = self.body.velocity.length();
+
+        // Derive wheel speeds from chassis velocity (simplified, equal for all wheels)
+        let wheel_radius = 0.3; // meters
+        let wheel_ang_speed = if wheel_radius > 0.0 {
+            self.speed / wheel_radius
+        } else {
+            0.0
+        };
+        self.wheel_speeds = [wheel_ang_speed; 4];
 
         // Update engine RPM based on wheel speed and gear
         self.update_engine_rpm();
@@ -138,6 +151,9 @@ impl CarPhysics {
 
         // Update tire temperatures
         self.update_tire_temps(dt);
+
+        // Reset surface grip multiplier; caller must set each frame
+        self.surface_grip_multiplier = 1.0;
     }
 
     /// Update engine RPM based on wheel speed
@@ -159,9 +175,13 @@ impl CarPhysics {
             _ => 1.0,
         };
 
-        self.engine_rpm = (avg_rear_wheel * gear_ratio * 60.0 / (2.0 * std::f32::consts::PI))
-            .max(1000.0)
-            .min(self.spec.engine.max_rpm);
+        let wheel_rpm =
+            (avg_rear_wheel * gear_ratio * 60.0 / (2.0 * std::f32::consts::PI)).max(0.0);
+
+        // Allow slip/launch: blend in a clutch-like floor based on throttle
+        let idle_rpm = 1000.0;
+        let clutch_rpm = idle_rpm + self.throttle * (self.spec.engine.max_rpm * 0.35);
+        self.engine_rpm = wheel_rpm.max(clutch_rpm).min(self.spec.engine.max_rpm);
     }
 
     /// Apply engine force based on throttle
@@ -237,7 +257,8 @@ impl CarPhysics {
     /// Apply tire friction
     fn apply_tire_friction(&mut self) {
         // Simplified tire friction
-        let friction_coefficient = 0.8 * self.tire_grip.average();
+        let friction_coefficient =
+            0.8 * self.tire_grip.average() * self.surface_grip_multiplier.clamp(0.0, 1.5);
 
         // Lateral friction (perpendicular to forward direction)
         let forward = self.body.orientation * Vec3::X;
@@ -339,17 +360,7 @@ impl CarPhysics {
     /// Apply surface-based grip multiplier to all tires
     /// This modifies the tire grip based on the surface type (track, grass, gravel, etc.)
     pub fn apply_surface_grip(&mut self, surface_multiplier: f32) {
-        // Multiply all tire grips by the surface multiplier
-        self.tire_grip.front_left *= surface_multiplier;
-        self.tire_grip.front_right *= surface_multiplier;
-        self.tire_grip.rear_left *= surface_multiplier;
-        self.tire_grip.rear_right *= surface_multiplier;
-
-        // Clamp to valid range
-        self.tire_grip.front_left = self.tire_grip.front_left.clamp(0.0, 1.0);
-        self.tire_grip.front_right = self.tire_grip.front_right.clamp(0.0, 1.0);
-        self.tire_grip.rear_left = self.tire_grip.rear_left.clamp(0.0, 1.0);
-        self.tire_grip.rear_right = self.tire_grip.rear_right.clamp(0.0, 1.0);
+        self.surface_grip_multiplier = surface_multiplier.clamp(0.0, 1.5);
     }
 }
 
@@ -436,5 +447,34 @@ mod tests {
 
         let power = car.interpolate_power_curve(7500.0);
         assert!(power > 400.0 && power < 600.0); // Should be between curve points
+    }
+
+    #[test]
+    fn wheel_speeds_follow_velocity() {
+        let spec = create_test_car_spec();
+        let mut car = CarPhysics::new(BodyId(1), spec, Vec3::ZERO);
+        car.body.velocity = Vec3::new(30.0, 0.0, 0.0); // 30 m/s ≈ 108 km/h
+        car.update(1.0 / 60.0);
+        // Wheel angular speed should be linear speed / radius (0.3 m)
+        let expected = 30.0 / 0.3;
+        assert!((car.wheel_speeds[0] - expected).abs() < 1.0);
+        assert!(car.engine_rpm > 1000.0);
+    }
+
+    #[test]
+    fn surface_grip_does_not_compound() {
+        let spec = create_test_car_spec();
+        let mut car = CarPhysics::new(BodyId(2), spec, Vec3::ZERO);
+        let base_grip = car.tire_grip.average();
+
+        car.apply_surface_grip(0.5);
+        let grip_after_first = car.tire_grip.average();
+
+        car.apply_surface_grip(0.5);
+        let grip_after_second = car.tire_grip.average();
+
+        // Grip state should remain near baseline; multipliers are transient
+        assert!((grip_after_first - base_grip).abs() < 1e-6);
+        assert!((grip_after_second - base_grip).abs() < 1e-6);
     }
 }

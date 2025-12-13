@@ -314,11 +314,12 @@ impl PhysicsWorld {
             // Apply angular damping
             body.angular_velocity *= body.angular_damping;
 
-            // Update orientation
-            // For quaternions: q' = q + 0.5 * (ω * q) * dt
-            if body.angular_velocity.length_squared() > 0.0001 {
-                let angular_quat = Quat::from_scaled_axis(body.angular_velocity * dt * 0.5);
-                body.orientation = (body.orientation + angular_quat * body.orientation).normalize();
+            // Update orientation using exponential map
+            let ang_vel = body.angular_velocity;
+            let ang_mag = ang_vel.length();
+            if ang_mag > 0.0001 {
+                let delta_q = Quat::from_scaled_axis(ang_vel * dt);
+                body.orientation = (delta_q * body.orientation).normalize();
             }
 
             // Clear force accumulators for next frame
@@ -389,5 +390,19 @@ mod tests {
         body.add_force(Vec3::new(100.0, 0.0, 0.0));
         body.clear_accumulators();
         assert_eq!(body.force_accumulator, Vec3::ZERO);
+    }
+
+    #[test]
+    fn orientation_integrates_with_angular_velocity() {
+        let mut body = PhysicsBody::new(BodyId(1), Vec3::ZERO, 100.0);
+        body.angular_velocity = Vec3::new(0.0, 1.0, 0.0); // yaw 1 rad/s
+
+        let mut world = PhysicsWorld::new();
+        world.add_body(body);
+        world.step(PHYSICS_TIMESTEP);
+
+        let updated = world.get_body(BodyId(1)).unwrap();
+        // Orientation should have changed from identity
+        assert!(updated.orientation != Quat::IDENTITY);
     }
 }

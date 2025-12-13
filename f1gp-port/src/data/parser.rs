@@ -652,7 +652,10 @@ pub fn parse_track_asset(data: Vec<u8>, name: String) -> Result<TrackAsset> {
 
     let section_data_offset = track_data_offset + best_skip;
     if sections.is_empty() {
-        log::warn!("Track '{}': No valid sections found", name);
+        bail!(
+            "Track '{}': no valid sections found (skip search exhausted)",
+            name
+        );
     } else {
         let track_length: f32 = sections.iter().map(|s| s.length).sum();
         log::info!(
@@ -812,5 +815,21 @@ mod tests {
         let track = asset.clone().into_track();
         assert_eq!(track.name, "Asset Track");
         assert_eq!(track.sections.len(), DEFAULT_SECTION_COUNT);
+    }
+
+    #[test]
+    fn parse_track_asset_errors_when_no_sections_found() {
+        // Construct a minimal buffer with terminator at track data but no sections
+        let mut data = vec![0u8; 0x1010 + 2 + 4]; // offset table position + terminator + checksum
+        data[0x1010] = 0xFF;
+        data[0x1011] = 0xFF;
+
+        // Fill checksum footer
+        let checksum = calculate_checksum(&data);
+        let tail = data.len() - 4;
+        data[tail..].copy_from_slice(&checksum.to_le_bytes());
+
+        let result = parse_track_asset(data, "EmptyTrack".to_string());
+        assert!(result.is_err());
     }
 }

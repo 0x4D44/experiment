@@ -53,17 +53,12 @@ impl TrackCollision {
     pub fn check_collision(&self, car_position: Vec3) -> CollisionResult {
         let car_pos_2d = Vec2::new(car_position.x, car_position.z);
 
-        // Find nearest track section
+        // Find nearest section by center point, then project onto its segment for distance
         let nearest_section = self.find_nearest_section(car_pos_2d);
-
-        // Get section data
         let section = &self.track.sections[nearest_section];
-        let section_pos = Vec2::new(section.position.x, section.position.z);
 
-        // Calculate distance from track center
-        let distance_from_center = (car_pos_2d - section_pos).length();
+        let (distance_from_center, _) = self.project_onto_section(nearest_section, car_pos_2d);
 
-        // Determine if on track based on track width
         let half_width = section.width / 2.0;
         let on_track = distance_from_center <= half_width;
 
@@ -101,7 +96,7 @@ impl TrackCollision {
         }
     }
 
-    /// Find nearest track section to a position
+    /// Find nearest track section to a position (by center point)
     fn find_nearest_section(&self, position: Vec2) -> usize {
         let mut nearest_idx = 0;
         let mut nearest_dist = f32::MAX;
@@ -115,6 +110,25 @@ impl TrackCollision {
         }
 
         nearest_idx
+    }
+
+    /// Project a position onto the segment starting at section index
+    fn project_onto_section(&self, section_idx: usize, position: Vec2) -> (f32, Vec2) {
+        if self.track_positions.is_empty() {
+            return (f32::MAX, Vec2::ZERO);
+        }
+
+        let a = self.track_positions[section_idx];
+        let b = self.track_positions[(section_idx + 1) % self.track_positions.len()];
+        let ab = b - a;
+        let ab_len_sq = ab.length_squared();
+        if ab_len_sq < 1e-6 {
+            let dist = (position - a).length();
+            return (dist, a);
+        }
+        let t = ((position - a).dot(ab) / ab_len_sq).clamp(0.0, 1.0);
+        let closest = a + ab * t;
+        ((position - closest).length(), closest)
     }
 
     /// Get track section count
