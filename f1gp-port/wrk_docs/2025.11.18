@@ -1,0 +1,65 @@
+# Code Review Plan – 2025-11-18
+
+## 1. Repository Inventory
+- **Primary crate (`f1gp-port`)**: executable `src/main.rs` + library `src/lib.rs` with modules `data`, `physics`, `ai`, `game`, `render`, `render3d`, `audio`, `ui`, `platform`, `utils`, plus bin target `src/bin/test_parser.rs`.
+- **Workspace tools**: Rust utility crates under `tools/*` (`extract_iso`, `track_viewer`, `track_inspector`, `graphics_test`, `playable_demo`, `3d_demo`) and Python helpers in `tools/extract_iso.py` and `tools/analyze_track.py`.
+- **Data artifacts**: JSON track definitions in `data/tracks_json`.
+- **Tests**: Rust integration test `tests/track_loading.rs`.
+- **Build outputs**: `target/` (ignored for review except to confirm binaries/tests availability).
+
+## 2. Review Objectives & Criteria
+1. **Correctness & Robustness** – validate algorithms (physics, AI, parser), error handling, and edge-case coverage.
+2. **Safety & Reliability** – ensure memory-safe patterns, threading safety (if any), panics avoidance, and input validation especially when parsing binary track files.
+3. **Performance & Efficiency** – check for unnecessary allocations, per-frame workloads, caching, and data-oriented design (rendering, physics, AI).
+4. **Architecture & Modularity** – evaluate module boundaries, responsibilities, and API clarity across game subsystems and tools.
+5. **Testing & Tooling** – review automated tests, useful assertions, and recommend coverage improvements.
+6. **Documentation & Maintainability** – assess README/docs alignment, inline comments, naming, and developer ergonomics.
+
+## 3. Review Methodology
+1. **Module-by-module source inspection** – walk each Rust/Python module, tracing dependencies from data loading→game state→render/audio/UI layers.
+2. **Cross-cutting analysis** – evaluate shared types (e.g., `Track`, `CarState`, render structs) for correctness/performance, including serialization/deserialization paths.
+3. **Tooling review** – inspect each workspace member for correctness and integration (build scripts, CLI behavior).
+4. **Testing assessment** – run/inspect tests (if practical) and manually reason about missing coverage areas.
+5. **Documentation alignment** – compare docs/specs in `docs/` with implementation behavior.
+
+## 4. Detailed Review Breakdown
+1. **Core Data & Parsers (`src/data`)**
+   - Verify `parser.rs`, `loader.rs`, data structs (`track.rs`, `objects.rs`, `car.rs`) for correctness, serde usage, and binary compatibility.
+   - Check error handling and boundary conditions when reading TRK/JSON assets.
+2. **Game State & Flow (`src/game`)**
+   - Inspect session management, input handling, and state transitions; ensure deterministic tick/update ordering.
+3. **Physics & AI (`src/physics`, `src/ai`)**
+   - Review dynamics equations, collision handling, AI racing line logic, and parameter tuning.
+4. **Rendering Stacks (`src/render`, `src/render3d`, `src/platform`, `src/ui`)**
+   - Evaluate separation between SDL2 2D renderer, WGPU 3D pipeline, camera abstractions, HUD/UI drawing, and platform glue.
+5. **Audio System (`src/audio`)**
+   - Verify optional `rodio` usage, resource management, and feature gating.
+6. **Utility Layer (`src/utils`)**
+   - Confirm helper functions (math, logging, conversions) are correct and reused appropriately.
+7. **Executable Entrypoints (`src/main.rs`, `src/bin/test_parser.rs`)**
+   - Ensure initialization sequence, CLI args, logging setup, feature flags.
+8. **Integration Tests (`tests/track_loading.rs`)**
+   - Check coverage, assertions, fixture management.
+9. **Workspace Tools**
+   - Review each tool crate's purpose, correctness, and coupling to main data structures; include Python utilities.
+
+## 5. Deliverables
+- **Review notes** captured per module group while inspecting files.
+- **Comprehensive report** stored as `wrk_docs/2025.11.18 - CR - Full Code Review.md` summarizing findings, risks, and recommendations.
+- **Traceability**: each finding references file path + line span when possible and ties back to objectives above.
+
+## 6. Execution Order
+1. Data/Parser modules
+2. Game/State/Input
+3. Physics subsystem
+4. AI subsystem
+5. Rendering (2D + platform)
+6. Rendering 3D pipeline
+7. Audio
+8. Utilities & shared types
+9. Entrypoints (main/bin)
+10. Integration tests
+11. Tools workspace & Python scripts
+12. Docs/data alignment
+
+This plan will guide the detailed inspection and ensure no area is skipped.
