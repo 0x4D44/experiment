@@ -1,0 +1,13 @@
+{
+  "name": "quantum-blocks",
+  "version": "1.0.0",
+  "description": "A puzzle game combining Tetris with match-3 mechanics",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/test.js",
+    "start": "npx http-server . -p 8080 -o index.html"
+  },
+  "keywords": ["game", "puzzle", "tetris", "match3"],
+  "author": "",
+  "license": "ISC"
+}

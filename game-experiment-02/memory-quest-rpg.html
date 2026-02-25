@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Memory Quest RPG</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Arial', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .game-container {
+        max-width: 1000px;
+        background: rgba(0, 0, 0, 0.9);
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        color: #fff;
+        border: 3px solid #667eea;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 20px;
+      }
+
+      h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 10px rgba(102, 126, 234, 0.5);
+      }
+
+      .subtitle {
+        font-size: 1.1em;
+        color: #aaa;
+      }
+
+      .screen {
+        display: none;
+      }
+
+      .screen.active {
+        display: block;
+      }
+
+      /* Character Selection Screen */
+      .character-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin: 30px 0;
+      }
+
+      .character-card {
+        background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+        border: 2px solid #667eea;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .character-card:hover {
+        border-color: #764ba2;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      }
+
+      .character-icon {
+        font-size: 3em;
+        margin: 10px 0;
+      }
+
+      .character-card h3 {
+        margin: 10px 0;
+        color: #667eea;
+      }
+
+      .character-card p {
+        font-size: 0.9em;
+        color: #aaa;
+        margin-top: 10px;
+      }
+
+      /* Game Board */
+      .game-board {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .game-info {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+      }
+
+      .stat-box {
+        background: rgba(102, 126, 234, 0.1);
+        border: 1px solid #667eea;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .stat-label {
+        font-size: 0.8em;
+        color: #aaa;
+        margin-bottom: 5px;
+      }
+
+      .stat-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .card-grid {
+        display: grid;
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .card {
+        aspect-ratio: 1;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: 2px solid #667eea;
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 3em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        user-select: none;
+      }
+
+      .card:hover:not(.matched) {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .card.flipped {
+        background: linear-gradient(135deg, #1e1e2e 0%, #2a2a3e 100%);
+        border-color: #764ba2;
+      }
+
+      .card.matched {
+        background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        border-color: #22c55e;
+        cursor: default;
+        opacity: 0.8;
+      }
+
+      .card-face {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .card.flipped .card-face {
+        opacity: 1;
+      }
+
+      .card.matched .card-face {
+        opacity: 1;
+      }
+
+      .story-text {
+        background: rgba(102, 126, 234, 0.1);
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+        font-style: italic;
+        color: #ddd;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 30px;
+        background: #1e1e2e;
+        border: 1px solid #667eea;
+        border-radius: 5px;
+        overflow: hidden;
+        margin: 20px 0;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        transition: width 0.5s ease;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: bold;
+        font-size: 0.9em;
+      }
+
+      .buttons {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+        justify-content: center;
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 30px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        font-size: 1em;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .boss-info {
+        background: rgba(239, 68, 68, 0.1);
+        border: 2px solid #ef4444;
+        padding: 20px;
+        border-radius: 8px;
+        margin: 20px 0;
+      }
+
+      .boss-info h3 {
+        color: #ef4444;
+        margin-bottom: 10px;
+      }
+
+      .game-over-screen {
+        text-align: center;
+      }
+
+      .game-over-screen h2 {
+        font-size: 2.5em;
+        margin: 20px 0;
+      }
+
+      .victory {
+        color: #22c55e;
+        text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+      }
+
+      .defeat {
+        color: #ef4444;
+        text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+      }
+
+      .level-info {
+        font-size: 1.2em;
+        margin: 20px 0;
+        color: #667eea;
+      }
+
+      @media (max-width: 768px) {
+        .character-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .game-info {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        h1 {
+          font-size: 1.8em;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="header">
+        <h1>Memory Quest RPG</h1>
+        <p class="subtitle">Match cards, complete quests, save the realm!</p>
+      </div>
+
+      <!-- Character Selection Screen -->
+      <div class="screen active" id="character-select">
+        <div class="story-text">
+          Welcome to Aethoria! Choose your class wisely:
+        </div>
+        <div class="character-grid">
+          <div class="character-card" onclick="selectCharacter('Warrior', 'WARRIOR')">
+            <div class="character-icon">⚔️</div>
+            <h3>Warrior</h3>
+            <p>Strong defense and high HP</p>
+          </div>
+          <div class="character-card" onclick="selectCharacter('Mage', 'MAGE')">
+            <div class="character-icon">🧙</div>
+            <h3>Mage</h3>
+            <p>Powerful spells and high mana</p>
+          </div>
+          <div class="character-card" onclick="selectCharacter('Rogue', 'ROGUE')">
+            <div class="character-icon">🗡️</div>
+            <h3>Rogue</h3>
+            <p>Fast and deadly strikes</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Screen -->
+      <div class="screen" id="game-screen">
+        <div class="story-text" id="story"></div>
+
+        <div class="game-info">
+          <div class="stat-box">
+            <div class="stat-label">Level</div>
+            <div class="stat-value" id="level">1</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Health</div>
+            <div class="stat-value" id="health">100/100</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Matches</div>
+            <div class="stat-value" id="matches">0/2</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Class</div>
+            <div class="stat-value" id="class">Warrior</div>
+          </div>
+        </div>
+
+        <div class="progress-bar">
+          <div class="progress-fill" id="progress" style="width: 0%">0%</div>
+        </div>
+
+        <div id="card-grid" class="card-grid"></div>
+
+        <div class="buttons">
+          <button id="hint-button" onclick="showHint()">Show Hint</button>
+          <button id="continue-button" onclick="nextLevel()" style="display: none">Continue</button>
+        </div>
+      </div>
+
+      <!-- Game Over Screen -->
+      <div class="screen" id="game-over">
+        <h2 id="game-result"></h2>
+        <p class="level-info" id="final-level"></p>
+        <div class="story-text" id="end-story"></div>
+        <div class="buttons">
+          <button onclick="location.reload()">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Game State
+      let gameState = {
+        character: null,
+        level: 1,
+        isFlipping: false,
+        flippedCards: [],
+        matchedPairs: 0,
+        totalPairs: 0,
+      };
+
+      // Card data
+      const cards = [
+        { name: 'Fireball', icon: '🔥', type: 'spell' },
+        { name: 'Ice Storm', icon: '❄️', type: 'spell' },
+        { name: 'Lightning', icon: '⚡', type: 'spell' },
+        { name: 'Heal', icon: '✨', type: 'spell' },
+        { name: 'Sword', icon: '🗡️', type: 'item' },
+        { name: 'Shield', icon: '🛡️', type: 'item' },
+        { name: 'Potion', icon: '🧪', type: 'item' },
+        { name: 'Treasure', icon: '💎', type: 'item' },
+        { name: 'Goblin', icon: '👹', type: 'monster' },
+        { name: 'Dragon', icon: '🐉', type: 'monster' },
+        { name: 'Vampire', icon: '🧛', type: 'monster' },
+        { name: 'Ghost', icon: '👻', type: 'monster' },
+      ];
+
+      const storyTexts = [
+        'Welcome to Aethoria! Your quest begins...',
+        'Level 1: Defend against the Goblin invasion!',
+        'Level 2: Ascend the dragon peaks!',
+        'Level 3: Enter the shadow tower!',
+        'Level 4: Face the dark overlord!',
+        'Level 5: Defeat the ancient dragon and save the realm!',
+        'You have saved Aethoria and become a legend!',
+      ];
+
+      function selectCharacter(name, className) {
+        gameState.character = {
+          name: name,
+          class: className,
+          health: className === 'WARRIOR' ? 100 : className === 'MAGE' ? 60 : 70,
+          maxHealth: className === 'WARRIOR' ? 100 : className === 'MAGE' ? 60 : 70,
+        };
+
+        startGameScreen();
+      }
+
+      function startGameScreen() {
+        switchScreen('game-screen');
+        loadLevel();
+      }
+
+      function loadLevel() {
+        const level = gameState.level;
+        const rows = level === 1 ? 2 : level === 2 ? 3 : level === 3 ? 3 : level === 4 ? 4 : 4;
+        const cols = level === 1 ? 2 : level === 2 ? 2 : level === 3 ? 3 : level === 4 ? 3 : 4;
+        const totalCards = rows * cols;
+        const pairsNeeded = totalCards / 2;
+
+        // Select random cards for this level
+        const selectedCards = [];
+        const usedIndices = new Set();
+
+        while (selectedCards.length < pairsNeeded) {
+          const idx = Math.floor(Math.random() * cards.length);
+          if (!usedIndices.has(idx)) {
+            selectedCards.push(cards[idx]);
+            usedIndices.add(idx);
+          }
+        }
+
+        // Create pairs and shuffle
+        const boardCards = [];
+        selectedCards.forEach((card) => {
+          boardCards.push({ ...card, id: Math.random() });
+          boardCards.push({ ...card, id: Math.random() });
+        });
+
+        // Shuffle
+        for (let i = boardCards.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [boardCards[i], boardCards[j]] = [boardCards[j], boardCards[i]];
+        }
+
+        gameState.totalPairs = pairsNeeded;
+        gameState.matchedPairs = 0;
+        gameState.flippedCards = [];
+
+        // Render board
+        const gridContainer = document.getElementById('card-grid');
+        gridContainer.innerHTML = '';
+        gridContainer.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+        boardCards.forEach((card, index) => {
+          const cardEl = document.createElement('div');
+          cardEl.className = 'card';
+          cardEl.id = `card-${index}`;
+          cardEl.innerHTML = `<div class="card-face">${card.icon}</div>`;
+          cardEl.dataset.name = card.name;
+          cardEl.onclick = () => flipCard(index, cardEl, card.name);
+          gridContainer.appendChild(cardEl);
+        });
+
+        // Update UI
+        document.getElementById('story').textContent = storyTexts[gameState.level - 1];
+        document.getElementById('level').textContent = gameState.level;
+        document.getElementById('health').textContent = `${gameState.character.health}/${gameState.character.maxHealth}`;
+        document.getElementById('class').textContent = gameState.character.class;
+        updateProgress();
+      }
+
+      function flipCard(index, element, cardName) {
+        if (gameState.isFlipping || gameState.flippedCards.length >= 2) return;
+        if (element.classList.contains('flipped') || element.classList.contains('matched')) return;
+
+        element.classList.add('flipped');
+        gameState.flippedCards.push({ index, element, name: cardName });
+
+        if (gameState.flippedCards.length === 2) {
+          checkMatch();
+        }
+      }
+
+      function checkMatch() {
+        gameState.isFlipping = true;
+        const [card1, card2] = gameState.flippedCards;
+
+        setTimeout(() => {
+          if (card1.name === card2.name) {
+            // Match!
+            card1.element.classList.add('matched');
+            card2.element.classList.add('matched');
+            gameState.matchedPairs++;
+            gameState.flippedCards = [];
+
+            updateProgress();
+
+            if (gameState.matchedPairs === gameState.totalPairs) {
+              levelComplete();
+            }
+          } else {
+            // No match
+            card1.element.classList.remove('flipped');
+            card2.element.classList.remove('flipped');
+            gameState.flippedCards = [];
+          }
+
+          gameState.isFlipping = false;
+        }, 800);
+      }
+
+      function updateProgress() {
+        const percentage = Math.round(
+          (gameState.matchedPairs / gameState.totalPairs) * 100
+        );
+        document.getElementById('matches').textContent = `${gameState.matchedPairs}/${gameState.totalPairs}`;
+        document.getElementById('progress').style.width = percentage + '%';
+        document.getElementById('progress').textContent = percentage + '%';
+      }
+
+      function levelComplete() {
+        document.getElementById('hint-button').style.display = 'none';
+        document.getElementById('continue-button').style.display = 'block';
+
+        if (gameState.level >= 5) {
+          setTimeout(() => {
+            endGame(true);
+          }, 1000);
+        }
+      }
+
+      function nextLevel() {
+        gameState.level++;
+        document.getElementById('hint-button').style.display = 'block';
+        document.getElementById('continue-button').style.display = 'none';
+        loadLevel();
+      }
+
+      function endGame(won) {
+        switchScreen('game-over');
+
+        if (won) {
+          document.getElementById('game-result').textContent = '🎉 You Win! 🎉';
+          document.getElementById('game-result').classList.add('victory');
+          document.getElementById('end-story').textContent = storyTexts[storyTexts.length - 1];
+        } else {
+          document.getElementById('game-result').textContent = '💀 Game Over 💀';
+          document.getElementById('game-result').classList.add('defeat');
+          document.getElementById('end-story').textContent = 'Your adventure ends here...';
+        }
+
+        document.getElementById('final-level').textContent = `You reached Level ${gameState.level}`;
+      }
+
+      function showHint() {
+        const flippedCards = document.querySelectorAll('.card.flipped:not(.matched)');
+        if (flippedCards.length > 0) {
+          alert('You have ' + flippedCards.length + ' card(s) still flipped!');
+        } else {
+          alert('Start by flipping two cards to find a matching pair!');
+        }
+      }
+
+      function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+      }
+    </script>
+  </body>
+</html>

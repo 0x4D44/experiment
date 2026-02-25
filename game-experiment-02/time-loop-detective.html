@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Loop Detective</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background-color: #0a0e27;
+      color: #e0e0e0;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+      gap: 20px;
+      padding: 20px;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+    }
+
+    .main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .header {
+      background: rgba(100, 150, 200, 0.2);
+      border: 2px solid #64a0d8;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(100, 150, 200, 0.3);
+    }
+
+    .header h1 {
+      font-size: 28px;
+      color: #64a0d8;
+      margin-bottom: 5px;
+      text-shadow: 0 0 10px rgba(100, 150, 200, 0.5);
+    }
+
+    .time-display {
+      font-size: 18px;
+      color: #4fc3f7;
+    }
+
+    .game-area {
+      flex: 1;
+      display: flex;
+      gap: 15px;
+      min-height: 0;
+    }
+
+    .locations-panel {
+      flex: 0 0 250px;
+      background: rgba(50, 100, 150, 0.15);
+      border: 1px solid #4fc3f7;
+      border-radius: 8px;
+      padding: 15px;
+      overflow-y: auto;
+    }
+
+    .locations-panel h3 {
+      color: #4fc3f7;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border-bottom: 1px solid #4fc3f7;
+      padding-bottom: 8px;
+    }
+
+    .location-btn {
+      display: block;
+      width: 100%;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      background: rgba(79, 195, 247, 0.1);
+      border: 1px solid #4fc3f7;
+      color: #4fc3f7;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+
+    .location-btn:hover {
+      background: rgba(79, 195, 247, 0.3);
+      box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
+    }
+
+    .location-btn.active {
+      background: rgba(79, 195, 247, 0.4);
+      box-shadow: 0 0 12px rgba(79, 195, 247, 0.7);
+    }
+
+    .content-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      min-width: 0;
+    }
+
+    .current-location {
+      background: rgba(100, 150, 200, 0.1);
+      border: 1px solid #64a0d8;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 14px;
+    }
+
+    .current-location-name {
+      font-size: 18px;
+      color: #64a0d8;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    .game-text {
+      background: rgba(30, 50, 80, 0.4);
+      border: 1px solid #4fc3f7;
+      border-radius: 8px;
+      padding: 15px;
+      flex: 1;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #b0e0e6;
+    }
+
+    .npc-status {
+      background: rgba(50, 80, 120, 0.2);
+      border-left: 3px solid #4fc3f7;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .npc-name {
+      color: #4fc3f7;
+      font-weight: bold;
+    }
+
+    .npc-location {
+      color: #90caf9;
+      margin-left: 10px;
+    }
+
+    .action-area {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      padding: 8px 16px;
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #4caf50;
+      color: #4caf50;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+
+    .action-btn:hover {
+      background: rgba(76, 175, 80, 0.4);
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .options-area {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .option-btn {
+      padding: 10px 12px;
+      background: rgba(100, 150, 200, 0.2);
+      border: 1px solid #64a0d8;
+      color: #64a0d8;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      text-align: left;
+      transition: all 0.3s;
+    }
+
+    .option-btn:hover {
+      background: rgba(100, 150, 200, 0.4);
+      box-shadow: 0 0 8px rgba(100, 150, 200, 0.6);
+    }
+
+    .sidebar {
+      flex: 0 0 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    .sidebar-panel {
+      background: rgba(50, 100, 150, 0.15);
+      border: 1px solid #4fc3f7;
+      border-radius: 8px;
+      padding: 12px;
+      overflow-y: auto;
+      max-height: 50%;
+    }
+
+    .sidebar-panel h3 {
+      color: #4fc3f7;
+      margin-bottom: 10px;
+      font-size: 14px;
+      border-bottom: 1px solid #4fc3f7;
+      padding-bottom: 8px;
+    }
+
+    .inventory-item {
+      background: rgba(76, 175, 80, 0.1);
+      border-left: 3px solid #4caf50;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .item-name {
+      color: #4caf50;
+      font-weight: bold;
+    }
+
+    .item-desc {
+      color: #90ee90;
+      margin-top: 4px;
+      font-size: 11px;
+    }
+
+    .status-panel {
+      background: rgba(50, 100, 150, 0.15);
+      border: 1px solid #4fc3f7;
+      border-radius: 8px;
+      padding: 12px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 5px 0;
+      border-bottom: 1px dotted rgba(79, 195, 247, 0.3);
+    }
+
+    .status-label {
+      color: #90caf9;
+    }
+
+    .status-value {
+      color: #4fc3f7;
+      font-weight: bold;
+    }
+
+    .time-advance {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .time-btn {
+      flex: 1;
+      padding: 8px;
+      background: rgba(255, 152, 0, 0.2);
+      border: 1px solid #ff9800;
+      color: #ff9800;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 11px;
+      transition: all 0.3s;
+    }
+
+    .time-btn:hover {
+      background: rgba(255, 152, 0, 0.4);
+      box-shadow: 0 0 8px rgba(255, 152, 0, 0.6);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1a1f3a;
+      border: 2px solid #64a0d8;
+      border-radius: 8px;
+      padding: 30px;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 30px rgba(100, 150, 200, 0.5);
+    }
+
+    .modal-header {
+      color: #64a0d8;
+      font-size: 24px;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #64a0d8;
+      padding-bottom: 10px;
+    }
+
+    .modal-text {
+      color: #b0e0e6;
+      line-height: 1.8;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .modal-btn {
+      padding: 10px 20px;
+      background: rgba(76, 175, 80, 0.2);
+      border: 1px solid #4caf50;
+      color: #4caf50;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      transition: all 0.3s;
+    }
+
+    .modal-btn:hover {
+      background: rgba(76, 175, 80, 0.4);
+      box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+    }
+
+    .ending-modal {
+      max-width: 700px;
+    }
+
+    .ending-title {
+      color: #ffc107;
+      font-size: 28px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+    }
+
+    .ending-description {
+      color: #b0e0e6;
+      line-height: 1.8;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .ending-stats {
+      background: rgba(50, 100, 150, 0.2);
+      border: 1px solid #4fc3f7;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 15px;
+    }
+
+    .ending-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px dotted rgba(79, 195, 247, 0.3);
+    }
+
+    .ending-stat:last-child {
+      border-bottom: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: rgba(100, 150, 200, 0.1);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(100, 150, 200, 0.4);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 150, 200, 0.6);
+    }
+
+    .dialogue-box {
+      background: rgba(100, 150, 200, 0.15);
+      border: 1px solid #64a0d8;
+      border-radius: 4px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .dialogue-npc {
+      color: #64a0d8;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+
+    .dialogue-text {
+      color: #b0e0e6;
+      font-size: 13px;
+      line-height: 1.5;
+      font-style: italic;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .game-ended {
+      animation: pulse 1s infinite;
+      color: #ffc107;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="main-view">
+      <div class="header">
+        <h1>TIME LOOP DETECTIVE</h1>
+        <div class="time-display" id="timeDisplay">06:00</div>
+      </div>
+
+      <div class="game-area">
+        <div class="locations-panel">
+          <h3>LOCATIONS</h3>
+          <button class="location-btn active" data-location="Lab">Lab</button>
+          <button class="location-btn" data-location="Office">Office</button>
+          <button class="location-btn" data-location="Equipment Room A">Equipment Room A</button>
+          <button class="location-btn" data-location="Equipment Room B">Equipment Room B</button>
+          <button class="location-btn" data-location="Security Office">Security Office</button>
+          <button class="location-btn" data-location="Meeting Room">Meeting Room</button>
+          <button class="location-btn" data-location="Cafeteria">Cafeteria</button>
+          <button class="location-btn" data-location="Restricted Lab">Restricted Lab</button>
+          <button class="location-btn" data-location="Executive Office">Executive Office</button>
+        </div>
+
+        <div class="content-area">
+          <div class="current-location">
+            <div class="current-location-name" id="locationName">Lab</div>
+            <div id="locationInfo"></div>
+          </div>
+
+          <div class="game-text" id="gameText">
+            You wake up at 6:00 AM. Everything seems normal at first, but there's a strange sense of déjà vu. The facility hums with its usual morning activity. You notice the clock on the wall...
+
+            You are trapped in a time loop. Your task: gather evidence and uncover the truth to break free.
+
+            Start by exploring locations and talking to NPCs. Collect evidence that persists across loops. Multiple paths exist to break the loop, each based on different evidence combinations.
+          </div>
+
+          <div class="action-area">
+            <button class="action-btn" id="examineBtn">Examine Location</button>
+            <button class="action-btn" id="listNpcsBtn">NPCs Here</button>
+            <button class="action-btn" id="talkBtn">Talk to NPC</button>
+          </div>
+
+          <div class="options-area" id="optionsArea"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <div class="sidebar-panel">
+        <h3>INVENTORY</h3>
+        <div id="inventoryList">No evidence collected yet.</div>
+      </div>
+
+      <div class="status-panel">
+        <h3>STATUS</h3>
+        <div class="time-advance">
+          <button class="time-btn" id="advanceBtn15">+15m</button>
+          <button class="time-btn" id="advanceBtn60">+1h</button>
+          <button class="time-btn" id="advanceBtn120">+2h</button>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Current Loop:</span>
+          <span class="status-value" id="loopCount">1</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Time:</span>
+          <span class="status-value" id="currentTime">06:00</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Evidence Found:</span>
+          <span class="status-value" id="evidenceCount">0</span>
+        </div>
+        <div class="status-item">
+          <span class="status-label">Game Status:</span>
+          <span class="status-value" id="gameStatus">In Progress</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="endingModal">
+    <div class="modal-content ending-modal">
+      <div class="ending-title" id="endingTitle">Time Loop Broken</div>
+      <div class="ending-description" id="endingDescription"></div>
+      <div class="ending-stats" id="endingStats"></div>
+      <div class="modal-buttons">
+        <button class="modal-btn" id="restartBtn">New Game</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Minimal game implementation using the compiled TypeScript
+    // This is a simplified version for demonstration
+
+    class SimpleTimeManager {
+      static formatTime(hours, minutes) {
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      }
+
+      static advanceTime(hours, minutes, slots) {
+        const totalMinutes = hours * 60 + minutes + slots * 15;
+        const newHours = Math.floor(totalMinutes / 60) % 24;
+        const newMinutes = totalMinutes % 60;
+        return { hours: newHours, minutes: newMinutes };
+      }
+    }
+
+    class SimpleGame {
+      constructor() {
+        this.currentHours = 6;
+        this.currentMinutes = 0;
+        this.loopCount = 1;
+        this.inventory = new Set();
+        this.visitedLocations = new Set();
+        this.currentLocation = 'Lab';
+        this.gameEnded = false;
+        this.endingType = null;
+        this.npcInteractions = new Map();
+
+        this.npcs = {
+          helena: { name: 'Dr. Helena Crane', location: 'Lab', topic: 'experiments' },
+          marcus: { name: 'Marcus Chen', location: 'Security Office', topic: 'investigation' },
+          richard: { name: 'Dr. Richard Stone', location: 'Meeting Room', topic: 'research' },
+          emma: { name: 'Emma Walters', location: 'Equipment Room B', topic: 'workplace' },
+          james: { name: 'Dr. James Patterson', location: 'Executive Office', topic: 'truth' }
+        };
+
+        this.evidenceData = {
+          'lab-notes': { name: 'Helena\'s Lab Notes', location: 'Lab', time: 7 },
+          'access-logs': { name: 'Security Access Logs', location: 'Security Office', time: 9 },
+          'damaged-equipment': { name: 'Damaged Equipment Report', location: 'Equipment Room B', time: 14 },
+          'footage-frame': { name: 'Security Footage Frame', location: 'Security Office', time: 10 },
+          'richard-notebook': { name: 'Richard\'s Notebook', location: 'Meeting Room', time: 11 },
+          'emma-statement': { name: 'Emma\'s Witness Statement', location: 'Lab', time: 15 },
+          'director-confession': { name: 'Director\'s Full Confession', location: 'Executive Office', time: 8 }
+        };
+
+        this.npcLocations = {
+          helena: { 6: 'Lab', 7: 'Lab', 12: 'Cafeteria', 13: 'Lab', 18: 'Office', 22: 'Home' },
+          marcus: { 6: 'Security Office', 9: 'Building A', 12: 'Cafeteria', 13: 'Building B', 17: 'Security Office', 22: 'Home' },
+          richard: { 6: 'Office', 8: 'Meeting Room', 11: 'Equipment Room A', 12: 'Cafeteria', 13: 'Office', 22: 'Home' },
+          emma: { 6: 'Lab', 7: 'Lab', 12: 'Cafeteria', 13: 'Equipment Room B', 22: 'Home' },
+          james: { 6: 'Executive Office', 7: 'Meeting Room', 11: 'Restricted Lab', 12: 'Cafeteria', 13: 'Executive Office', 22: 'Home' }
+        };
+      }
+
+      advanceTime(slots) {
+        const result = SimpleTimeManager.advanceTime(this.currentHours, this.currentMinutes, slots);
+        this.currentHours = result.hours;
+        this.currentMinutes = result.minutes;
+
+        if (this.currentHours === 6 && this.currentMinutes === 0 && !(this.currentHours === 6 && this.currentMinutes === 0 && this.loopCount === 1)) {
+          this.checkEndingConditions();
+          if (!this.gameEnded) {
+            this.resetLoop();
+          }
+        }
+      }
+
+      checkEndingConditions() {
+        const inv = this.inventory;
+        if (inv.has('richard-notebook') && inv.has('footage-frame') && inv.has('director-confession')) {
+          this.gameEnded = true;
+          this.endingType = 'complete-investigation';
+        } else if (inv.has('director-confession') && inv.has('damaged-equipment')) {
+          this.gameEnded = true;
+          this.endingType = 'director-assistance';
+        } else if (inv.has('richard-notebook') && inv.has('emma-statement')) {
+          this.gameEnded = true;
+          this.endingType = 'stone-confrontation';
+        }
+      }
+
+      resetLoop() {
+        this.loopCount++;
+        this.currentHours = 6;
+        this.currentMinutes = 0;
+      }
+
+      getNPCsAtLocation(location) {
+        const npcsHere = [];
+        for (const [id, npc] of Object.entries(this.npcs)) {
+          const locations = this.npcLocations[id];
+          const closestHour = Math.max(...Object.keys(locations).map(Number).filter(h => h <= this.currentHours));
+          const npcLocation = locations[closestHour];
+          if (npcLocation === location) {
+            npcsHere.push({ id, ...npc });
+          }
+        }
+        return npcsHere;
+      }
+
+      collectEvidence(evidenceId) {
+        if (this.inventory.has(evidenceId)) return 'Already collected.';
+
+        const evidence = this.evidenceData[evidenceId];
+        if (!evidence) return 'Evidence not found.';
+
+        if (evidence.location !== this.currentLocation) return 'Evidence not here.';
+        if (evidence.time !== this.currentHours) return `Check back at ${evidence.time}:00.`;
+
+        this.inventory.add(evidenceId);
+        return `Collected: ${evidence.name}`;
+      }
+
+      getTimeString() {
+        return SimpleTimeManager.formatTime(this.currentHours, this.currentMinutes);
+      }
+
+      getEndingDescription() {
+        const descriptions = {
+          'complete-investigation': 'You have gathered overwhelming evidence against Dr. Stone. With the notebook, footage, and the director\'s confession, the loop destabilizes and you break free.',
+          'director-assistance': 'The Director helps you break the temporal paradox using his authority. The loop collapses and you awaken outside its influence.',
+          'stone-confrontation': 'You confront Dr. Stone with Emma\'s testimony and his own notebook. Caught red-handed, the temporal field destabilizes and the loop breaks.'
+        };
+        return descriptions[this.endingType] || 'The loop continues...';
+      }
+    }
+
+    // Initialize game
+    const game = new SimpleGame();
+
+    // UI Functions
+    function updateDisplay() {
+      const timeStr = game.getTimeString();
+      document.getElementById('timeDisplay').textContent = timeStr;
+      document.getElementById('currentTime').textContent = timeStr;
+      document.getElementById('loopCount').textContent = game.loopCount;
+      document.getElementById('evidenceCount').textContent = game.inventory.size;
+
+      if (game.gameEnded) {
+        document.getElementById('gameStatus').textContent = 'GAME WON!';
+        document.getElementById('gameStatus').classList.add('game-ended');
+        showEndingModal();
+      }
+    }
+
+    function updateInventory() {
+      const invList = document.getElementById('inventoryList');
+      if (game.inventory.size === 0) {
+        invList.innerHTML = 'No evidence collected yet.';
+      } else {
+        let html = '';
+        for (const evidenceId of game.inventory) {
+          const evidence = game.evidenceData[evidenceId];
+          html += `<div class="inventory-item"><div class="item-name">${evidence.name}</div></div>`;
+        }
+        invList.innerHTML = html;
+      }
+    }
+
+    function updateLocationInfo() {
+      const locInfo = document.getElementById('locationInfo');
+      const npcs = game.getNPCsAtLocation(game.currentLocation);
+
+      let html = '<div style="font-size: 11px; color: #90caf9;">';
+      if (npcs.length === 0) {
+        html += 'No one here.';
+      } else {
+        html += 'People here:<br>';
+        for (const npc of npcs) {
+          html += `<div style="margin-left: 10px;">• ${npc.name}</div>`;
+        }
+      }
+      html += '</div>';
+
+      locInfo.innerHTML = html;
+    }
+
+    function updateGameText(text) {
+      document.getElementById('gameText').innerHTML += `<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(79, 195, 247, 0.3);">${text}</div>`;
+      document.getElementById('gameText').scrollTop = document.getElementById('gameText').scrollHeight;
+    }
+
+    function showEndingModal() {
+      document.getElementById('endingTitle').textContent = `Loop Broken - Ending ${game.endingType}`;
+      document.getElementById('endingDescription').textContent = game.getEndingDescription();
+
+      const stats = `
+        <div class="ending-stat"><span>Loops Completed:</span><span>${game.loopCount}</span></div>
+        <div class="ending-stat"><span>Evidence Collected:</span><span>${game.inventory.size} / 7</span></div>
+        <div class="ending-stat"><span>Ending Type:</span><span>${game.endingType.replace('-', ' ').toUpperCase()}</span></div>
+      `;
+      document.getElementById('endingStats').innerHTML = stats;
+      document.getElementById('endingModal').classList.add('active');
+    }
+
+    // Event Listeners
+    document.querySelectorAll('.location-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.location-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        game.currentLocation = btn.dataset.location;
+        game.visitedLocations.add(game.currentLocation);
+        document.getElementById('locationName').textContent = game.currentLocation;
+        updateLocationInfo();
+        updateGameText(`<strong>You are now at:</strong> ${game.currentLocation}`);
+      });
+    });
+
+    document.getElementById('examineBtn').addEventListener('click', () => {
+      const evidenceHere = Object.entries(game.evidenceData)
+        .filter(([_, e]) => e.location === game.currentLocation)
+        .map(([id, _]) => id);
+
+      if (evidenceHere.length === 0) {
+        updateGameText('Nothing interesting to examine here.');
+        return;
+      }
+
+      let text = 'You search the location and find:';
+      for (const evId of evidenceHere) {
+        text += `<div style="margin-left: 20px; margin-top: 5px;"><strong>• ${game.evidenceData[evId].name}</strong></div>`;
+      }
+
+      document.getElementById('optionsArea').innerHTML = '';
+      for (const evId of evidenceHere) {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `Collect ${game.evidenceData[evId].name}`;
+        btn.addEventListener('click', () => {
+          const result = game.collectEvidence(evId);
+          updateGameText(`<strong>${result}</strong>`);
+          updateInventory();
+          document.getElementById('optionsArea').innerHTML = '';
+          game.checkEndingConditions();
+          updateDisplay();
+        });
+        document.getElementById('optionsArea').appendChild(btn);
+      }
+
+      updateGameText(text);
+    });
+
+    document.getElementById('listNpcsBtn').addEventListener('click', () => {
+      const npcs = game.getNPCsAtLocation(game.currentLocation);
+      if (npcs.length === 0) {
+        updateGameText('No one is here.');
+        return;
+      }
+
+      let text = `<strong>People at ${game.currentLocation}:</strong>`;
+      for (const npc of npcs) {
+        text += `<div style="margin-left: 20px; margin-top: 8px;"><strong>• ${npc.name}</strong> - ${npc.location}</div>`;
+      }
+
+      updateGameText(text);
+    });
+
+    document.getElementById('talkBtn').addEventListener('click', () => {
+      const npcs = game.getNPCsAtLocation(game.currentLocation);
+      if (npcs.length === 0) {
+        updateGameText('No one to talk to here.');
+        return;
+      }
+
+      document.getElementById('optionsArea').innerHTML = '';
+      const optionsArea = document.getElementById('optionsArea');
+
+      for (const npc of npcs) {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `Talk to ${npc.name}`;
+        btn.addEventListener('click', () => {
+          const dialogue = `<div class="dialogue-box"><div class="dialogue-npc">${npc.name}:</div><div class="dialogue-text">"Interesting to see you here. What do you want to know?"</div></div>`;
+          updateGameText(dialogue);
+          document.getElementById('optionsArea').innerHTML = '';
+        });
+        optionsArea.appendChild(btn);
+      }
+    });
+
+    document.getElementById('advanceBtn15').addEventListener('click', () => {
+      game.advanceTime(1);
+      updateDisplay();
+      updateLocationInfo();
+      updateGameText(`Time advanced to ${game.getTimeString()}.`);
+    });
+
+    document.getElementById('advanceBtn60').addEventListener('click', () => {
+      game.advanceTime(4);
+      updateDisplay();
+      updateLocationInfo();
+      updateGameText(`Time advanced to ${game.getTimeString()}.`);
+    });
+
+    document.getElementById('advanceBtn120').addEventListener('click', () => {
+      game.advanceTime(8);
+      updateDisplay();
+      updateLocationInfo();
+      updateGameText(`Time advanced to ${game.getTimeString()}.`);
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      location.reload();
+    });
+
+    // Initial setup
+    updateDisplay();
+    updateInventory();
+    updateLocationInfo();
+  </script>
+</body>
+</html>

@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Gravity Golf - Physics-Based Mini Golf</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+        font-family: 'Arial', sans-serif;
+        color: #ffffff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .game-container {
+        display: flex;
+        gap: 30px;
+        max-width: 1200px;
+        flex-wrap: wrap;
+      }
+
+      .canvas-wrapper {
+        position: relative;
+        box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      canvas {
+        display: block;
+        background: #1a1a2e;
+        cursor: crosshair;
+      }
+
+      .controls {
+        width: 300px;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid #00ffff;
+        border-radius: 10px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+      }
+
+      .hole-info {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: rgba(255, 165, 0, 0.1);
+        border-left: 4px solid #ffaa00;
+        border-radius: 5px;
+      }
+
+      .hole-info h2 {
+        color: #ffaa00;
+        margin-bottom: 8px;
+        font-size: 18px;
+      }
+
+      .hole-info p {
+        font-size: 12px;
+        line-height: 1.5;
+        margin-bottom: 8px;
+        color: #cccccc;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .stat-box {
+        background: rgba(100, 200, 255, 0.1);
+        padding: 10px;
+        border: 1px solid #64c8ff;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      .stat-label {
+        font-size: 10px;
+        color: #aaaaaa;
+        text-transform: uppercase;
+      }
+
+      .stat-value {
+        font-size: 20px;
+        font-weight: bold;
+        color: #64c8ff;
+        margin-top: 4px;
+      }
+
+      .controls h3 {
+        color: #00ff00;
+        margin-bottom: 15px;
+        font-size: 14px;
+        text-transform: uppercase;
+      }
+
+      .power-slider {
+        width: 100%;
+        margin: 10px 0;
+        cursor: pointer;
+      }
+
+      .angle-slider {
+        width: 100%;
+        margin: 10px 0;
+        cursor: pointer;
+      }
+
+      .slider-label {
+        font-size: 11px;
+        color: #aaaaaa;
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 5px;
+      }
+
+      .button-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 15px;
+      }
+
+      button {
+        padding: 10px 15px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: bold;
+        text-transform: uppercase;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .action-button {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      .action-button:hover {
+        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+      }
+
+      .success-button {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      }
+
+      .success-button:hover {
+        box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+      }
+
+      .modifier-buttons {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .modifier-buttons button {
+        padding: 8px;
+        font-size: 11px;
+      }
+
+      .gravity-display {
+        background: rgba(100, 100, 255, 0.1);
+        padding: 10px;
+        border: 1px solid #6464ff;
+        border-radius: 5px;
+        margin: 15px 0;
+      }
+
+      .gravity-well-item {
+        font-size: 11px;
+        padding: 4px;
+        margin: 2px 0;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 3px;
+      }
+
+      .gravity-well-item.attractive {
+        color: #64b8ff;
+      }
+
+      .gravity-well-item.repulsive {
+        color: #ff6b6b;
+      }
+
+      .game-over-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .game-over-modal.active {
+        display: flex;
+      }
+
+      .modal-content {
+        background: linear-gradient(135deg, #0f0c29, #302b63);
+        padding: 40px;
+        border-radius: 10px;
+        text-align: center;
+        border: 2px solid #00ffff;
+        max-width: 400px;
+      }
+
+      .modal-content h1 {
+        font-size: 32px;
+        color: #00ff00;
+        margin-bottom: 20px;
+      }
+
+      .modal-content p {
+        font-size: 16px;
+        margin-bottom: 20px;
+        color: #cccccc;
+      }
+
+      .modal-scores {
+        text-align: left;
+        margin: 20px 0;
+        background: rgba(0, 0, 0, 0.3);
+        padding: 15px;
+        border-radius: 5px;
+      }
+
+      .modal-scores h3 {
+        color: #ffaa00;
+        margin-bottom: 10px;
+      }
+
+      .score-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .score-line:last-child {
+        border-bottom: none;
+      }
+
+      .instruction-panel {
+        background: rgba(0, 100, 100, 0.1);
+        border-left: 4px solid #00ffff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .instruction-panel h4 {
+        color: #00ffff;
+        margin-bottom: 8px;
+      }
+
+      .instruction-panel ul {
+        list-style: none;
+        padding-left: 0;
+      }
+
+      .instruction-panel li {
+        margin: 4px 0;
+        padding-left: 15px;
+        position: relative;
+      }
+
+      .instruction-panel li:before {
+        content: '▸';
+        position: absolute;
+        left: 0;
+        color: #00ffff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="canvas-wrapper">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+      </div>
+
+      <div class="controls">
+        <div class="instruction-panel">
+          <h4>How to Play</h4>
+          <ul>
+            <li>Adjust angle and power with sliders</li>
+            <li>Click "HIT BALL" to shoot</li>
+            <li>Use gravity modifiers strategically</li>
+            <li>Attractors pull, repulsors push</li>
+            <li>Get ball in the green hole!</li>
+          </ul>
+        </div>
+
+        <div class="hole-info">
+          <h2 id="holeName">Hole 1</h2>
+          <p id="holeDescription">Loading...</p>
+          <div class="stats">
+            <div class="stat-box">
+              <div class="stat-label">Par</div>
+              <div class="stat-value" id="parValue">2</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-label">Strokes</div>
+              <div class="stat-value" id="strokeValue">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-box">
+            <div class="stat-label">Total Score</div>
+            <div class="stat-value" id="totalScore">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Hole</div>
+            <div class="stat-value" id="holeNumber">1/9</div>
+          </div>
+        </div>
+
+        <h3>Aiming Controls</h3>
+
+        <div>
+          <div class="slider-label">
+            <span>Angle (degrees)</span>
+            <span id="angleValue">0°</span>
+          </div>
+          <input type="range" id="angleSlider" class="angle-slider" min="0" max="360" value="0" />
+        </div>
+
+        <div>
+          <div class="slider-label">
+            <span>Power</span>
+            <span id="powerValue">50%</span>
+          </div>
+          <input type="range" id="powerSlider" class="power-slider" min="0" max="200" value="100" />
+        </div>
+
+        <div class="button-group">
+          <button id="hitButton" class="action-button">HIT BALL</button>
+          <button id="resetButton" class="action-button">Restart Hole</button>
+        </div>
+
+        <h3>Gravity Modifiers</h3>
+        <div class="gravity-display">
+          <div id="gravityWellsList">No modifiers placed</div>
+        </div>
+
+        <div class="modifier-buttons" id="modifierButtons">
+          <!-- Will be populated by JS -->
+        </div>
+
+        <h3>Navigation</h3>
+        <div class="button-group">
+          <button id="nextButton" class="success-button" disabled>NEXT HOLE</button>
+          <button id="restartGameButton">Restart Game</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="game-over-modal" id="gameOverModal">
+      <div class="modal-content">
+        <h1>Game Complete!</h1>
+        <p>You've finished all 9 holes!</p>
+
+        <div class="modal-scores" id="modalScores">
+          <!-- Will be populated by JS -->
+        </div>
+
+        <p id="finalMessage">Great job!</p>
+
+        <div class="button-group">
+          <button id="playAgainButton">Play Again</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import { GameManager } from './dist/systems/GameManager.js';
+      import { CanvasRenderer } from './dist/systems/CanvasRenderer.js';
+      import { Vector2D } from './dist/utils/Vector2D.js';
+
+      // Game state
+      let gameManager;
+      let renderer;
+      let gameState;
+
+      // Input state
+      let selectedAngle = 0;
+      let selectedPower = 100;
+      let isPlacingModifier = false;
+      let modifierIsRepulsive = false;
+      let animationId = null;
+
+      // Initialize game
+      function initGame() {
+        const canvas = document.getElementById('gameCanvas');
+        gameManager = new GameManager();
+        renderer = new CanvasRenderer(canvas, 800, 600);
+
+        gameManager.startGame();
+        gameState = gameManager.getGameState();
+
+        updateUI();
+        setupEventListeners();
+        gameLoop();
+      }
+
+      // Game loop
+      function gameLoop() {
+        if (!gameManager.isGameOver() && gameState && !gameState.inHole) {
+          gameManager.update();
+          gameState = gameManager.getGameState();
+        }
+
+        renderer.render(gameState);
+        updateUI();
+
+        animationId = requestAnimationFrame(gameLoop);
+      }
+
+      // Setup event listeners
+      function setupEventListeners() {
+        // Aiming controls
+        document.getElementById('angleSlider').addEventListener('input', (e) => {
+          selectedAngle = parseInt(e.target.value);
+          document.getElementById('angleValue').textContent = selectedAngle + '°';
+        });
+
+        document.getElementById('powerSlider').addEventListener('input', (e) => {
+          selectedPower = parseInt(e.target.value);
+          const percentage = Math.round((selectedPower / 200) * 100);
+          document.getElementById('powerValue').textContent = percentage + '%';
+        });
+
+        // Hit button
+        document.getElementById('hitButton').addEventListener('click', () => {
+          if (gameState && gameState.ballStopped && !gameState.inHole) {
+            const angleRad = (selectedAngle * Math.PI) / 180;
+            gameManager.hitBall(angleRad, selectedPower * 2);
+          }
+        });
+
+        // Reset button
+        document.getElementById('resetButton').addEventListener('click', () => {
+          gameManager.restartHole();
+          gameState = gameManager.getGameState();
+        });
+
+        // Next hole button
+        document.getElementById('nextButton').addEventListener('click', () => {
+          gameManager.nextHole();
+          gameState = gameManager.getGameState();
+
+          if (gameManager.isGameOver()) {
+            showGameOverModal();
+          }
+        });
+
+        // Restart game button
+        document.getElementById('restartGameButton').addEventListener('click', () => {
+          location.reload();
+        });
+
+        // Play again button
+        document.getElementById('playAgainButton').addEventListener('click', () => {
+          location.reload();
+        });
+
+        // Canvas click for modifier placement
+        document.getElementById('gameCanvas').addEventListener('click', (e) => {
+          if (isPlacingModifier && gameState && !gameState.inHole) {
+            const rect = e.target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const position = new Vector2D(x, y);
+            const success = gameManager.placeGravityModifier(position, modifierIsRepulsive);
+
+            if (success) {
+              isPlacingModifier = false;
+              gameState = gameManager.getGameState();
+              updateModifierButtons();
+            }
+          }
+        });
+      }
+
+      // Update UI
+      function updateUI() {
+        if (!gameState || !gameManager) return;
+
+        // Hole info
+        const config = gameManager.getCurrentHoleConfig();
+        document.getElementById('holeName').textContent = config.name;
+        document.getElementById('holeDescription').textContent = config.description;
+        document.getElementById('parValue').textContent = config.par;
+        document.getElementById('strokeValue').textContent = gameState.strokes;
+
+        // Score
+        document.getElementById('totalScore').textContent = gameManager.getTotalScore();
+        document.getElementById('holeNumber').textContent = gameManager.getCurrentHoleNumber() + '/9';
+
+        // Buttons
+        const hitButton = document.getElementById('hitButton');
+        hitButton.disabled = !gameState.ballStopped || gameState.inHole;
+        hitButton.textContent = isPlacingModifier ? 'CLICK TO PLACE' : 'HIT BALL';
+
+        const nextButton = document.getElementById('nextButton');
+        nextButton.disabled = !gameState.inHole;
+
+        // Gravity wells display
+        const wellsList = document.getElementById('gravityWellsList');
+        if (gameState.gravityWells.length === 0) {
+          wellsList.innerHTML = 'No modifiers placed';
+        } else {
+          let html = '';
+          for (const well of gameState.gravityWells) {
+            const type = well.strength > 0 ? 'Attractor' : 'Repulsor';
+            const color = well.strength > 0 ? 'attractive' : 'repulsive';
+            html += `<div class="gravity-well-item ${color}">${type} @ (${well.position.x | 0}, ${well.position.y | 0})</div>`;
+          }
+          wellsList.innerHTML = html;
+        }
+
+        updateModifierButtons();
+      }
+
+      // Update modifier buttons
+      function updateModifierButtons() {
+        const container = document.getElementById('modifierButtons');
+        const remaining = gameManager.getGravityModifiersRemaining();
+
+        if (remaining > 0) {
+          container.innerHTML = `
+            <button id="attractorBtn" class="action-button">+ Attractor</button>
+            <button id="repulsorBtn" class="action-button">+ Repulsor</button>
+          `;
+
+          document.getElementById('attractorBtn').addEventListener('click', () => {
+            isPlacingModifier = true;
+            modifierIsRepulsive = false;
+          });
+
+          document.getElementById('repulsorBtn').addEventListener('click', () => {
+            isPlacingModifier = true;
+            modifierIsRepulsive = true;
+          });
+        } else {
+          container.innerHTML = '<p style="grid-column: 1/-1; color: #aaa; margin: 0;">No modifiers left</p>';
+        }
+      }
+
+      // Show game over modal
+      function showGameOverModal() {
+        const scores = gameManager.getHoleScores();
+        const pars = gameManager.getAllHoles().map((h) => h.par);
+        let html = '<h3>Your Scores</h3>';
+
+        let totalScore = 0;
+        let totalPar = 0;
+        for (let i = 0; i < scores.length; i++) {
+          totalScore += scores[i];
+          totalPar += pars[i];
+          const diff = scores[i] - pars[i];
+          const diffText = diff > 0 ? `+${diff}` : diff === 0 ? 'E' : `${diff}`;
+          html += `
+            <div class="score-line">
+              <span>Hole ${i + 1}</span>
+              <span>${scores[i]} (Par ${pars[i]})</span>
+            </div>
+          `;
+        }
+
+        html += `
+          <div class="score-line" style="border-top: 1px solid rgba(255,255,255,0.3); margin-top: 10px; padding-top: 10px;">
+            <strong>Total</strong>
+            <strong>${totalScore} (Par ${totalPar})</strong>
+          </div>
+        `;
+
+        const totalDiff = totalScore - totalPar;
+        let message = 'Great job!';
+        if (totalDiff <= -5) {
+          message = 'Outstanding! You\'re a golf master!';
+        } else if (totalDiff < 0) {
+          message = 'Excellent round!';
+        } else if (totalDiff === 0) {
+          message = 'Perfect round!';
+        } else if (totalDiff <= 5) {
+          message = 'Good game!';
+        }
+
+        document.getElementById('modalScores').innerHTML = html;
+        document.getElementById('finalMessage').textContent = message;
+        document.getElementById('gameOverModal').classList.add('active');
+      }
+
+      // Start the game
+      initGame();
+    </script>
+  </body>
+</html>

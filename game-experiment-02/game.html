@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroid Defender - Space Shooter</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            font-family: monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        h1 { color: #0f0; text-shadow: 0 0 10px #0f0; margin: 10px 0; }
+        #gameContainer { position: relative; display: inline-block; border: 3px solid #0f0; box-shadow: 0 0 20px #0f0; }
+        #gameCanvas { display: block; background: #000; }
+        #info { color: #0f0; margin-top: 20px; text-align: center; font-size: 14px; line-height: 1.8; }
+        #score, #health, #wave { font-size: 18px; font-weight: bold; color: #0f0; text-shadow: 0 0 5px #0f0; }
+        .controls { color: #0f0; margin-top: 15px; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>ASTEROID DEFENDER</h1>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+    </div>
+    <div id="info">
+        <div id="wave">Wave: 1/5</div>
+        <div id="health">Health: 100/100</div>
+        <div id="score">Score: 0</div>
+        <div id="status">Press SPACE to start</div>
+    </div>
+    <div class="controls">
+        <p>Controls: Arrow Keys/WASD to Move | Mouse to Aim | Click to Shoot | SPACE to Pause | R to Restart</p>
+    </div>
+
+    <script>
+        // Simple Vector
+        class Vector {
+            constructor(x = 0, y = 0) { this.x = x; this.y = y; }
+            static distance(a, b) {
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+        }
+
+        // Base Entity
+        class Entity {
+            constructor(config) {
+                this.id = config.id;
+                this.position = new Vector(config.position.x, config.position.y);
+                this.velocity = new Vector(config.velocity.x, config.velocity.y);
+                this.rotation = config.rotation;
+                this.isActive = config.isActive;
+                this.radius = config.radius || 10;
+            }
+            update(deltaTime) {
+                this.position.x += this.velocity.x * deltaTime;
+                this.position.y += this.velocity.y * deltaTime;
+            }
+            deactivate() { this.isActive = false; }
+        }
+
+        // Player
+        class Player extends Entity {
+            constructor(config) {
+                super(config);
+                this.maxHealth = config.maxHealth;
+                this.health = config.maxHealth;
+                this.speed = config.speed;
+                this.shootCooldown = config.shootCooldown;
+                this.currentShootCooldown = 0;
+                this.direction = new Vector(0, -1);
+                this.keys = {};
+            }
+            update(deltaTime) {
+                this.velocity.x = 0;
+                this.velocity.y = 0;
+                if (this.keys['ArrowUp'] || this.keys['w']) this.velocity.y = -this.speed;
+                if (this.keys['ArrowDown'] || this.keys['s']) this.velocity.y = this.speed;
+                if (this.keys['ArrowLeft'] || this.keys['a']) this.velocity.x = -this.speed;
+                if (this.keys['ArrowRight'] || this.keys['d']) this.velocity.x = this.speed;
+                super.update(deltaTime);
+                this.position.x = Math.max(this.radius, Math.min(800 - this.radius, this.position.x));
+                this.position.y = Math.max(this.radius, Math.min(600 - this.radius, this.position.y));
+                if (this.currentShootCooldown > 0) this.currentShootCooldown -= deltaTime;
+            }
+            canShoot() { return this.currentShootCooldown <= 0; }
+            shoot() {
+                if (this.canShoot()) {
+                    this.currentShootCooldown = this.shootCooldown;
+                    return true;
+                }
+                return false;
+            }
+            takeDamage(amount) {
+                this.health = Math.max(0, this.health - amount);
+                if (this.health === 0) this.deactivate();
+            }
+        }
+
+        // Asteroid
+        class Asteroid extends Entity {
+            constructor(config) {
+                super(config);
+                this.health = config.health;
+                this.maxHealth = config.health;
+                this.spinRate = (Math.random() - 0.5) * 4;
+            }
+            update(deltaTime) {
+                super.update(deltaTime);
+                this.rotation += this.spinRate * deltaTime;
+                if (this.position.x < -50) this.position.x = 850;
+                if (this.position.x > 850) this.position.x = -50;
+                if (this.position.y < -50) this.position.y = 650;
+                if (this.position.y > 650) this.position.y = -50;
+            }
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) this.deactivate();
+            }
+        }
+
+        // Projectile
+        class Projectile extends Entity {
+            constructor(config) {
+                super(config);
+                this.damage = config.damage;
+                this.lifetime = config.lifetime;
+                this.timeAlive = 0;
+            }
+            update(deltaTime) {
+                super.update(deltaTime);
+                this.timeAlive += deltaTime;
+                if (this.timeAlive >= this.lifetime) this.deactivate();
+            }
+        }
+
+        // Game
+        class Game {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.width = 800;
+                this.height = 600;
+                this.entities = [];
+                this.player = null;
+                this.wave = 1;
+                this.score = 0;
+                this.gameRunning = false;
+                this.gamePaused = false;
+                this.setupInput();
+                this.init();
+            }
+
+            init() {
+                this.entities = [];
+                this.player = new Player({
+                    id: 'player',
+                    position: { x: 400, y: 550 },
+                    velocity: { x: 0, y: 0 },
+                    rotation: 0,
+                    isActive: true,
+                    maxHealth: 100,
+                    speed: 300,
+                    radius: 15,
+                    shootCooldown: 0.15
+                });
+                this.entities.push(this.player);
+                this.spawnWave();
+            }
+
+            spawnWave() {
+                const count = Math.min(3 + this.wave, 8);
+                for (let i = 0; i < count; i++) {
+                    const angle = (Math.PI * 2 * i) / count;
+                    this.entities.push(new Asteroid({
+                        id: `ast-${this.wave}-${i}`,
+                        position: { x: 400 + Math.cos(angle) * 200, y: 300 + Math.sin(angle) * 200 },
+                        velocity: { x: Math.cos(angle) * (100 + this.wave * 20), y: Math.sin(angle) * (100 + this.wave * 20) },
+                        rotation: 0,
+                        isActive: true,
+                        radius: 30,
+                        health: 20
+                    }));
+                }
+            }
+
+            setupInput() {
+                window.addEventListener('keydown', (e) => {
+                    this.player.keys[e.key] = true;
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        this.gamePaused = !this.gamePaused;
+                    }
+                    if (e.key === 'r' || e.key === 'R') {
+                        this.init();
+                        this.gameRunning = true;
+                    }
+                });
+                window.addEventListener('keyup', (e) => {
+                    this.player.keys[e.key] = false;
+                });
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+                    const angle = Math.atan2(my - this.player.position.y, mx - this.player.position.x);
+                    this.player.direction = new Vector(Math.cos(angle), Math.sin(angle));
+                    this.player.rotation = angle;
+                });
+                this.canvas.addEventListener('click', (e) => {
+                    if (this.player.shoot()) {
+                        this.entities.push(new Projectile({
+                            id: `proj-${Date.now()}`,
+                            position: { x: this.player.position.x, y: this.player.position.y },
+                            velocity: { x: this.player.direction.x * 500, y: this.player.direction.y * 500 },
+                            rotation: this.player.rotation,
+                            isActive: true,
+                            radius: 3,
+                            damage: 10,
+                            lifetime: 3
+                        }));
+                    }
+                });
+            }
+
+            update(deltaTime) {
+                if (!this.gameRunning || this.gamePaused) return;
+                for (let e of this.entities) {
+                    if (e.isActive) e.update(deltaTime);
+                }
+                for (let i = 0; i < this.entities.length; i++) {
+                    for (let j = i + 1; j < this.entities.length; j++) {
+                        const a = this.entities[i];
+                        const b = this.entities[j];
+                        if (!a.isActive || !b.isActive) continue;
+                        const dist = Vector.distance(a.position, b.position);
+                        if (dist < a.radius + b.radius) {
+                            if (b instanceof Projectile && a instanceof Asteroid) {
+                                a.takeDamage(b.damage);
+                                b.deactivate();
+                                this.score += 10;
+                            }
+                        }
+                    }
+                }
+                this.entities = this.entities.filter(e => e.isActive || e === this.player);
+                const asts = this.entities.filter(e => e instanceof Asteroid);
+                if (asts.length === 0 && this.entities.length > 1) {
+                    this.wave++;
+                    if (this.wave > 5) {
+                        this.gameRunning = false;
+                        document.getElementById('status').textContent = 'VICTORY!';
+                    } else {
+                        this.spawnWave();
+                    }
+                }
+            }
+
+            render() {
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+                for (let e of this.entities) {
+                    if (!e.isActive) continue;
+                    if (e instanceof Player) {
+                        this.ctx.save();
+                        this.ctx.translate(e.position.x, e.position.y);
+                        this.ctx.rotate(e.rotation);
+                        this.ctx.fillStyle = '#0f0';
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(10, 0);
+                        this.ctx.lineTo(-10, -10);
+                        this.ctx.lineTo(-5, 0);
+                        this.ctx.lineTo(-10, 10);
+                        this.ctx.closePath();
+                        this.ctx.fill();
+                        this.ctx.restore();
+                    } else if (e instanceof Asteroid) {
+                        this.ctx.strokeStyle = '#0f0';
+                        this.ctx.lineWidth = 2;
+                        this.ctx.beginPath();
+                        this.ctx.arc(e.position.x, e.position.y, e.radius, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    } else if (e instanceof Projectile) {
+                        this.ctx.fillStyle = '#0ff';
+                        this.ctx.beginPath();
+                        this.ctx.arc(e.position.x, e.position.y, e.radius, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+                document.getElementById('wave').textContent = `Wave: ${this.wave}/5`;
+                document.getElementById('health').textContent = `Health: ${this.player.health}/${this.player.maxHealth}`;
+                document.getElementById('score').textContent = `Score: ${this.score}`;
+                if (!this.gameRunning) {
+                    document.getElementById('status').textContent = 'Press R to start';
+                }
+                if (this.gamePaused) {
+                    document.getElementById('status').textContent = 'PAUSED';
+                }
+            }
+
+            run() {
+                let lastTime = Date.now();
+                const frame = () => {
+                    const now = Date.now();
+                    const deltaTime = Math.min((now - lastTime) / 1000, 0.016);
+                    lastTime = now;
+                    this.update(deltaTime);
+                    this.render();
+                    requestAnimationFrame(frame);
+                };
+                this.gameRunning = true;
+                frame();
+            }
+        }
+
+        const game = new Game('gameCanvas');
+        game.run();
+    </script>
+</body>
+</html>

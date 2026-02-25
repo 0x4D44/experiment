@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maze Runner AI - Programming Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+            min-height: 600px;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .canvas-container {
+            background: #f5f5f5;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameCanvas {
+            background: white;
+            border: 1px solid #ccc;
+            display: block;
+        }
+
+        .controls-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .level-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .level-selector label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .level-selector select {
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+
+        .level-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+
+        .level-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .level-info p {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.6;
+            margin: 5px 0;
+        }
+
+        .difficulty {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .difficulty.easy { background: #4caf50; color: white; }
+        .difficulty.medium { background: #ff9800; color: white; }
+        .difficulty.hard { background: #f44336; color: white; }
+        .difficulty.expert { background: #9c27b0; color: white; }
+
+        .command-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .cmd-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+
+        .cmd-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .cmd-btn:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .cmd-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .program-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .program-label {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .program-input {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .program-input:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-btn.run {
+            background: #4caf50;
+            color: white;
+        }
+
+        .action-btn.run:hover:not(:disabled) {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .action-btn.reset {
+            background: #ff9800;
+            color: white;
+        }
+
+        .action-btn.reset:hover:not(:disabled) {
+            background: #e68900;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .stats {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .stat:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status.success {
+            background: #c8e6c9;
+            color: #1b5e20;
+            border: 2px solid #4caf50;
+        }
+
+        .status.failure {
+            background: #ffcdd2;
+            color: #b71c1c;
+            border: 2px solid #f44336;
+        }
+
+        .status.info {
+            background: #bbdefb;
+            color: #0d47a1;
+            border: 2px solid #2196f3;
+        }
+
+        .debugger {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .debugger-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .execution-log {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+            padding: 10px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+
+        .log-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+
+        .log-entry.error {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .log-entry.success {
+            color: #4caf50;
+        }
+
+        .footer {
+            background: #f5f5f5;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            color: #0d47a1;
+        }
+
+        .instructions h4 {
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .command-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Maze Runner AI</h1>
+            <p>Program your AI to escape increasingly complex mazes!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="game-area">
+                <div class="instructions">
+                    <h4>How to Play:</h4>
+                    <ol>
+                        <li>Select a level to load the maze puzzle</li>
+                        <li>Use commands or write a program to guide your AI</li>
+                        <li>Click "Run Program" to execute and watch your AI move</li>
+                        <li>Reach the goal in the fewest steps to get the best score!</li>
+                    </ol>
+                </div>
+                <div class="canvas-container">
+                    <canvas id="gameCanvas" width="500" height="500"></canvas>
+                </div>
+            </div>
+
+            <div class="controls-section">
+                <div class="level-selector">
+                    <label for="levelSelect">Select Level:</label>
+                    <select id="levelSelect">
+                        <option value="1">Level 1 - Simple Path</option>
+                        <option value="2">Level 2 - The Corner</option>
+                        <option value="3">Level 3 - First Maze</option>
+                        <option value="4">Level 4 - Locked Gate</option>
+                        <option value="5">Level 5 - Two Keys</option>
+                        <option value="6">Level 6 - Warp Zone</option>
+                        <option value="7">Level 7 - Complex Path</option>
+                        <option value="8">Level 8 - Three Doors</option>
+                        <option value="9">Level 9 - Portal Puzzle</option>
+                        <option value="10">Level 10 - The Labyrinth</option>
+                        <option value="11">Level 11 - Challenge 11</option>
+                        <option value="12">Level 12 - Challenge 12</option>
+                        <option value="13">Level 13 - Challenge 13</option>
+                        <option value="14">Level 14 - Challenge 14</option>
+                        <option value="15">Level 15 - Challenge 15</option>
+                        <option value="16">Level 16 - Challenge 16</option>
+                        <option value="17">Level 17 - Challenge 17</option>
+                        <option value="18">Level 18 - Challenge 18</option>
+                        <option value="19">Level 19 - Challenge 19</option>
+                        <option value="20">Level 20 - Challenge 20</option>
+                    </select>
+                </div>
+
+                <div id="levelInfo" class="level-info">
+                    <h3 id="levelName">Level 1 - Simple Path</h3>
+                    <p id="levelDesc">Navigate straight to the goal.</p>
+                    <span id="levelDiff" class="difficulty easy">Easy</span>
+                </div>
+
+                <div class="program-section">
+                    <label class="program-label">Program (One command per line):</label>
+                    <textarea id="program" class="program-input" placeholder="FORWARD
+FORWARD
+FORWARD
+FORWARD">FORWARD
+FORWARD
+FORWARD
+FORWARD</textarea>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="action-btn run" id="runBtn">▶ Run Program</button>
+                    <button class="action-btn reset" id="resetBtn">↻ Reset</button>
+                </div>
+
+                <div class="stats">
+                    <div class="stat">
+                        <span class="stat-label">Steps Taken:</span>
+                        <span class="stat-value" id="stepCount">0</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Time Elapsed:</span>
+                        <span class="stat-value" id="timeCount">0.0s</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">AI Position:</span>
+                        <span class="stat-value" id="posCount">(0, 0)</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Efficiency:</span>
+                        <span class="stat-value" id="effCount">0%</span>
+                    </div>
+                </div>
+
+                <div id="statusDiv" class="status info" style="display: none;"></div>
+
+                <div class="debugger">
+                    <div class="debugger-title">📋 Execution Log:</div>
+                    <div class="execution-log" id="logDiv">Ready to execute...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Maze Runner AI - Game Development Competition Round 2</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Program your AI with simple commands: FORWARD, TURN_LEFT, TURN_RIGHT, SENSE_WALL, MARK_PATH, PICKUP_KEY, USE_DOOR</p>
+        </div>
+    </div>
+
+    <script>
+        // Game will be initialized here by the TypeScript compiled code
+        // For now, this is a placeholder for the bundled game
+        console.log('Maze Runner AI loaded. TypeScript bundle will inject game logic here.');
+    </script>
+</body>
+</html>

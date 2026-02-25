@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Warrior - Typing Battle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .game-status {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .health-bar, .mana-bar {
+            width: 100%;
+            height: 20px;
+            background: #ddd;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b6b, #ff9a56);
+            transition: width 0.3s ease;
+        }
+
+        .mana-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ecdc4, #44a4d8);
+            transition: width 0.3s ease;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            background: #1a1a2e;
+            display: block;
+            margin: 20px 0;
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #wordInput {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        #wordInput:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #wordInput.error {
+            border-color: #ff6b6b;
+            background: #fff5f5;
+        }
+
+        #wordInput.success {
+            border-color: #51cf66;
+            background: #f1fce3;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #submitBtn {
+            background: #667eea;
+            color: white;
+        }
+
+        #submitBtn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        #submitBtn:active {
+            transform: translateY(0);
+        }
+
+        #startBtn {
+            background: #51cf66;
+            color: white;
+            display: block;
+            margin: 0 auto;
+            padding: 15px 40px;
+            font-size: 18px;
+        }
+
+        #startBtn:hover {
+            background: #40c057;
+        }
+
+        .message-box {
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .message-box.info {
+            background: #e3f2fd;
+            color: #1976d2;
+            border-left: 4px solid #1976d2;
+        }
+
+        .message-box.success {
+            background: #f1fce3;
+            color: #51cf66;
+            border-left: 4px solid #51cf66;
+        }
+
+        .message-box.error {
+            background: #fff5f5;
+            color: #ff6b6b;
+            border-left: 4px solid #ff6b6b;
+        }
+
+        .game-over-screen {
+            text-align: center;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .game-over-screen h2 {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        .game-over-screen p {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .combo-display {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .word-hint {
+            padding: 10px;
+            background: #fff3e0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            color: #f57c00;
+        }
+
+        @media (max-width: 768px) {
+            .game-status {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            #gameCanvas {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Word Warrior</h1>
+        <p class="subtitle">Type words to cast spells and defeat enemies!</p>
+
+        <div id="startScreen">
+            <button id="startBtn">Start Game</button>
+        </div>
+
+        <div id="gameScreen" style="display: none;">
+            <div class="game-status">
+                <div class="stat-box">
+                    <div class="stat-label">Level</div>
+                    <div class="stat-value" id="levelDisplay">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Your HP</div>
+                    <div class="stat-value" id="playerHpDisplay">100</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="playerHealthBar" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Mana</div>
+                    <div class="stat-value" id="manaDisplay">50</div>
+                    <div class="mana-bar">
+                        <div class="mana-fill" id="manaBar" style="width: 100%;"></div>
+                    </div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Score</div>
+                    <div class="stat-value" id="scoreDisplay">0</div>
+                </div>
+            </div>
+
+            <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+            <div class="message-box info" id="messageBox">Game started! Type the word to attack!</div>
+
+            <div class="word-hint" id="wordHint" style="display: none;"></div>
+
+            <div class="input-section">
+                <input type="text" id="wordInput" placeholder="Type a word and press Enter or click Submit..." autocomplete="off">
+                <button id="submitBtn">Type</button>
+            </div>
+
+            <div id="gameOverScreen" style="display: none;">
+                <div class="game-over-screen">
+                    <h2 id="gameOverTitle">Game Over!</h2>
+                    <p id="gameOverMessage"></p>
+                    <div class="combo-display" id="finalScore">Score: 0</div>
+                    <button id="restartBtn">Play Again</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game engine embedded for standalone play
+        class Word {
+            constructor(data) {
+                this.text = data.text.toLowerCase();
+                this.difficulty = data.difficulty;
+                this.category = data.category;
+                this.basePoints = data.basePoints;
+            }
+
+            getDamage(speedBonus = 1) {
+                return Math.floor(this.basePoints * this.difficulty * speedBonus);
+            }
+
+            getSpeedBonus(timeMs) {
+                if (timeMs <= 100) return 2.0;
+                if (timeMs <= 200) return 1.8;
+                if (timeMs <= 300) return 1.5;
+                if (timeMs <= 500) return 1.2;
+                if (timeMs <= 750) return 1.0;
+                return 0.8;
+            }
+        }
+
+        class Enemy {
+            constructor(name, health, attack, level = 1, isBoss = false) {
+                this.name = name;
+                this.maxHealth = health;
+                this.currentHealth = health;
+                this.attack = attack;
+                this.level = level;
+                this.experience = level * 10;
+                this.isBoss = isBoss;
+            }
+
+            takeDamage(amount) {
+                this.currentHealth = Math.max(0, this.currentHealth - amount);
+            }
+
+            isAlive() {
+                return this.currentHealth > 0;
+            }
+
+            getHealthPercent() {
+                return (this.currentHealth / this.maxHealth) * 100;
+            }
+
+            getAttackDamage() {
+                const multiplier = this.isBoss ? 1.5 : 1.0;
+                return Math.floor(this.attack * multiplier);
+            }
+
+            reset() {
+                this.currentHealth = this.maxHealth;
+            }
+        }
+
+        class Player {
+            constructor(name = 'Warrior', maxHealth = 100) {
+                this.name = name;
+                this.maxHealth = maxHealth;
+                this.currentHealth = maxHealth;
+                this.maxMana = 50;
+                this.currentMana = this.maxMana;
+                this.level = 1;
+                this.totalExperience = 0;
+                this.nextLevelExperience = 100;
+                this.accuracy = 100;
+                this.wordCount = 0;
+                this.abilities = new Set();
+                this.manaRegenPerWord = 5;
+            }
+
+            takeDamage(amount) {
+                this.currentHealth = Math.max(0, this.currentHealth - amount);
+            }
+
+            heal(amount) {
+                this.currentHealth = Math.min(this.maxHealth, this.currentHealth + amount);
+            }
+
+            receiveMana(amount) {
+                this.currentMana = Math.min(this.maxMana, this.currentMana + amount);
+            }
+
+            gainExperience(amount) {
+                this.totalExperience += amount;
+                while (this.totalExperience >= this.nextLevelExperience) {
+                    this.levelUp();
+                }
+            }
+
+            levelUp() {
+                this.level++;
+                this.totalExperience -= this.nextLevelExperience;
+                this.nextLevelExperience = Math.floor(this.nextLevelExperience * 1.5);
+                this.maxHealth = Math.floor(this.maxHealth * 1.2);
+                this.currentHealth = this.maxHealth;
+                this.maxMana = Math.floor(this.maxMana * 1.2);
+                this.currentMana = this.maxMana;
+                this.abilities.add(`ability_level_${this.level}`);
+            }
+
+            isAlive() {
+                return this.currentHealth > 0;
+            }
+
+            getHealthPercent() {
+                return (this.currentHealth / this.maxHealth) * 100;
+            }
+
+            getManaPercent() {
+                return (this.currentMana / this.maxMana) * 100;
+            }
+
+            recordWord(correct) {
+                this.wordCount++;
+                this.receiveMana(this.manaRegenPerWord);
+                if (!correct) {
+                    this.accuracy = Math.max(0, this.accuracy - 2);
+                } else {
+                    this.accuracy = Math.min(100, this.accuracy + 1);
+                }
+            }
+        }
+
+        class ComboSystem {
+            constructor() {
+                this.currentCombo = 0;
+                this.maxCombo = 0;
+                this.multiplier = 1.0;
+            }
+
+            addHit() {
+                this.currentCombo++;
+                if (this.currentCombo > this.maxCombo) {
+                    this.maxCombo = this.currentCombo;
+                }
+                this.updateMultiplier();
+            }
+
+            addMiss() {
+                this.currentCombo = 0;
+                this.multiplier = 1.0;
+            }
+
+            updateMultiplier() {
+                this.multiplier = 1.0 + Math.floor(this.currentCombo / 5) * 0.5;
+            }
+
+            getComboMultiplier() {
+                return this.multiplier;
+            }
+
+            getComboBonus() {
+                return Math.floor(Math.max(0, (this.currentCombo - 1) / 5) * 10);
+            }
+        }
+
+        // Word database (simplified for HTML version)
+        const WORD_LIST = [
+            // Fire words
+            { text: 'ignite', difficulty: 2, category: 'fire', basePoints: 15 },
+            { text: 'blaze', difficulty: 2, category: 'fire', basePoints: 14 },
+            { text: 'inferno', difficulty: 3, category: 'fire', basePoints: 25 },
+            { text: 'flame', difficulty: 1, category: 'fire', basePoints: 8 },
+            { text: 'burn', difficulty: 1, category: 'fire', basePoints: 6 },
+            { text: 'fire', difficulty: 1, category: 'fire', basePoints: 7 },
+            { text: 'spark', difficulty: 1, category: 'fire', basePoints: 9 },
+            { text: 'heat', difficulty: 1, category: 'fire', basePoints: 7 },
+            { text: 'scorch', difficulty: 2, category: 'fire', basePoints: 16 },
+            { text: 'torch', difficulty: 2, category: 'fire', basePoints: 12 },
+            { text: 'ember', difficulty: 2, category: 'fire', basePoints: 11 },
+            { text: 'combustion', difficulty: 4, category: 'fire', basePoints: 35 },
+
+            // Ice words
+            { text: 'freeze', difficulty: 2, category: 'ice', basePoints: 14 },
+            { text: 'frost', difficulty: 2, category: 'ice', basePoints: 12 },
+            { text: 'chill', difficulty: 2, category: 'ice', basePoints: 11 },
+            { text: 'ice', difficulty: 1, category: 'ice', basePoints: 5 },
+            { text: 'cold', difficulty: 1, category: 'ice', basePoints: 6 },
+            { text: 'snow', difficulty: 1, category: 'ice', basePoints: 6 },
+            { text: 'blizzard', difficulty: 3, category: 'ice', basePoints: 23 },
+            { text: 'frozen', difficulty: 2, category: 'ice', basePoints: 14 },
+            { text: 'crystal', difficulty: 2, category: 'ice', basePoints: 15 },
+            { text: 'glacial', difficulty: 3, category: 'ice', basePoints: 21 },
+
+            // Earth words
+            { text: 'stone', difficulty: 1, category: 'earth', basePoints: 8 },
+            { text: 'earth', difficulty: 1, category: 'earth', basePoints: 7 },
+            { text: 'rock', difficulty: 1, category: 'earth', basePoints: 6 },
+            { text: 'ground', difficulty: 1, category: 'earth', basePoints: 7 },
+            { text: 'quake', difficulty: 2, category: 'earth', basePoints: 13 },
+            { text: 'boulder', difficulty: 2, category: 'earth', basePoints: 14 },
+            { text: 'mountain', difficulty: 2, category: 'earth', basePoints: 14 },
+            { text: 'tremor', difficulty: 2, category: 'earth', basePoints: 12 },
+            { text: 'solid', difficulty: 1, category: 'earth', basePoints: 7 },
+            { text: 'granite', difficulty: 2, category: 'earth', basePoints: 14 },
+
+            // Lightning words
+            { text: 'lightning', difficulty: 3, category: 'lightning', basePoints: 24 },
+            { text: 'thunder', difficulty: 2, category: 'lightning', basePoints: 16 },
+            { text: 'bolt', difficulty: 1, category: 'lightning', basePoints: 8 },
+            { text: 'shock', difficulty: 1, category: 'lightning', basePoints: 7 },
+            { text: 'electric', difficulty: 2, category: 'lightning', basePoints: 14 },
+            { text: 'power', difficulty: 2, category: 'lightning', basePoints: 12 },
+            { text: 'energy', difficulty: 2, category: 'lightning', basePoints: 13 },
+            { text: 'zap', difficulty: 1, category: 'lightning', basePoints: 6 },
+            { text: 'arc', difficulty: 1, category: 'lightning', basePoints: 5 },
+            { text: 'charge', difficulty: 2, category: 'lightning', basePoints: 12 },
+
+            // Healing words
+            { text: 'heal', difficulty: 1, category: 'heal', basePoints: 10 },
+            { text: 'cure', difficulty: 1, category: 'heal', basePoints: 9 },
+            { text: 'mend', difficulty: 1, category: 'heal', basePoints: 8 },
+            { text: 'help', difficulty: 1, category: 'heal', basePoints: 7 },
+            { text: 'aid', difficulty: 1, category: 'heal', basePoints: 6 },
+            { text: 'potion', difficulty: 2, category: 'heal', basePoints: 14 },
+            { text: 'remedy', difficulty: 2, category: 'heal', basePoints: 13 },
+            { text: 'restore', difficulty: 2, category: 'heal', basePoints: 16 },
+            { text: 'revive', difficulty: 2, category: 'heal', basePoints: 13 },
+            { text: 'blessing', difficulty: 2, category: 'heal', basePoints: 14 },
+        ];
+
+        class WordDatabase {
+            constructor() {
+                this.words = WORD_LIST.map(data => new Word(data));
+            }
+
+            validateWord(text) {
+                return this.words.find(w => w.text === text.toLowerCase()) || null;
+            }
+
+            getRandomWord(maxDifficulty = 5) {
+                const available = this.words.filter(w => w.difficulty <= maxDifficulty);
+                return available[Math.floor(Math.random() * available.length)];
+            }
+        }
+
+        class Battle {
+            constructor(player, enemy, wordDatabase) {
+                this.player = player;
+                this.enemy = enemy;
+                this.combo = new ComboSystem();
+                this.wordDatabase = wordDatabase;
+                this.isActive = true;
+                this.playerScore = 0;
+                this.timeStarted = Date.now();
+            }
+
+            processWord(typedWord) {
+                const timeMs = Date.now() - this.timeStarted;
+                const word = this.wordDatabase.validateWord(typedWord);
+
+                if (!word) {
+                    this.combo.addMiss();
+                    this.player.recordWord(false);
+                    return {
+                        valid: false,
+                        damage: 0,
+                        healing: 0,
+                        message: 'Word not found!'
+                    };
+                }
+
+                this.combo.addHit();
+                this.player.recordWord(true);
+
+                const speedBonus = word.getSpeedBonus(timeMs);
+                let damage = word.getDamage(speedBonus);
+                let healing = 0;
+
+                damage = Math.floor(damage * this.combo.getComboMultiplier());
+
+                if (word.category === 'heal') {
+                    healing = damage;
+                    damage = 0;
+                    this.player.heal(healing);
+                } else if (word.category === 'ice') {
+                    this.enemy.attack = Math.floor(this.enemy.attack * 0.8);
+                }
+
+                this.player.receiveMana(this.player.manaRegenPerWord);
+
+                if (damage > 0) {
+                    this.enemy.takeDamage(damage);
+                }
+
+                this.player.gainExperience(Math.floor(damage / 2 + 5));
+
+                const points = damage + this.combo.getComboBonus() + Math.floor(speedBonus * 10);
+                this.playerScore += points;
+
+                if (!this.enemy.isAlive()) {
+                    this.isActive = false;
+                }
+
+                return {
+                    valid: true,
+                    damage,
+                    healing,
+                    points,
+                    message: `${word.text} (${word.category}) - ${damage} damage!`
+                };
+            }
+
+            enemyTurn() {
+                const damage = this.enemy.getAttackDamage();
+                this.player.takeDamage(damage);
+                return damage;
+            }
+
+            isBattleActive() {
+                return this.isActive && this.player.isAlive() && this.enemy.isAlive();
+            }
+        }
+
+        // Game UI Handler
+        class GameUI {
+            constructor() {
+                this.player = new Player();
+                this.wordDatabase = new WordDatabase();
+                this.currentBattle = null;
+                this.currentLevel = 1;
+                this.totalScore = 0;
+                this.gameOver = false;
+                this.enemies = [
+                    new Enemy('Goblin', 20, 5, 1, false),
+                    new Enemy('Orc', 35, 8, 1, false),
+                    new Enemy('Troll', 50, 12, 2, false),
+                    new Enemy('Drake', 75, 15, 3, false),
+                    new Enemy('Demon', 100, 20, 4, false),
+                    new Enemy('Shadow Lord', 150, 25, 5, true),
+                ];
+
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.wordInput = document.getElementById('wordInput');
+                this.messageBox = document.getElementById('messageBox');
+
+                this.setupEventListeners();
+                this.draw();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').onclick = () => this.startGame();
+                document.getElementById('submitBtn').onclick = () => this.submitWord();
+                document.getElementById('restartBtn').onclick = () => this.restartGame();
+                this.wordInput.onkeypress = (e) => {
+                    if (e.key === 'Enter') this.submitWord();
+                };
+            }
+
+            startGame() {
+                document.getElementById('startScreen').style.display = 'none';
+                document.getElementById('gameScreen').style.display = 'block';
+                this.player = new Player();
+                this.currentLevel = 1;
+                this.totalScore = 0;
+                this.gameOver = false;
+                this.startBattle();
+            }
+
+            startBattle() {
+                if (this.currentLevel > this.enemies.length) {
+                    this.endGame(true);
+                    return;
+                }
+                const enemy = this.enemies[this.currentLevel - 1];
+                enemy.reset();
+                this.currentBattle = new Battle(this.player, enemy, this.wordDatabase);
+                this.wordInput.value = '';
+                this.wordInput.focus();
+                this.showMessage('Battle started! Type words to attack!', 'info');
+                this.draw();
+            }
+
+            submitWord() {
+                if (!this.currentBattle || !this.currentBattle.isBattleActive()) return;
+
+                const word = this.wordInput.value.trim().toLowerCase();
+                if (!word) return;
+
+                const result = this.currentBattle.processWord(word);
+
+                if (result.valid) {
+                    this.wordInput.classList.add('success');
+                    this.wordInput.classList.remove('error');
+                    this.showMessage(result.message, 'success');
+
+                    if (this.currentBattle.isBattleActive()) {
+                        const enemyDamage = this.currentBattle.enemyTurn();
+                        this.showMessage(`Enemy deals ${enemyDamage} damage!`, 'info');
+                    } else {
+                        this.totalScore += this.currentBattle.playerScore;
+                        const boss = this.currentBattle.enemy.isBoss;
+                        if (boss) {
+                            this.endGame(true);
+                        } else {
+                            this.showMessage(`Victory! You defeated ${this.currentBattle.enemy.name}!`, 'success');
+                            setTimeout(() => {
+                                this.currentLevel++;
+                                this.startBattle();
+                            }, 2000);
+                        }
+                    }
+                } else {
+                    this.wordInput.classList.add('error');
+                    this.wordInput.classList.remove('success');
+                    this.showMessage('Word not in dictionary!', 'error');
+                }
+
+                this.wordInput.value = '';
+                setTimeout(() => {
+                    this.wordInput.classList.remove('success', 'error');
+                }, 500);
+
+                this.updateUI();
+                this.draw();
+            }
+
+            restartGame() {
+                this.gameOver = false;
+                document.getElementById('gameOverScreen').style.display = 'none';
+                this.startGame();
+            }
+
+            endGame(won) {
+                this.gameOver = true;
+                const gameOverScreen = document.getElementById('gameOverScreen');
+                gameOverScreen.style.display = 'block';
+
+                if (won) {
+                    document.getElementById('gameOverTitle').textContent = 'Victory! You are a Word Warrior!';
+                    document.getElementById('gameOverMessage').textContent = 'You have defeated all enemies and become a true Word Warrior!';
+                } else {
+                    document.getElementById('gameOverTitle').textContent = 'Game Over';
+                    document.getElementById('gameOverMessage').textContent = `You were defeated... But you can try again!`;
+                }
+
+                document.getElementById('finalScore').textContent = `Final Score: ${this.totalScore}`;
+                this.wordInput.disabled = true;
+                document.getElementById('submitBtn').disabled = true;
+            }
+
+            showMessage(msg, type = 'info') {
+                this.messageBox.textContent = msg;
+                this.messageBox.className = `message-box ${type}`;
+            }
+
+            updateUI() {
+                if (!this.currentBattle) return;
+                const status = {
+                    playerHealth: this.currentBattle.player.currentHealth,
+                    playerHealthMax: this.currentBattle.player.maxHealth,
+                    playerMana: this.currentBattle.player.currentMana,
+                    playerManaMax: this.currentBattle.player.maxMana,
+                    combo: this.currentBattle.combo.currentCombo,
+                    score: this.totalScore + this.currentBattle.playerScore,
+                };
+
+                document.getElementById('levelDisplay').textContent = this.currentLevel;
+                document.getElementById('playerHpDisplay').textContent = `${status.playerHealth}/${status.playerHealthMax}`;
+                document.getElementById('manaDisplay').textContent = `${status.playerMana}/${status.playerManaMax}`;
+                document.getElementById('scoreDisplay').textContent = status.score;
+                document.getElementById('playerHealthBar').style.width = `${(status.playerHealth / status.playerHealthMax) * 100}%`;
+                document.getElementById('manaBar').style.width = `${(status.playerMana / status.playerManaMax) * 100}%`;
+
+                if (!this.currentBattle.isBattleActive() && !this.gameOver) {
+                    this.wordInput.disabled = true;
+                    document.getElementById('submitBtn').disabled = true;
+                } else if (this.currentBattle.isBattleActive()) {
+                    this.wordInput.disabled = false;
+                    document.getElementById('submitBtn').disabled = false;
+                }
+
+                if (this.currentBattle.player.isAlive() === false) {
+                    this.endGame(false);
+                }
+            }
+
+            draw() {
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+
+                // Background
+                this.ctx.fillStyle = '#1a1a2e';
+                this.ctx.fillRect(0, 0, w, h);
+
+                if (!this.currentBattle) return;
+
+                const player = this.currentBattle.player;
+                const enemy = this.currentBattle.enemy;
+                const combo = this.currentBattle.combo;
+
+                // Draw player
+                const playerX = 50;
+                const playerY = h / 2 - 20;
+                this.ctx.fillStyle = '#51cf66';
+                this.ctx.fillRect(playerX, playerY, 60, 40);
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = 'bold 12px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText('YOU', playerX + 30, playerY - 10);
+
+                // Draw enemy
+                const enemyX = w - 110;
+                const enemyY = h / 2 - 20;
+                const enemyColor = enemy.isBoss ? '#ff6b6b' : '#ffa94d';
+                this.ctx.fillStyle = enemyColor;
+                this.ctx.fillRect(enemyX, enemyY, 60, 40);
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillText(enemy.name, enemyX + 30, enemyY - 10);
+
+                // Draw health bars
+                const barWidth = 60;
+                const barHeight = 5;
+
+                // Player health
+                this.ctx.fillStyle = '#ddd';
+                this.ctx.fillRect(playerX, playerY + 45, barWidth, barHeight);
+                this.ctx.fillStyle = '#51cf66';
+                this.ctx.fillRect(playerX, playerY + 45, barWidth * (player.currentHealth / player.maxHealth), barHeight);
+
+                // Enemy health
+                this.ctx.fillStyle = '#ddd';
+                this.ctx.fillRect(enemyX, enemyY + 45, barWidth, barHeight);
+                this.ctx.fillStyle = enemyColor;
+                this.ctx.fillRect(enemyX, enemyY + 45, barWidth * (enemy.currentHealth / enemy.maxHealth), barHeight);
+
+                // Draw combo
+                if (combo.currentCombo > 0) {
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.font = 'bold 36px Arial';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`COMBO x${combo.currentCombo}`, w / 2, 80);
+                }
+
+                // Draw middle text
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '14px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(`vs ${enemy.name}`, w / 2, h / 2 + 50);
+                this.ctx.fillText(`Multiplier: ${combo.getComboMultiplier().toFixed(1)}x`, w / 2, h / 2 + 70);
+            }
+        }
+
+        // Initialize game
+        let game;
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new GameUI();
+        });
+    </script>
+</body>
+</html>

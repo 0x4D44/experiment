@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbit Commander - Space Navigation Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27, #1a1a3e);
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        #gameContainer {
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #00ff00;
+            color: #00ff00;
+        }
+
+        canvas {
+            border: 3px solid #00ff00;
+            background-color: #000011;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.5);
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .controls {
+            background: rgba(0, 30, 60, 0.8);
+            padding: 20px;
+            border: 2px solid #00ff00;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .control-section h3 {
+            color: #00ff00;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .control-section p {
+            margin: 5px 0;
+            font-size: 0.85em;
+            color: #aaffaa;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00ff00, #00aa00);
+            border: 2px solid #00ff00;
+            color: #000000;
+            padding: 12px 25px;
+            font-size: 1em;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(135deg, #00ff00, #00dd00);
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        .info-box {
+            background: rgba(0, 50, 100, 0.6);
+            padding: 15px;
+            border: 1px solid #0099ff;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-size: 0.9em;
+        }
+
+        .info-box h4 {
+            color: #0099ff;
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            margin: 4px 0;
+            color: #aaffff;
+        }
+
+        #missionInfo {
+            background: rgba(100, 50, 0, 0.6);
+            padding: 15px;
+            border: 1px solid #ffaa00;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        #missionInfo h4 {
+            color: #ffaa00;
+            margin-bottom: 8px;
+        }
+
+        #missionInfo p {
+            margin: 4px 0;
+            color: #ffddaa;
+            font-size: 0.9em;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.85em;
+            color: #888888;
+        }
+
+        @media (max-width: 900px) {
+            h1 {
+                font-size: 1.8em;
+            }
+
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .controls {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <h1>🛰️ ORBIT COMMANDER 🛰️</h1>
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div class="controls">
+            <div class="control-section">
+                <h3>🎮 LAUNCH PHASE</h3>
+                <p>⬅️ ➡️ or A/D: Adjust launch angle</p>
+                <p>⬆️ ⬇️ or W/S: Adjust launch velocity</p>
+                <p>SPACEBAR: Launch spacecraft</p>
+            </div>
+
+            <div class="control-section">
+                <h3>✈️ FLIGHT PHASE</h3>
+                <p>⬆️ or W: Engage main thruster</p>
+                <p>⬅️ or A: Rotate thrust vector</p>
+                <p>➡️ or D: Rotate thrust vector</p>
+                <p>1/2/5/0: Time scale (1x, 2x, 5x, 10x)</p>
+            </div>
+
+            <div class="control-section">
+                <h3>📊 GAME INFO</h3>
+                <p>Complete 10 missions of increasing difficulty</p>
+                <p>Fuel is limited - use gravity assists wisely</p>
+                <p>Score based on fuel efficiency and difficulty</p>
+                <p>White dashed line shows predicted trajectory</p>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <button onclick="startGame()">START GAME</button>
+            <button onclick="resetGame()">RESET GAME</button>
+            <button onclick="showHelp()">INSTRUCTIONS</button>
+        </div>
+
+        <div id="missionInfo" class="info-box" style="display: none;">
+            <h4>📍 CURRENT MISSION</h4>
+            <p id="missionName"></p>
+            <p id="missionObjective"></p>
+            <p id="missionStats"></p>
+        </div>
+
+        <div class="info-box">
+            <h4>🎯 MISSION OBJECTIVES</h4>
+            <p><strong>1.</strong> Mars Bound - Reach Mars from Earth</p>
+            <p><strong>2.</strong> Venus Run - Reach Venus efficiently</p>
+            <p><strong>3.</strong> Lunar Deployment - Orbit the Moon</p>
+            <p><strong>4.</strong> Gravity Assist - Use gravity assists</p>
+            <p><strong>5.</strong> Mercury Challenge - Reach Mercury</p>
+            <p><strong>6.</strong> Fuel Conservation - Minimal fuel use</p>
+            <p><strong>7.</strong> Asteroid Strike - Intercept asteroid</p>
+            <p><strong>8.</strong> Dual Rendezvous - Visit two planets</p>
+            <p><strong>9.</strong> Grand Tour - Visit four planets</p>
+            <p><strong>10.</strong> Impossible Challenge - Asteroid field</p>
+        </div>
+
+        <div class="footer">
+            <p>Build with TypeScript | Physics-based orbital mechanics | Test-driven development</p>
+            <p style="margin-top: 10px;">Green bodies = planets • Green dot = spacecraft • White dashed line = predicted path</p>
+        </div>
+    </div>
+
+    <script>
+        let game = null;
+
+        function startGame() {
+            if (game && game.gameRunning) {
+                console.log("Game already running");
+                return;
+            }
+
+            // Initialize game
+            game = new OrbitCommanderGame();
+            game.start();
+            document.getElementById('missionInfo').style.display = 'block';
+            updateMissionDisplay();
+        }
+
+        function resetGame() {
+            if (game) {
+                game.reset();
+            }
+            document.getElementById('missionInfo').style.display = 'none';
+        }
+
+        function showHelp() {
+            alert(`
+ORBIT COMMANDER - GAME GUIDE
+
+OBJECTIVE: Complete 10 space navigation missions
+
+HOW TO PLAY:
+1. On Launch Screen: Set angle and velocity, then press SPACE to launch
+2. In Flight: Use thrust to maneuver and complete mission objectives
+3. Predict Path: White dashed line shows your predicted trajectory
+4. Manage Fuel: Limited fuel for course corrections
+
+SCORING:
+- Base: 1000 points per mission
+- Fuel Bonus: Extra points for fuel remaining
+- Difficulty Multiplier: Increases each mission (1x to 3x)
+
+PHYSICS:
+- All bodies attract via gravity
+- Faster orbits closer to heavy objects
+- Use gravity assists to reach distant targets
+- Fuel consumption proportional to thrust power
+
+TIPS:
+- Watch the trajectory line to plan your moves
+- Use gravity from planets to assist your trajectory
+- Time acceleration (1/2/5/0 keys) helps see future positions
+- Conservation of fuel is the key to high scores
+
+MISSIONS GET PROGRESSIVELY HARDER!
+Good luck, Commander!
+            `);
+        }
+
+        function updateMissionDisplay() {
+            if (!game || !game.gameState) return;
+
+            const mission = game.gameState.currentMission;
+            const missionIndex = game.gameState.missionIndex;
+
+            document.getElementById('missionName').textContent =
+                `Mission ${missionIndex + 1}/10: ${mission.name}`;
+            document.getElementById('missionObjective').textContent =
+                `Objective: ${mission.objective}`;
+            document.getElementById('missionStats').textContent =
+                `Fuel Limit: ${mission.fuelLimit} | Difficulty: ${mission.difficultyMultiplier}x`;
+        }
+
+        // Poll for mission updates
+        setInterval(() => {
+            if (game && game.gameState && document.getElementById('missionInfo').style.display !== 'none') {
+                updateMissionDisplay();
+            }
+        }, 500);
+    </script>
+
+    <!-- Include compiled game code -->
+    <script src="orbit-commander.js"></script>
+</body>
+</html>

@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Breach - Network Hacking Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            color: #00ff41;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff41;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #00ff41;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: #00cc33;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .game-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-box {
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            padding: 15px;
+            text-align: center;
+            border-radius: 5px;
+        }
+
+        .stat-label {
+            color: #00cc33;
+            font-size: 0.8em;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            color: #00ff41;
+            font-weight: bold;
+        }
+
+        .detection-bar {
+            width: 100%;
+            height: 25px;
+            background: #000;
+            border: 2px solid #00ff41;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .detection-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff41, #ffff00, #ff6600, #ff0000);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00ff41;
+            padding: 20px;
+            border-radius: 5px;
+        }
+
+        .panel h2 {
+            color: #00cc33;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 0.95em;
+        }
+
+        .nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            max-height: 350px;
+            overflow-y: auto;
+        }
+
+        .node {
+            padding: 12px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 0.85em;
+            border-radius: 3px;
+        }
+
+        .node:hover {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px #00ff41;
+            transform: scale(1.05);
+        }
+
+        .node.hacked {
+            border-color: #00cc33;
+            background: rgba(0, 204, 51, 0.15);
+        }
+
+        .node-id {
+            font-weight: bold;
+            color: #00ff41;
+            margin-bottom: 5px;
+        }
+
+        .node-type {
+            color: #00cc33;
+            font-size: 0.75em;
+            text-transform: uppercase;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .tool {
+            padding: 12px;
+            border: 2px solid #00ff41;
+            background: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            font-size: 0.8em;
+            border-radius: 3px;
+        }
+
+        .tool:hover:not(:disabled) {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        .tool.active {
+            border-color: #00cc33;
+            background: rgba(0, 204, 51, 0.25);
+            box-shadow: 0 0 10px #00cc33;
+        }
+
+        .tool:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            color: #666;
+        }
+
+        .tool-name {
+            font-weight: bold;
+            color: #00ff41;
+            margin-bottom: 3px;
+        }
+
+        .tool-uses {
+            color: #00cc33;
+            font-size: 0.75em;
+        }
+
+        .action-panel {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #00ff41;
+            padding: 20px;
+            border-radius: 5px;
+            grid-column: 1 / -1;
+        }
+
+        .action-panel h2 {
+            color: #00cc33;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #00ff41;
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            font-size: 0.95em;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            background: rgba(0, 255, 65, 0.05);
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            border-radius: 3px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            background: rgba(0, 255, 65, 0.1);
+            box-shadow: 0 0 10px #00ff41;
+        }
+
+        button {
+            padding: 10px 20px;
+            background: rgba(0, 255, 65, 0.1);
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: bold;
+            border-radius: 3px;
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+
+        button:hover:not(:disabled) {
+            background: rgba(0, 255, 65, 0.2);
+            box-shadow: 0 0 10px #00ff41;
+            transform: scale(1.02);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .output {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00cc33;
+            padding: 15px;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border-radius: 3px;
+        }
+
+        .output.error {
+            border-color: #ff4444;
+            color: #ff6666;
+        }
+
+        .output.success {
+            border-color: #00ff41;
+            color: #00ff41;
+        }
+
+        .level-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .level-controls select {
+            padding: 10px;
+            background: rgba(0, 255, 65, 0.05);
+            border: 2px solid #00ff41;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .status-line {
+            color: #00cc33;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .game-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        /* Scrollbar styling */
+        .nodes-grid::-webkit-scrollbar,
+        .output::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .nodes-grid::-webkit-scrollbar-track,
+        .output::-webkit-scrollbar-track {
+            background: rgba(0, 255, 65, 0.1);
+        }
+
+        .nodes-grid::-webkit-scrollbar-thumb,
+        .output::-webkit-scrollbar-thumb {
+            background: #00ff41;
+            border-radius: 4px;
+        }
+
+        .terminal-text {
+            margin: 10px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            border-left: 2px solid #00ff41;
+        }
+
+        .game-over {
+            background: rgba(255, 0, 0, 0.2);
+            border: 2px solid #ff0000;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .game-over-title {
+            color: #ff6666;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .game-complete {
+            background: rgba(0, 255, 65, 0.2);
+            border: 2px solid #00ff41;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+
+        .game-complete-title {
+            color: #00ff41;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CYBER BREACH</h1>
+            <div class="subtitle">Infiltrate networks. Bypass security. Extract data.</div>
+        </header>
+
+        <div id="gameOverMessage" style="display: none;"></div>
+
+        <div class="game-stats">
+            <div class="stat-box">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="levelDisplay">1</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Time Remaining</div>
+                <div class="stat-value" id="timeDisplay">300s</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Score</div>
+                <div class="stat-value" id="scoreDisplay">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Detection</div>
+                <div class="stat-value" id="detectionDisplay">0%</div>
+                <div class="detection-bar">
+                    <div class="detection-fill" id="detectionFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>Network Nodes</h2>
+                <div class="nodes-grid" id="nodesGrid"></div>
+            </div>
+
+            <div class="panel">
+                <h2>Hacking Tools</h2>
+                <div class="tools-grid" id="toolsGrid"></div>
+            </div>
+        </div>
+
+        <div class="action-panel">
+            <h2>Command Terminal</h2>
+
+            <div class="level-controls">
+                <label for="levelSelect">Select Level:</label>
+                <select id="levelSelect">
+                    <option value="1">Level 1 - Beginner Network</option>
+                    <option value="2">Level 2 - Basic Infrastructure</option>
+                    <option value="3">Level 3 - Small Corp Network</option>
+                    <option value="4">Level 4 - Mid-Tier Security</option>
+                    <option value="5">Level 5 - Corporate Network</option>
+                    <option value="6">Level 6 - Advanced Security</option>
+                    <option value="7">Level 7 - Enterprise System</option>
+                    <option value="8">Level 8 - Fortified Network</option>
+                    <option value="9">Level 9 - Military-Grade</option>
+                    <option value="10">Level 10 - Maximum Security</option>
+                    <option value="11">Level 11 - Bonus - The Core</option>
+                    <option value="12">Level 12 - Bonus - Ultimate Challenge</option>
+                </select>
+                <button onclick="loadSelectedLevel()">LOAD LEVEL</button>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="commandInput" placeholder="Enter node ID to hack (e.g., gateway_1) and press ENTER..." onkeypress="if(event.key==='Enter') hackNode();">
+                <button onclick="hackNode()">HACK</button>
+            </div>
+
+            <button onclick="showNodeInfo()" style="margin-right: 10px;">SCAN NODE</button>
+            <button onclick="toggleNetworkView()" style="margin-right: 10px;">SHOW NETWORK</button>
+            <button onclick="restartGame()">RESTART GAME</button>
+
+            <div class="output" id="output">
+                <div class="terminal-text">CYBER BREACH v1.0 - Network Hacking Simulator</div>
+                <div class="terminal-text">=====================================</div>
+                <div class="terminal-text">Select a level and enter node IDs to hack.</div>
+                <div class="terminal-text">Use the GUI to select tools and target nodes.</div>
+                <div class="terminal-text">Good luck, hacker!</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let game = null;
+
+        class SimpleCyberBreachGame {
+            constructor() {
+                this.currentLevel = 1;
+                this.gameState = {
+                    score: 0,
+                    detection: 0,
+                    timeRemaining: 300,
+                    gameOver: false,
+                    levelComplete: false,
+                    activePath: [],
+                };
+                this.currentLevelData = null;
+                this.tools = {
+                    port_scanner: { uses: 3, active: false },
+                    password_cracker: { uses: 2, active: false },
+                    firewall_bypass: { uses: 1, active: false },
+                    privilege_exploit: { uses: 2, active: false },
+                    network_mask: { uses: -1, active: false },
+                };
+                this.nodes = {};
+                this.startTime = Date.now();
+                this.gameRunning = false;
+            }
+
+            generateLevel(levelNum) {
+                const baseSecurityLevel = Math.min(10, 2 + levelNum);
+                const nodeCount = 3 + Math.min(7, levelNum);
+                const nodes = {};
+                const connections = [];
+
+                // Gateway node
+                const gatewayId = `gateway_${levelNum}`;
+                nodes[gatewayId] = {
+                    id: gatewayId,
+                    type: 'gateway',
+                    security: 1,
+                    hacked: true,
+                    data: 10,
+                    puzzle: 'port_scan',
+                };
+
+                // Other nodes
+                const nodeTypes = ['server', 'database', 'security_hub', 'data_cache'];
+                for (let i = 1; i < nodeCount; i++) {
+                    const type = nodeTypes[Math.floor(Math.random() * nodeTypes.length)];
+                    const security = Math.min(10, baseSecurityLevel + Math.floor(Math.random() * 3));
+                    const nodeId = `node_${levelNum}_${i}`;
+
+                    nodes[nodeId] = {
+                        id: nodeId,
+                        type,
+                        security,
+                        hacked: false,
+                        data: security * 10,
+                        puzzle: this.getPuzzleType(type),
+                    };
+
+                    // Create connection
+                    if (i > 0) {
+                        connections.push({
+                            from: Object.keys(nodes)[i - 1],
+                            to: nodeId,
+                            firewall: Math.floor(Math.random() * baseSecurityLevel) + 1,
+                        });
+                    }
+                }
+
+                return {
+                    levelNum,
+                    nodes,
+                    connections,
+                    timeLimit: Math.max(60, 300 - levelNum * 20),
+                    objective: `Extract ${Math.floor(nodeCount * 5)} data points`,
+                };
+            }
+
+            getPuzzleType(nodeType) {
+                const puzzleMap = {
+                    gateway: 'port_scan',
+                    server: 'password_crack',
+                    database: 'encryption',
+                    security_hub: 'privilege',
+                    data_cache: 'firewall',
+                };
+                return puzzleMap[nodeType] || 'password_crack';
+            }
+
+            loadLevel(levelNum) {
+                this.currentLevel = levelNum;
+                this.currentLevelData = this.generateLevel(levelNum);
+                this.nodes = { ...this.currentLevelData.nodes };
+                this.gameState.detection = 0;
+                this.gameState.score = 0;
+                this.gameState.activePath = [];
+                this.gameState.gameOver = false;
+                this.gameState.levelComplete = false;
+                this.startTime = Date.now();
+                this.gameRunning = true;
+                this.gameState.timeRemaining = this.currentLevelData.timeLimit;
+                this.startGameLoop();
+            }
+
+            startGameLoop() {
+                if (this.gameLoop) clearInterval(this.gameLoop);
+                this.gameLoop = setInterval(() => this.updateGameState(), 100);
+            }
+
+            updateGameState() {
+                if (!this.gameRunning) return;
+
+                const elapsed = (Date.now() - this.startTime) / 1000;
+                this.gameState.timeRemaining = Math.max(
+                    0,
+                    this.currentLevelData.timeLimit - elapsed
+                );
+
+                if (this.gameState.timeRemaining === 0) {
+                    this.gameState.gameOver = true;
+                    this.endGame('TIME EXPIRED');
+                }
+
+                if (this.gameState.detection >= 100) {
+                    this.gameState.gameOver = true;
+                    this.endGame('DETECTION LIMIT REACHED - ALARM TRIGGERED');
+                }
+
+                updateUI();
+            }
+
+            hackNode(nodeId, answer) {
+                const node = this.nodes[nodeId];
+                if (!node) {
+                    return { success: false, message: `Node ${nodeId} not found in network.` };
+                }
+
+                if (node.hacked) {
+                    return { success: true, message: `${nodeId} already compromised. Data already extracted.` };
+                }
+
+                // Simulate puzzle solving
+                const difficulty = node.security;
+                const correctAnswer = Math.random() > 0.4;
+
+                if (correctAnswer) {
+                    node.hacked = true;
+                    this.gameState.score += node.data;
+                    this.gameState.activePath.push(nodeId);
+                    const maskActive = this.tools.network_mask.active;
+                    const detectionIncrease = difficulty * 3 / (maskActive ? 2 : 1);
+                    this.gameState.detection = Math.min(100, this.gameState.detection + detectionIncrease);
+
+                    // Check if level complete
+                    const totalData = Object.values(this.nodes).reduce((sum, n) => sum + n.data, 0);
+                    if (this.gameState.score >= totalData / 2) {
+                        this.gameState.levelComplete = true;
+                        this.endGame(`LEVEL ${this.currentLevel} COMPLETE! Score: ${this.gameState.score}`);
+                    }
+
+                    return {
+                        success: true,
+                        message: `SUCCESS! Extracted ${node.data} data points from ${nodeId}. Detection: ${Math.round(this.gameState.detection)}%`,
+                    };
+                } else {
+                    this.gameState.detection = Math.min(100, this.gameState.detection + difficulty * 2);
+                    return {
+                        success: false,
+                        message: `FAILED to compromise ${nodeId}. Detection: ${Math.round(this.gameState.detection)}%`,
+                    };
+                }
+            }
+
+            activateTool(toolName) {
+                const tool = this.tools[toolName];
+                if (!tool) return false;
+                if (tool.uses === 0) return false;
+
+                tool.active = true;
+                if (tool.uses > 0) tool.uses--;
+                return true;
+            }
+
+            deactivateTool(toolName) {
+                const tool = this.tools[toolName];
+                if (tool) tool.active = false;
+            }
+
+            endGame(message) {
+                this.gameRunning = false;
+                if (this.gameLoop) clearInterval(this.gameLoop);
+                updateUI();
+                showMessage(message);
+            }
+        }
+
+        // UI Functions
+        function initGame() {
+            game = new SimpleCyberBreachGame();
+            game.loadLevel(1);
+            renderUI();
+        }
+
+        function renderUI() {
+            renderNodes();
+            renderTools();
+            updateUI();
+        }
+
+        function renderNodes() {
+            const grid = document.getElementById('nodesGrid');
+            grid.innerHTML = '';
+
+            if (!game.nodes) return;
+
+            Object.values(game.nodes).forEach(node => {
+                const div = document.createElement('div');
+                div.className = `node ${node.hacked ? 'hacked' : ''}`;
+                div.innerHTML = `
+                    <div class="node-id">${node.id.substring(0, 12)}</div>
+                    <div class="node-type">${node.type}</div>
+                    <div style="color: #00cc33; font-size: 0.75em;">SEC: ${node.security}/10</div>
+                `;
+                div.onclick = () => hackNodeWithId(node.id);
+                grid.appendChild(div);
+            });
+        }
+
+        function renderTools() {
+            const grid = document.getElementById('toolsGrid');
+            grid.innerHTML = '';
+
+            const toolNames = {
+                port_scanner: 'Port Scanner',
+                password_cracker: 'Password Cracker',
+                firewall_bypass: 'Firewall Bypass',
+                privilege_exploit: 'Privilege Exploit',
+                network_mask: 'Network Mask',
+            };
+
+            Object.entries(game.tools).forEach(([toolId, tool]) => {
+                const button = document.createElement('button');
+                button.className = `tool ${tool.active ? 'active' : ''}`;
+
+                const uses = tool.uses === -1 ? '∞' : tool.uses;
+                button.innerHTML = `
+                    <div class="tool-name">${toolNames[toolId]}</div>
+                    <div class="tool-uses">Uses: ${uses}</div>
+                `;
+
+                if (tool.uses === 0) {
+                    button.disabled = true;
+                }
+
+                button.onclick = () => toggleTool(toolId);
+                grid.appendChild(button);
+            });
+        }
+
+        function toggleTool(toolId) {
+            const tool = game.tools[toolId];
+            if (tool.active) {
+                game.deactivateTool(toolId);
+            } else {
+                if (game.activateTool(toolId)) {
+                    addOutput(`[TOOL ACTIVATED] ${toolId}`, 'success');
+                } else {
+                    addOutput(`[TOOL ERROR] ${toolId} - No uses remaining`, 'error');
+                }
+            }
+            renderTools();
+        }
+
+        function hackNodeWithId(nodeId) {
+            const input = document.getElementById('commandInput');
+            input.value = nodeId;
+            hackNode();
+        }
+
+        function hackNode() {
+            const input = document.getElementById('commandInput');
+            const nodeId = input.value.trim();
+            input.value = '';
+
+            if (!nodeId) {
+                addOutput('[ERROR] Enter a node ID', 'error');
+                return;
+            }
+
+            const result = game.hackNode(nodeId, '');
+            addOutput(`[HACK ATTEMPT] ${result.message}`, result.success ? 'success' : 'error');
+            renderNodes();
+            updateUI();
+        }
+
+        function showNodeInfo() {
+            const input = document.getElementById('commandInput');
+            const nodeId = input.value.trim();
+
+            if (!nodeId) {
+                addOutput('[INFO] Nodes in network:\n' + Object.keys(game.nodes).join(', '), 'success');
+                return;
+            }
+
+            const node = game.nodes[nodeId];
+            if (!node) {
+                addOutput(`[ERROR] Node ${nodeId} not found`, 'error');
+                return;
+            }
+
+            const info = `[NODE INFO]
+ID: ${node.id}
+Type: ${node.type}
+Security: ${node.security}/10
+Status: ${node.hacked ? 'COMPROMISED' : 'SECURE'}
+Data Value: ${node.data}
+Puzzle: ${node.puzzle}`;
+
+            addOutput(info, node.hacked ? 'success' : 'error');
+        }
+
+        function toggleNetworkView() {
+            const info = `[NETWORK TOPOLOGY]
+Nodes: ${Object.keys(game.nodes).length}
+Connections: ${game.currentLevelData.connections.length}
+Objective: ${game.currentLevelData.objective}`;
+            addOutput(info);
+        }
+
+        function loadSelectedLevel() {
+            const select = document.getElementById('levelSelect');
+            const levelNum = parseInt(select.value);
+            if (game) {
+                game.loadLevel(levelNum);
+                renderUI();
+                addOutput(`[SYSTEM] Loaded Level ${levelNum}`, 'success');
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('levelDisplay').textContent = game.currentLevel;
+            document.getElementById('timeDisplay').textContent = Math.ceil(game.gameState.timeRemaining) + 's';
+            document.getElementById('scoreDisplay').textContent = game.gameState.score;
+            document.getElementById('detectionDisplay').textContent = Math.round(game.gameState.detection) + '%';
+            document.getElementById('detectionFill').style.width = game.gameState.detection + '%';
+
+            if (game.gameState.gameOver || game.gameState.levelComplete) {
+                document.getElementById('commandInput').disabled = true;
+                document.getElementById('commandInput').placeholder = 'Game Over - Restart to play again';
+            }
+        }
+
+        function addOutput(message, className = '') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `terminal-text ${className}`;
+            div.textContent = message;
+            output.appendChild(div);
+            output.scrollTop = output.scrollHeight;
+        }
+
+        function showMessage(message) {
+            const container = document.getElementById('gameOverMessage');
+            if (message.includes('COMPLETE')) {
+                container.className = 'game-complete';
+                container.innerHTML = `<div class="game-complete-title">${message}</div>`;
+            } else {
+                container.className = 'game-over';
+                container.innerHTML = `<div class="game-over-title">${message}</div>`;
+            }
+            container.style.display = 'block';
+        }
+
+        function restartGame() {
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('commandInput').disabled = false;
+            document.getElementById('commandInput').placeholder = 'Enter node ID to hack...';
+            document.getElementById('output').innerHTML = '';
+            addOutput('<div class="terminal-text">CYBER BREACH v1.0 - Network Hacking Simulator</div>');
+            addOutput('<div class="terminal-text">Game restarted. Select a level to begin.</div>');
+            initGame();
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initGame();
+        });
+    </script>
+</body>
+</html>

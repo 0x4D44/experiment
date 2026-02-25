@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Poker Quest - Roguelike Card Combat</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Arial", sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: #eee;
+        overflow: hidden;
+      }
+
+      #gameContainer {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 15px;
+        border-bottom: 2px solid #00ff88;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .status {
+        font-size: 14px;
+        font-weight: bold;
+        color: #00ff88;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        padding: 20px;
+        gap: 20px;
+      }
+
+      .left-panel {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #00ff88;
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .right-panel {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #ff6600;
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .center-panel {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.5);
+        border: 2px solid #00ccff;
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      h2 {
+        margin-bottom: 15px;
+        color: #00ff88;
+        text-transform: uppercase;
+        font-size: 16px;
+      }
+
+      .enemy-stats {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .enemy-name {
+        font-size: 24px;
+        font-weight: bold;
+        color: #ff6600;
+        margin-bottom: 10px;
+      }
+
+      .health-bar {
+        width: 100%;
+        height: 30px;
+        background: #333;
+        border: 2px solid #666;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 5px;
+      }
+
+      .health-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff0000, #ff6600);
+        transition: width 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+        gap: 10px;
+        flex: 1;
+        overflow-y: auto;
+      }
+
+      .card {
+        background: linear-gradient(135deg, #444, #222);
+        border: 2px solid #666;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: bold;
+        user-select: none;
+        min-height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .card:hover {
+        border-color: #00ff88;
+        background: linear-gradient(135deg, #555, #333);
+        transform: translateY(-5px);
+      }
+
+      .card.selected {
+        border-color: #00ff88;
+        background: linear-gradient(135deg, #00ff88, #00aa55);
+        color: #000;
+        box-shadow: 0 0 20px #00ff88;
+      }
+
+      .card-rank {
+        font-size: 20px;
+      }
+
+      .card-suit {
+        font-size: 24px;
+      }
+
+      .log {
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px solid #444;
+        border-radius: 4px;
+        padding: 10px;
+        height: 150px;
+        overflow-y: auto;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+
+      .log-entry {
+        color: #00ff88;
+        margin-bottom: 5px;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px;
+        background: linear-gradient(135deg, #00ff88, #00aa55);
+        color: #000;
+        border: none;
+        border-radius: 4px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-transform: uppercase;
+        font-size: 13px;
+      }
+
+      button:hover {
+        background: linear-gradient(135deg, #00ff99, #00bb66);
+        box-shadow: 0 0 20px #00ff88;
+        transform: scale(1.05);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .button-danger {
+        background: linear-gradient(135deg, #ff6600, #cc4400);
+        color: #fff;
+      }
+
+      .button-danger:hover {
+        background: linear-gradient(135deg, #ff7722, #dd5511);
+        box-shadow: 0 0 20px #ff6600;
+      }
+
+      .screen {
+        display: none;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        z-index: 100;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+      }
+
+      .screen.active {
+        display: flex;
+      }
+
+      .screen h1 {
+        font-size: 48px;
+        margin-bottom: 20px;
+        color: #00ff88;
+        text-shadow: 0 0 20px #00ff88;
+      }
+
+      .screen p {
+        font-size: 18px;
+        margin-bottom: 30px;
+        color: #aaa;
+        max-width: 600px;
+      }
+
+      .shop-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .shop-item {
+        background: rgba(0, 100, 100, 0.3);
+        border: 2px solid #00ccff;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: left;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .shop-item:hover {
+        background: rgba(0, 150, 150, 0.5);
+        border-color: #00ff88;
+      }
+
+      .shop-item h3 {
+        color: #00ff88;
+        margin-bottom: 8px;
+      }
+
+      .shop-item p {
+        font-size: 12px;
+        color: #aaa;
+        margin-bottom: 5px;
+      }
+
+      .shop-cost {
+        color: #ffcc00;
+        font-weight: bold;
+      }
+
+      #gameContainer {
+        position: relative;
+      }
+
+      .selection-count {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #00ff88;
+        color: #000;
+        padding: 8px 12px;
+        border-radius: 4px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="gameContainer">
+      <!-- Title Screen -->
+      <div id="titleScreen" class="screen active">
+        <h1>POKER QUEST</h1>
+        <p>Draw poker hands to defeat enemies in this roguelike adventure</p>
+        <p style="font-size: 14px; color: #666">
+          Battle through 10 encounters, upgrade your deck, and defeat the Dragon Lord!
+        </p>
+        <button onclick="game.startNewRun()">START NEW RUN</button>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="gameScreen" class="screen">
+        <div class="header">
+          <div>POKER QUEST</div>
+          <div class="status" id="gameStatus">Health: 100/100 | Encounter: 0/10 | Gold: 0</div>
+        </div>
+
+        <div class="main-content">
+          <!-- Left Panel: Player Info -->
+          <div class="left-panel">
+            <h2>Your Hand</h2>
+            <div class="card-grid" id="playerHand"></div>
+            <div class="button-group">
+              <button onclick="clearSelection()">Clear</button>
+            </div>
+          </div>
+
+          <!-- Center Panel: Combat Info -->
+          <div class="center-panel">
+            <div class="enemy-stats">
+              <div class="enemy-name" id="enemyName">Goblin</div>
+              <div>Health:</div>
+              <div class="health-bar">
+                <div class="health-fill" id="enemyHealthBar" style="width: 100%">
+                  <span id="enemyHealthText">50/50</span>
+                </div>
+              </div>
+              <div style="margin-top: 10px; font-size: 12px; color: #aaa">
+                vs
+              </div>
+              <div style="margin-top: 10px">Your Health:</div>
+              <div class="health-bar">
+                <div class="health-fill" id="playerHealthBar" style="width: 100%; background: linear-gradient(90deg, #0000ff, #0088ff)">
+                  <span id="playerHealthText">100/100</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Panel: Log -->
+          <div class="right-panel">
+            <h2>Battle Log</h2>
+            <div class="log" id="gameLog">
+              <div class="log-entry">Game started! Draw 5 cards to attack.</div>
+            </div>
+            <div class="button-group">
+              <button class="button-danger" id="attackBtn" onclick="game.executeAttack()" disabled>
+                ATTACK (5 cards)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="selection-count" id="selectionCount">Selected: 0/5</div>
+      </div>
+
+      <!-- Shop Screen -->
+      <div id="shopScreen" class="screen">
+        <h1>SHOP</h1>
+        <p id="shopGold">Gold: 0</p>
+        <div class="shop-grid" id="shopGrid"></div>
+        <button onclick="nextEncounter()" style="max-width: 300px; margin-top: 20px">
+          Continue to Next Battle
+        </button>
+      </div>
+
+      <!-- Win Screen -->
+      <div id="winScreen" class="screen">
+        <h1>VICTORY!</h1>
+        <p id="winStats">You defeated all 10 encounters!</p>
+        <button onclick="location.reload()">Play Again</button>
+      </div>
+
+      <!-- Loss Screen -->
+      <div id="lossScreen" class="screen">
+        <h1>DEFEAT</h1>
+        <p id="lossStats">Game Over</p>
+        <button onclick="location.reload()">Try Again</button>
+      </div>
+    </div>
+
+    <script>
+      // Game state
+      let game = null;
+
+      // Enums
+      const CardSuit = {
+        HEARTS: "♥",
+        DIAMONDS: "♦",
+        CLUBS: "♣",
+        SPADES: "♠",
+      };
+
+      const CardRank = {
+        ACE: "A",
+        TWO: "2",
+        THREE: "3",
+        FOUR: "4",
+        FIVE: "5",
+        SIX: "6",
+        SEVEN: "7",
+        EIGHT: "8",
+        NINE: "9",
+        TEN: "10",
+        JACK: "J",
+        QUEEN: "Q",
+        KING: "K",
+      };
+
+      const HandType = {
+        ROYAL_FLUSH: "Royal Flush",
+        STRAIGHT_FLUSH: "Straight Flush",
+        FOUR_OF_A_KIND: "Four of a Kind",
+        FULL_HOUSE: "Full House",
+        FLUSH: "Flush",
+        STRAIGHT: "Straight",
+        THREE_OF_A_KIND: "Three of a Kind",
+        TWO_PAIR: "Two Pair",
+        PAIR: "Pair",
+        HIGH_CARD: "High Card",
+        INVALID: "Invalid",
+      };
+
+      const GameState = {
+        TITLE: "TITLE",
+        PLAYING: "PLAYING",
+        ENCOUNTER: "ENCOUNTER",
+        SHOP: "SHOP",
+        BOSS: "BOSS",
+        WON: "WON",
+        LOST: "LOST",
+      };
+
+      // Utility functions
+      function rankValue(rank) {
+        const values = {
+          A: 14,
+          K: 13,
+          Q: 12,
+          J: 11,
+          10: 10,
+          9: 9,
+          8: 8,
+          7: 7,
+          6: 6,
+          5: 5,
+          4: 4,
+          3: 3,
+          2: 2,
+        };
+        return values[rank];
+      }
+
+      function createDeck() {
+        const deck = [];
+        const ranks = Object.values(CardRank);
+        const suits = Object.values(CardSuit);
+
+        for (const rank of ranks) {
+          for (const suit of suits) {
+            deck.push({
+              suit,
+              rank,
+              id: `${rank}${suit}`,
+            });
+          }
+        }
+
+        return deck.sort(() => Math.random() - 0.5);
+      }
+
+      function drawCards(deck, count) {
+        const drawn = [];
+        for (let i = 0; i < count && deck.length > 0; i++) {
+          drawn.push(deck.pop());
+        }
+        return drawn;
+      }
+
+      function evaluateHand(cards) {
+        if (cards.length < 5) {
+          return { type: HandType.INVALID, power: 0, cards };
+        }
+
+        const hand = cards.slice(0, 5);
+        const ranks = hand.map((c) => rankValue(c.rank)).sort((a, b) => b - a);
+        const suits = hand.map((c) => c.suit);
+        const rankCounts = new Map();
+
+        ranks.forEach((r) => {
+          rankCounts.set(r, (rankCounts.get(r) || 0) + 1);
+        });
+
+        const counts = Array.from(rankCounts.values()).sort((a, b) => b - a);
+        const isFlush = suits.every((s) => s === suits[0]);
+
+        const uniqueRanks = Array.from(new Set(ranks)).sort((a, b) => b - a);
+        let isStraight = false;
+        let straightHigh = 0;
+
+        if (uniqueRanks.length === 5) {
+          if (uniqueRanks[0] - uniqueRanks[4] === 4) {
+            isStraight = true;
+            straightHigh = uniqueRanks[0];
+          } else if (
+            uniqueRanks[0] === 14 &&
+            uniqueRanks[4] === 2 &&
+            uniqueRanks[1] === 5
+          ) {
+            isStraight = true;
+            straightHigh = 5;
+          }
+        }
+
+        let handType = HandType.HIGH_CARD;
+        let power = ranks[0];
+
+        if (isStraight && isFlush && straightHigh === 14) {
+          handType = HandType.ROYAL_FLUSH;
+          power = 1000000;
+        } else if (isStraight && isFlush) {
+          handType = HandType.STRAIGHT_FLUSH;
+          power = 900000 + straightHigh;
+        } else if (counts[0] === 4) {
+          handType = HandType.FOUR_OF_A_KIND;
+          power = 800000 + Array.from(rankCounts.keys())[0];
+        } else if (counts[0] === 3 && counts[1] === 2) {
+          handType = HandType.FULL_HOUSE;
+          power = 700000 + ranks[0];
+        } else if (isFlush) {
+          handType = HandType.FLUSH;
+          power = 600000 + ranks[0];
+        } else if (isStraight) {
+          handType = HandType.STRAIGHT;
+          power = 500000 + straightHigh;
+        } else if (counts[0] === 3) {
+          handType = HandType.THREE_OF_A_KIND;
+          power = 400000 + ranks[0];
+        } else if (counts[0] === 2 && counts[1] === 2) {
+          handType = HandType.TWO_PAIR;
+          power = 300000 + Math.max(...Array.from(rankCounts.keys()));
+        } else if (counts[0] === 2) {
+          handType = HandType.PAIR;
+          power = 200000 + ranks[0];
+        } else {
+          handType = HandType.HIGH_CARD;
+          power = 100000 + ranks[0];
+        }
+
+        return { type: handType, power, cards: hand };
+      }
+
+      function getHandDamage(hand) {
+        const damageMap = {
+          [HandType.ROYAL_FLUSH]: 100,
+          [HandType.STRAIGHT_FLUSH]: 80,
+          [HandType.FOUR_OF_A_KIND]: 60,
+          [HandType.FULL_HOUSE]: 50,
+          [HandType.FLUSH]: 35,
+          [HandType.STRAIGHT]: 30,
+          [HandType.THREE_OF_A_KIND]: 25,
+          [HandType.TWO_PAIR]: 15,
+          [HandType.PAIR]: 8,
+          [HandType.HIGH_CARD]: 2,
+          [HandType.INVALID]: 0,
+        };
+
+        return damageMap[hand.type];
+      }
+
+      // Game class
+      class PokerQuestGame {
+        constructor() {
+          this.player = {
+            health: 100,
+            maxHealth: 100,
+            deck: createDeck(),
+            hand: [],
+            gold: 0,
+            wins: 0,
+            level: 1,
+          };
+
+          this.enemy = null;
+          this.gameState = GameState.TITLE;
+          this.encounters = 0;
+          this.maxEncounters = 10;
+          this.shop = [];
+          this.selectedCards = [];
+          this.log = [];
+
+          this.initializeShop();
+        }
+
+        initializeShop() {
+          this.shop = [
+            {
+              name: "Health Boost",
+              description: "+20 Max Health",
+              cost: 50,
+              effect: (p) => {
+                p.maxHealth += 20;
+                p.health = p.maxHealth;
+              },
+            },
+            {
+              name: "Heal",
+              description: "Restore 50 HP",
+              cost: 40,
+              effect: (p) => {
+                p.health = Math.min(p.health + 50, p.maxHealth);
+              },
+            },
+            {
+              name: "Refresh Deck",
+              description: "Refill your deck with fresh cards",
+              cost: 30,
+              effect: (p) => {
+                p.deck = createDeck();
+              },
+            },
+            {
+              name: "Gold Multiplier",
+              description: "Earn 50% more gold (permanent)",
+              cost: 100,
+              effect: (p) => {
+                // Applied during reward phase
+              },
+            },
+          ];
+        }
+
+        startNewRun() {
+          this.player = {
+            health: 100,
+            maxHealth: 100,
+            deck: createDeck(),
+            hand: [],
+            gold: 0,
+            wins: 0,
+            level: 1,
+          };
+          this.encounters = 0;
+          this.selectedCards = [];
+          this.log = ["New run started!"];
+          this.gameState = GameState.ENCOUNTER;
+          this.generateEncounter();
+          this.showScreen("gameScreen");
+        }
+
+        generateEncounter() {
+          this.encounters++;
+          const isBoss = this.encounters === this.maxEncounters;
+          const enemyTypes = [
+            { name: "Goblin", ai: "aggressive" },
+            { name: "Orc", ai: "balanced" },
+            { name: "Troll", ai: "defensive" },
+            { name: "Wizard", ai: "balanced" },
+            { name: "Dark Knight", ai: "aggressive" },
+          ];
+
+          const type = isBoss
+            ? { name: "Dragon Lord", ai: "boss" }
+            : enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+
+          const health = isBoss ? 150 : 50 + this.encounters * 10;
+
+          this.enemy = {
+            id: `enemy_${this.encounters}`,
+            name: type.name,
+            health,
+            maxHealth: health,
+            deck: createDeck(),
+            hand: [],
+            ai_type: type.ai,
+          };
+
+          this.player.hand = drawCards(this.player.deck, 5);
+          this.selectedCards = [];
+          this.log = [
+            `Encountered: ${this.enemy.name} (Encounter ${this.encounters}/${this.maxEncounters})`,
+            `Enemy HP: ${this.enemy.maxHealth}`,
+          ];
+
+          this.updateUI();
+        }
+
+        selectCard(index) {
+          if (
+            this.gameState !== GameState.ENCOUNTER ||
+            !this.enemy ||
+            index < 0 ||
+            index >= this.player.hand.length
+          ) {
+            return;
+          }
+
+          if (this.selectedCards.includes(index)) {
+            this.selectedCards = this.selectedCards.filter((i) => i !== index);
+          } else if (this.selectedCards.length < 5) {
+            this.selectedCards.push(index);
+          }
+
+          this.updateUI();
+        }
+
+        executeAttack() {
+          if (!this.enemy || this.selectedCards.length === 0) {
+            return;
+          }
+
+          const playerCards = this.selectedCards.map((i) => this.player.hand[i]);
+          const playerHand = evaluateHand(playerCards);
+          const playerDamage = getHandDamage(playerHand);
+
+          const enemyCards = drawCards(this.enemy.deck, 5);
+          const enemyHand = evaluateHand(enemyCards);
+          const enemyDamage = getHandDamage(enemyHand);
+
+          this.log = [
+            `You played: ${playerHand.type}`,
+            `Damage dealt: ${playerDamage}`,
+            `Enemy played: ${enemyHand.type}`,
+            `Damage taken: ${enemyDamage}`,
+          ];
+
+          this.enemy.health -= playerDamage;
+          this.player.health -= enemyDamage;
+
+          if (this.enemy.health <= 0) {
+            this.defeatEnemy();
+          } else if (this.player.health <= 0) {
+            this.loseGame();
+          } else {
+            this.selectedCards = [];
+            this.player.hand = drawCards(this.player.deck, 5);
+            this.log.push(
+              `Your HP: ${this.player.health}/${this.player.maxHealth}`
+            );
+            this.log.push(
+              `Enemy HP: ${this.enemy.health}/${this.enemy.maxHealth}`
+            );
+          }
+
+          this.updateUI();
+        }
+
+        defeatEnemy() {
+          if (!this.enemy) return;
+
+          const goldReward = 10 + this.encounters * 5;
+          this.player.gold += goldReward;
+          this.player.wins++;
+
+          this.log.push(`Victory! Earned ${goldReward} gold`);
+
+          if (this.encounters >= this.maxEncounters) {
+            this.gameState = GameState.WON;
+            this.showScreen("winScreen");
+            document.getElementById("winStats").textContent =
+              `You defeated all 10 encounters!\nFinal Gold: ${this.player.gold}`;
+          } else {
+            this.gameState = GameState.SHOP;
+            this.showShop();
+          }
+        }
+
+        loseGame() {
+          this.gameState = GameState.LOST;
+          this.log.push(`Game Over! You won ${this.player.wins} encounters`);
+          this.showScreen("lossScreen");
+          document.getElementById("lossStats").textContent =
+            `Defeated after ${this.player.wins} battles\nGold earned: ${this.player.gold}`;
+        }
+
+        buyUpgrade(index) {
+          const upgrade = this.shop[index];
+          if (this.player.gold >= upgrade.cost) {
+            this.player.gold -= upgrade.cost;
+            upgrade.effect(this.player);
+            this.showShop();
+          }
+        }
+
+        showShop() {
+          const shopGrid = document.getElementById("shopGrid");
+          shopGrid.innerHTML = "";
+          document.getElementById("shopGold").textContent = `Gold: ${this.player.gold}`;
+
+          this.shop.forEach((upgrade, index) => {
+            const item = document.createElement("div");
+            item.className = "shop-item";
+            const affordable = this.player.gold >= upgrade.cost;
+            item.style.opacity = affordable ? "1" : "0.5";
+            item.innerHTML = `
+              <h3>${upgrade.name}</h3>
+              <p>${upgrade.description}</p>
+              <p class="shop-cost">Cost: ${upgrade.cost} gold</p>
+              ${affordable ? `<button onclick="game.buyUpgrade(${index})" style="padding: 5px 10px; margin-top: 10px;">Buy</button>` : `<p style="color: #ff6600;">Not enough gold</p>`}
+            `;
+            shopGrid.appendChild(item);
+          });
+
+          this.showScreen("shopScreen");
+        }
+
+        updateUI() {
+          document.getElementById("gameStatus").textContent = `Health: ${this.player.health}/${this.player.maxHealth} | Encounter: ${this.encounters}/${this.maxEncounters} | Gold: ${this.player.gold}`;
+
+          const playerHandEl = document.getElementById("playerHand");
+          playerHandEl.innerHTML = "";
+          this.player.hand.forEach((card, index) => {
+            const cardEl = document.createElement("div");
+            cardEl.className = "card";
+            if (this.selectedCards.includes(index)) {
+              cardEl.classList.add("selected");
+            }
+            cardEl.innerHTML = `<span class="card-rank">${card.rank}</span><span class="card-suit">${card.suit}</span>`;
+            cardEl.onclick = () => this.selectCard(index);
+            playerHandEl.appendChild(cardEl);
+          });
+
+          document.getElementById("selectionCount").textContent = `Selected: ${this.selectedCards.length}/5`;
+          document.getElementById("attackBtn").disabled =
+            this.selectedCards.length !== 5;
+
+          if (this.enemy) {
+            document.getElementById("enemyName").textContent = this.enemy.name;
+            const healthPercent = (this.enemy.health / this.enemy.maxHealth) * 100;
+            document.getElementById("enemyHealthBar").style.width =
+              Math.max(0, healthPercent) + "%";
+            document.getElementById("enemyHealthText").textContent =
+              `${Math.max(0, this.enemy.health)}/${this.enemy.maxHealth}`;
+          }
+
+          const playerHealthPercent =
+            (this.player.health / this.player.maxHealth) * 100;
+          document.getElementById("playerHealthBar").style.width =
+            Math.max(0, playerHealthPercent) + "%";
+          document.getElementById("playerHealthText").textContent =
+            `${Math.max(0, this.player.health)}/${this.player.maxHealth}`;
+
+          const logEl = document.getElementById("gameLog");
+          logEl.innerHTML = this.log
+            .map((entry) => `<div class="log-entry">${entry}</div>`)
+            .join("");
+          logEl.scrollTop = logEl.scrollHeight;
+        }
+      }
+
+      function showScreen(screenId) {
+        document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+        document.getElementById(screenId).classList.add("active");
+      }
+
+      function clearSelection() {
+        game.selectedCards = [];
+        game.updateUI();
+      }
+
+      function nextEncounter() {
+        game.generateEncounter();
+        showScreen("gameScreen");
+      }
+
+      // Initialize game
+      window.addEventListener("load", () => {
+        game = new PokerQuestGame();
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosystem Balance Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+
+        .section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-box.grass { border-left-color: #22aa22; }
+        .stat-box.rabbit { border-left-color: #ff8844; }
+        .stat-box.wolf { border-left-color: #aa2222; }
+        .stat-box.bird { border-left-color: #4488ff; }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+        }
+
+        .species-control {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #e9ecef;
+        }
+
+        .species-name {
+            font-weight: bold;
+            width: 80px;
+        }
+
+        .species-name.grass { color: #22aa22; }
+        .species-name.rabbit { color: #ff8844; }
+        .species-name.wolf { color: #aa2222; }
+        .species-name.bird { color: #4488ff; }
+
+        .quantity-input {
+            width: 60px;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .info-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .info-label {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e9ecef;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #28a745, #20c997);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .weather-display {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+
+        .weather-button {
+            display: inline-block;
+            padding: 8px 12px;
+            margin: 5px 5px 5px 0;
+            border-radius: 5px;
+            border: 2px solid #ddd;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
+
+        .weather-button:hover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+
+        .weather-button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .water-level {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .water-bar {
+            flex: 1;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .water-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #17a2b8, #20c997);
+            transition: width 0.3s;
+        }
+
+        .water-label {
+            font-weight: bold;
+            font-size: 0.9em;
+            min-width: 50px;
+        }
+
+        .game-status {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 15px;
+            display: none;
+        }
+
+        .game-status.won {
+            background: #d4edda;
+            color: #155724;
+            border: 2px solid #28a745;
+            display: block;
+        }
+
+        .game-status.lost {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #dc3545;
+            display: block;
+        }
+
+        canvas {
+            width: 100%;
+            height: auto;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .graph-container {
+            grid-column: 1 / -1;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e9ecef;
+        }
+
+        .graph-title {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+        }
+
+        .cycle-display {
+            text-align: center;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .balance-requirements {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+            font-size: 0.9em;
+        }
+
+        .requirement-item {
+            padding: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .requirement-item:last-child {
+            border-bottom: none;
+        }
+
+        .requirement-range {
+            color: #666;
+            font-weight: bold;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+
+            .legend {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #f5c6cb;
+            display: none;
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #c3e6cb;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🌍 Ecosystem Balance Simulator</h1>
+            <p>Maintain ecological balance while managing predator-prey relationships</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Left Column -->
+            <div>
+                <!-- Status and Controls -->
+                <div class="section">
+                    <h2>Game Control</h2>
+                    <div id="gameStatus" class="game-status"></div>
+                    <div class="cycle-display">Cycle: <span id="cycleCount">0</span></div>
+                    <div class="controls">
+                        <button class="btn-success" id="startBtn">Start Game</button>
+                        <button class="btn-primary" id="pauseBtn" disabled>Pause</button>
+                        <button class="btn-primary" id="resumeBtn" disabled>Resume</button>
+                        <button class="btn-danger" id="resetBtn">Reset</button>
+                    </div>
+                </div>
+
+                <!-- Population Display -->
+                <div class="section">
+                    <h2>Population</h2>
+                    <div class="stats-grid">
+                        <div class="stat-box grass">
+                            <div class="stat-label">Grass</div>
+                            <div class="stat-value" id="grassCount">500</div>
+                        </div>
+                        <div class="stat-box rabbit">
+                            <div class="stat-label">Rabbits</div>
+                            <div class="stat-value" id="rabbitCount">50</div>
+                        </div>
+                        <div class="stat-box wolf">
+                            <div class="stat-label">Wolves</div>
+                            <div class="stat-value" id="wolfCount">5</div>
+                        </div>
+                        <div class="stat-box bird">
+                            <div class="stat-label">Birds</div>
+                            <div class="stat-value" id="birdCount">30</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Balance Progress -->
+                <div class="section">
+                    <h2>Balance Progress</h2>
+                    <div class="info-box">
+                        <div class="info-label">Cycles in Balance</div>
+                        <div class="info-value" id="balanceStatus">0 / 50</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="balanceProgress" style="width: 0%">0%</div>
+                        </div>
+                    </div>
+                    <div class="balance-requirements">
+                        <div class="requirement-item">
+                            <span>🌱 Grass</span>
+                            <span class="requirement-range">100 - 1000</span>
+                        </div>
+                        <div class="requirement-item">
+                            <span>🐰 Rabbits</span>
+                            <span class="requirement-range">10 - 200</span>
+                        </div>
+                        <div class="requirement-item">
+                            <span>🐺 Wolves</span>
+                            <span class="requirement-range">2 - 30</span>
+                        </div>
+                        <div class="requirement-item">
+                            <span>🐦 Birds</span>
+                            <span class="requirement-range">5 - 100</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Environment Control -->
+                <div class="section">
+                    <h2>Environment</h2>
+                    <div class="weather-display">
+                        <div class="info-label">Weather</div>
+                        <div style="margin-top: 10px;">
+                            <button class="weather-button active" data-weather="normal">☀️ Normal</button>
+                            <button class="weather-button" data-weather="drought">🔥 Drought</button>
+                            <button class="weather-button" data-weather="abundant">🌧️ Abundant</button>
+                            <button class="weather-button" data-weather="storm">⛈️ Storm</button>
+                        </div>
+                    </div>
+                    <div class="water-level">
+                        <span class="water-label">Water</span>
+                        <div class="water-bar">
+                            <div class="water-fill" id="waterFill" style="width: 80%"></div>
+                        </div>
+                        <span id="waterPercent">80%</span>
+                    </div>
+                </div>
+
+                <!-- Population Management -->
+                <div class="section">
+                    <h2>Species Management</h2>
+                    <div class="species-control">
+                        <span class="species-name grass">Grass</span>
+                        <input type="number" class="quantity-input" id="grassAdd" value="10" min="1">
+                        <button class="btn-primary btn-small" onclick="game.addSpecies('grass')">+</button>
+                        <button class="btn-danger btn-small" onclick="game.removeSpecies('grass')">-</button>
+                    </div>
+                    <div class="species-control">
+                        <span class="species-name rabbit">Rabbits</span>
+                        <input type="number" class="quantity-input" id="rabbitAdd" value="5" min="1">
+                        <button class="btn-primary btn-small" onclick="game.addSpecies('rabbit')">+</button>
+                        <button class="btn-danger btn-small" onclick="game.removeSpecies('rabbit')">-</button>
+                    </div>
+                    <div class="species-control">
+                        <span class="species-name wolf">Wolves</span>
+                        <input type="number" class="quantity-input" id="wolfAdd" value="2" min="1">
+                        <button class="btn-primary btn-small" onclick="game.addSpecies('wolf')">+</button>
+                        <button class="btn-danger btn-small" onclick="game.removeSpecies('wolf')">-</button>
+                    </div>
+                    <div class="species-control">
+                        <span class="species-name bird">Birds</span>
+                        <input type="number" class="quantity-input" id="birdAdd" value="5" min="1">
+                        <button class="btn-primary btn-small" onclick="game.addSpecies('bird')">+</button>
+                        <button class="btn-danger btn-small" onclick="game.removeSpecies('bird')">-</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div>
+                <!-- Graph -->
+                <div class="graph-container">
+                    <div class="graph-title">Population Trends</div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #22aa22;"></div>
+                            <span>Grass</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff8844;"></div>
+                            <span>Rabbits</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #aa2222;"></div>
+                            <span>Wolves</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4488ff;"></div>
+                            <span>Birds</span>
+                        </div>
+                    </div>
+                    <canvas id="populationGraph"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Inline ecosystem simulator code
+        class EcosystemGame {
+            constructor() {
+                this.gameRunning = false;
+                this.gamePaused = false;
+                this.gameWon = false;
+                this.gameLost = false;
+                this.cycle = 0;
+                this.balanceCheckCount = 0;
+                this.weather = 'normal';
+                this.waterLevel = 80;
+
+                this.populations = {
+                    grass: 500,
+                    rabbit: 50,
+                    wolf: 5,
+                    bird: 30,
+                };
+
+                this.history = [{
+                    cycle: 0,
+                    grass: 500,
+                    rabbit: 50,
+                    wolf: 5,
+                    bird: 30,
+                    weather: 'normal',
+                    waterLevel: 80,
+                }];
+
+                this.simulationSpeed = 100; // ms per cycle
+                this.simulationInterval = null;
+
+                this.initializeUI();
+                this.updateDisplay();
+            }
+
+            initializeUI() {
+                // Button listeners
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('resumeBtn').addEventListener('click', () => this.resume());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+
+                // Weather buttons
+                document.querySelectorAll('.weather-button').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.weather-button').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        this.setWeather(btn.dataset.weather);
+                    });
+                });
+            }
+
+            start() {
+                this.gameRunning = true;
+                this.gamePaused = false;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('resumeBtn').disabled = true;
+
+                this.simulationInterval = setInterval(() => this.simulateCycle(), this.simulationSpeed);
+            }
+
+            pause() {
+                this.gamePaused = true;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('resumeBtn').disabled = false;
+            }
+
+            resume() {
+                this.gamePaused = false;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('resumeBtn').disabled = true;
+            }
+
+            reset() {
+                clearInterval(this.simulationInterval);
+                this.gameRunning = false;
+                this.gamePaused = false;
+                this.gameWon = false;
+                this.gameLost = false;
+                this.cycle = 0;
+                this.balanceCheckCount = 0;
+                this.weather = 'normal';
+                this.waterLevel = 80;
+                this.populations = {
+                    grass: 500,
+                    rabbit: 50,
+                    wolf: 5,
+                    bird: 30,
+                };
+                this.history = [{
+                    cycle: 0,
+                    grass: 500,
+                    rabbit: 50,
+                    wolf: 5,
+                    bird: 30,
+                    weather: 'normal',
+                    waterLevel: 80,
+                }];
+
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('resumeBtn').disabled = true;
+                document.querySelectorAll('.weather-button').forEach(b => b.classList.remove('active'));
+                document.querySelector('[data-weather="normal"]').classList.add('active');
+
+                this.updateDisplay();
+            }
+
+            simulateCycle() {
+                if (!this.gameRunning || this.gamePaused || this.gameLost || this.gameWon) {
+                    return;
+                }
+
+                this.cycle++;
+
+                // Update weather
+                if (Math.random() < 0.05) {
+                    const weathers = ['normal', 'drought', 'abundant', 'storm'];
+                    this.weather = weathers[Math.floor(Math.random() * weathers.length)];
+                    document.querySelectorAll('.weather-button').forEach(b => b.classList.remove('active'));
+                    document.querySelector(`[data-weather="${this.weather}"]`).classList.add('active');
+                }
+
+                // Update water level based on weather
+                switch (this.weather) {
+                    case 'drought':
+                        this.waterLevel = Math.max(20, this.waterLevel - 5);
+                        break;
+                    case 'abundant':
+                        this.waterLevel = Math.min(100, this.waterLevel + 5);
+                        break;
+                    case 'storm':
+                        this.waterLevel = Math.max(0, this.waterLevel - 10);
+                        break;
+                    case 'normal':
+                        this.waterLevel = Math.min(100, this.waterLevel + 1);
+                        break;
+                }
+
+                // Apply water stress
+                if (this.waterLevel < 30) {
+                    const stressRate = 0.3;
+                    this.populations.grass = Math.max(0, this.populations.grass - Math.floor(this.populations.grass * stressRate));
+                    this.populations.rabbit = Math.max(0, this.populations.rabbit - Math.floor(this.populations.rabbit * stressRate));
+                    this.populations.bird = Math.max(0, this.populations.bird - Math.floor(this.populations.bird * stressRate));
+                }
+
+                // Grass growth
+                const waterMult = Math.max(0.3, this.waterLevel / 100);
+                const grassGrowth = Math.floor(this.populations.grass * 0.05 * waterMult);
+                this.populations.grass += grassGrowth;
+
+                // Rabbit dynamics
+                if (this.populations.grass > 0) {
+                    const grassEaten = Math.min(this.populations.rabbit * 2, this.populations.grass);
+                    this.populations.grass -= grassEaten;
+                    const rabbitReproduction = Math.floor(this.populations.rabbit * 0.15);
+                    this.populations.rabbit += rabbitReproduction;
+                } else {
+                    this.populations.rabbit = Math.max(0, this.populations.rabbit - Math.floor(this.populations.rabbit * 0.3));
+                }
+
+                // Bird dynamics
+                if (this.populations.grass > 0 && Math.random() > 0.5) {
+                    const grassEaten = Math.min(this.populations.bird, this.populations.grass);
+                    this.populations.grass -= grassEaten;
+                } else if (this.populations.rabbit > 0 && Math.random() < 0.5) {
+                    if (Math.random() < 0.5) {
+                        this.populations.rabbit = Math.max(0, this.populations.rabbit - 1);
+                    }
+                }
+                const birdReproduction = Math.floor(this.populations.bird * 0.12);
+                this.populations.bird = Math.max(0, this.populations.bird + birdReproduction);
+
+                // Wolf dynamics
+                if (this.populations.rabbit > 0 && Math.random() < 0.7) {
+                    const rabbitsEaten = Math.min(Math.floor(this.populations.wolf * 1.5), this.populations.rabbit);
+                    this.populations.rabbit -= rabbitsEaten;
+                    const wolfReproduction = Math.floor(this.populations.wolf * 0.1);
+                    this.populations.wolf += wolfReproduction;
+                } else {
+                    this.populations.wolf = Math.max(0, this.populations.wolf - Math.floor(this.populations.wolf * 0.05));
+                }
+
+                // Check balance
+                const balanced = this.isBalanced();
+                if (balanced) {
+                    this.balanceCheckCount++;
+                } else {
+                    this.balanceCheckCount = 0;
+                }
+
+                // Check win/loss
+                if (this.balanceCheckCount >= 50) {
+                    this.gameWon = true;
+                    this.gameRunning = false;
+                    clearInterval(this.simulationInterval);
+                }
+
+                if (this.populations.grass === 0 || this.populations.rabbit === 0 ||
+                    this.populations.wolf === 0 || this.populations.bird === 0) {
+                    this.gameLost = true;
+                    this.gameRunning = false;
+                    clearInterval(this.simulationInterval);
+                }
+
+                // Record history
+                this.history.push({
+                    cycle: this.cycle,
+                    grass: this.populations.grass,
+                    rabbit: this.populations.rabbit,
+                    wolf: this.populations.wolf,
+                    bird: this.populations.bird,
+                    weather: this.weather,
+                    waterLevel: this.waterLevel,
+                });
+
+                this.updateDisplay();
+            }
+
+            isBalanced() {
+                return this.populations.grass >= 100 && this.populations.grass <= 1000 &&
+                       this.populations.rabbit >= 10 && this.populations.rabbit <= 200 &&
+                       this.populations.wolf >= 2 && this.populations.wolf <= 30 &&
+                       this.populations.bird >= 5 && this.populations.bird <= 100;
+            }
+
+            addSpecies(type) {
+                const input = document.getElementById(`${type}Add`);
+                const amount = parseInt(input.value) || 1;
+                this.populations[type] += amount;
+                this.updateDisplay();
+            }
+
+            removeSpecies(type) {
+                const input = document.getElementById(`${type}Add`);
+                const amount = parseInt(input.value) || 1;
+                this.populations[type] = Math.max(0, this.populations[type] - amount);
+                this.updateDisplay();
+            }
+
+            setWeather(weather) {
+                this.weather = weather;
+            }
+
+            updateDisplay() {
+                // Update population counts
+                document.getElementById('grassCount').textContent = this.populations.grass;
+                document.getElementById('rabbitCount').textContent = this.populations.rabbit;
+                document.getElementById('wolfCount').textContent = this.populations.wolf;
+                document.getElementById('birdCount').textContent = this.populations.bird;
+
+                // Update cycle count
+                document.getElementById('cycleCount').textContent = this.cycle;
+
+                // Update balance
+                const balancePercent = (this.balanceCheckCount / 50) * 100;
+                document.getElementById('balanceStatus').textContent = `${this.balanceCheckCount} / 50`;
+                document.getElementById('balanceProgress').style.width = `${balancePercent}%`;
+                document.getElementById('balanceProgress').textContent = `${Math.floor(balancePercent)}%`;
+
+                // Update water level
+                document.getElementById('waterFill').style.width = `${this.waterLevel}%`;
+                document.getElementById('waterPercent').textContent = `${this.waterLevel}%`;
+
+                // Game status
+                const statusDiv = document.getElementById('gameStatus');
+                if (this.gameWon) {
+                    statusDiv.textContent = '🎉 ECOSYSTEM BALANCED! You Won! 🎉';
+                    statusDiv.classList.add('won');
+                    statusDiv.classList.remove('lost');
+                } else if (this.gameLost) {
+                    statusDiv.textContent = '💀 GAME OVER - Species Extinct! 💀';
+                    statusDiv.classList.add('lost');
+                    statusDiv.classList.remove('won');
+                } else {
+                    statusDiv.classList.remove('won', 'lost');
+                }
+
+                // Update graph
+                this.drawGraph();
+            }
+
+            drawGraph() {
+                const canvas = document.getElementById('populationGraph');
+                const ctx = canvas.getContext('2d');
+
+                // Set canvas size
+                canvas.width = canvas.offsetWidth;
+                canvas.height = 300;
+
+                if (this.history.length < 2) {
+                    return;
+                }
+
+                const width = canvas.width;
+                const height = canvas.height;
+                const padding = 40;
+                const graphWidth = width - 2 * padding;
+                const graphHeight = height - 2 * padding;
+
+                // Clear canvas
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, width, height);
+
+                // Find max value for scaling
+                let maxValue = 1000;
+                for (const record of this.history) {
+                    maxValue = Math.max(maxValue, record.grass, record.rabbit * 20, record.wolf * 50, record.bird * 10);
+                }
+
+                // Draw grid
+                ctx.strokeStyle = '#e9ecef';
+                ctx.lineWidth = 1;
+                for (let i = 0; i <= 5; i++) {
+                    const y = padding + (graphHeight / 5) * i;
+                    ctx.beginPath();
+                    ctx.moveTo(padding, y);
+                    ctx.lineTo(width - padding, y);
+                    ctx.stroke();
+                }
+
+                // Draw axes
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(padding, padding);
+                ctx.lineTo(padding, height - padding);
+                ctx.lineTo(width - padding, height - padding);
+                ctx.stroke();
+
+                // Draw species lines
+                const colors = {
+                    grass: '#22aa22',
+                    rabbit: '#ff8844',
+                    wolf: '#aa2222',
+                    bird: '#4488ff',
+                };
+
+                const species = ['grass', 'rabbit', 'wolf', 'bird'];
+                const scales = {
+                    grass: 1,
+                    rabbit: 20,
+                    wolf: 50,
+                    bird: 10,
+                };
+
+                for (const sp of species) {
+                    ctx.strokeStyle = colors[sp];
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+
+                    for (let i = 0; i < this.history.length; i++) {
+                        const record = this.history[i];
+                        const x = padding + (i / (this.history.length - 1)) * graphWidth;
+                        const value = record[sp] * scales[sp];
+                        const y = height - padding - (value / maxValue) * graphHeight;
+
+                        if (i === 0) {
+                            ctx.moveTo(x, y);
+                        } else {
+                            ctx.lineTo(x, y);
+                        }
+                    }
+                    ctx.stroke();
+                }
+
+                // Draw legend values
+                ctx.fillStyle = '#333';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'left';
+                const lastRecord = this.history[this.history.length - 1];
+                let yPos = padding + 20;
+                for (const sp of species) {
+                    ctx.fillStyle = colors[sp];
+                    ctx.fillRect(width - padding - 80, yPos - 10, 12, 12);
+                    ctx.fillStyle = '#333';
+                    ctx.fillText(`${sp}: ${lastRecord[sp]}`, width - padding - 60, yPos);
+                    yPos += 20;
+                }
+            }
+        }
+
+        // Initialize game
+        const game = new EcosystemGame();
+    </script>
+</body>
+</html>

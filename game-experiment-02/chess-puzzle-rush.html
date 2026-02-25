@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Puzzle Rush</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .board-container {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #chessBoard {
+            border: 3px solid #333;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .score-box {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .score-box h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .score-box .score {
+            font-size: 2.5em;
+            font-weight: bold;
+        }
+
+        .score-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .stat {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .puzzle-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .puzzle-info h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .puzzle-info p {
+            color: #666;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .difficulty {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+
+        .timer {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .timer .time-value {
+            font-size: 3em;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .timer.critical {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            animation: pulse 0.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        button {
+            padding: 12px 20px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+            border: 2px solid #ddd;
+        }
+
+        .btn-secondary:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .btn-hint {
+            background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+            color: white;
+        }
+
+        .btn-hint:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 216, 155, 0.4);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .modal-content h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .modal-content .score {
+            font-size: 3em;
+            color: #f5576c;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .modal-content p {
+            font-size: 1.1em;
+            color: #666;
+            margin: 15px 0;
+        }
+
+        .solution-moves {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            text-align: left;
+        }
+
+        .move-log {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+
+        .move-entry {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .move-entry:last-child {
+            border-bottom: none;
+        }
+
+        .hint-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            color: #856404;
+        }
+
+        .hint-box strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .game-mode-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            padding: 10px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9em;
+        }
+
+        .mode-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .mode-btn:hover {
+            border-color: #667eea;
+        }
+
+        .status-message {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+
+        .status-message.show {
+            display: block;
+        }
+
+        .status-message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 1000px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+
+        .piece {
+            user-select: none;
+        }
+
+        .square-highlight {
+            background: rgba(255, 215, 0, 0.3);
+        }
+
+        .square-selected {
+            background: rgba(102, 126, 234, 0.4);
+        }
+
+        .square-valid-move {
+            background: rgba(76, 175, 80, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>♞ Chess Puzzle Rush ♞</h1>
+            <p>Solve checkmate puzzles under time pressure!</p>
+        </div>
+
+        <div class="main-content">
+            <div class="board-section">
+                <div class="board-container">
+                    <canvas id="chessBoard" width="500" height="500"></canvas>
+                </div>
+                <div class="move-log" id="moveLog">
+                    <div style="color: #999; text-align: center;">Move history will appear here</div>
+                </div>
+            </div>
+
+            <div class="side-panel">
+                <div class="score-box">
+                    <h3>Total Score</h3>
+                    <div class="score" id="totalScore">0</div>
+                    <div class="score-stats">
+                        <div class="stat">
+                            <div style="opacity: 0.8;">Puzzles</div>
+                            <div style="font-size: 1.5em; font-weight: bold;" id="puzzleCount">0</div>
+                        </div>
+                        <div class="stat">
+                            <div style="opacity: 0.8;">Combo</div>
+                            <div style="font-size: 1.5em; font-weight: bold;" id="comboCount">0x</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="timer" id="timerBox">
+                    <div>Time Remaining</div>
+                    <div class="time-value" id="timer">60</div>
+                    <small>seconds</small>
+                </div>
+
+                <div class="puzzle-info">
+                    <h3 id="puzzleName">Loading...</h3>
+                    <p id="puzzleDesc" style="margin: 10px 0; color: #888; font-size: 0.9em;"></p>
+                    <div class="difficulty" id="difficultyTag">Difficulty: ?</div>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+
+                <div class="controls">
+                    <button class="btn-primary" id="submitBtn">✓ Submit Solution</button>
+                    <button class="btn-hint" id="hintBtn">💡 Get Hint (Penalty: -100 pts)</button>
+                    <button class="btn-secondary" id="resetBtn">↺ Reset Puzzle</button>
+                    <button class="btn-secondary" id="nextBtn">→ Next Puzzle</button>
+                </div>
+
+                <div style="text-align: center; color: #999; font-size: 0.9em; margin-top: 10px;">
+                    Click piece to select, then click square to move
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Solution Modal -->
+    <div class="modal" id="solutionModal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Puzzle Solved!</h2>
+            <div class="score" id="modalScore">500</div>
+            <p id="modalMessage">Great job! Continue to the next puzzle.</p>
+            <div id="modalStats" style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 15px 0; font-size: 0.95em;"></div>
+            <button class="btn-primary" onclick="closeModal(); nextPuzzle();">→ Next Puzzle</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // CHESS ENGINE IMPLEMENTATION (Client-side JavaScript version)
+        // ============================================================================
+
+        const Color = {
+            White: 'w',
+            Black: 'b',
+        };
+
+        const PieceType = {
+            Pawn: 'P',
+            Knight: 'N',
+            Bishop: 'B',
+            Rook: 'R',
+            Queen: 'Q',
+            King: 'K',
+        };
+
+        // Puzzle data (same as TypeScript version)
+        const STANDARD_PUZZLES = [
+            {
+                id: 'mate1-001',
+                name: 'Back Rank Mate',
+                fen: '6k1/5ppp/8/8/8/8/R7/K7 w - - 0 1',
+                solution: [{ from: { file: 0, rank: 1 }, to: { file: 0, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-002',
+                name: 'Smothered Mate',
+                fen: '6k1/5ppp/8/8/8/8/5Q2/K7 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 1 }, to: { file: 5, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-003',
+                name: 'Queen and King Mate',
+                fen: '5k2/5Q2/6K1/8/8/8/8/8 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 6 }, to: { file: 5, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-004',
+                name: 'Rook on 7th Rank',
+                fen: '6k1/R6p/6P1/8/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 0, rank: 6 }, to: { file: 6, rank: 6 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-005',
+                name: 'Diagonal Checkmate',
+                fen: '6k1/5B1p/6P1/8/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 6 }, to: { file: 7, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-006',
+                name: 'Knight Fork Mate',
+                fen: '6k1/5ppp/8/5N2/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 4 }, to: { file: 7, rank: 5 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-007',
+                name: 'Pawn Promotion Mate',
+                fen: '6k1/4P3/8/8/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 4, rank: 6 }, to: { file: 4, rank: 7 }, promotion: 'Q' }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-008',
+                name: 'Corner Mate',
+                fen: '7k/5Q2/6K1/8/8/8/8/8 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 6 }, to: { file: 7, rank: 6 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-009',
+                name: 'Rook and Bishop Mate',
+                fen: '6k1/5pp1/5B2/7R/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 7, rank: 4 }, to: { file: 7, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate1-010',
+                name: 'Two Rooks Mate',
+                fen: '5rk1/5R2/5R2/8/8/8/8/K7 w - - 0 1',
+                solution: [{ from: { file: 5, rank: 5 }, to: { file: 5, rank: 7 } }],
+                difficulty: 1,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-001',
+                name: 'Quiet Mate in 2',
+                fen: '6k1/5ppp/8/8/8/5Q2/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 2 }, to: { file: 5, rank: 6 } },
+                    { from: { file: 5, rank: 6 }, to: { file: 7, rank: 6 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-002',
+                name: 'Forcing Mate in 2',
+                fen: '6k1/4Q1pp/8/8/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 4, rank: 6 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-003',
+                name: 'Knight Discovery Mate',
+                fen: '6k1/5ppp/4N3/4Q3/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 4, rank: 4 }, to: { file: 6, rank: 5 } },
+                    { from: { file: 6, rank: 5 }, to: { file: 7, rank: 6 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-004',
+                name: 'Rook and Knight Mate',
+                fen: '6k1/5ppp/6N1/7R/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 7, rank: 4 }, to: { file: 7, rank: 7 } },
+                    { from: { file: 7, rank: 7 }, to: { file: 7, rank: 6 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-005',
+                name: 'Bishop Trap Mate',
+                fen: '6k1/5ppp/5B2/6Q1/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 4 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-006',
+                name: 'Pawn and Queen Mate',
+                fen: '6k1/5p1p/5Q2/8/4P3/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 5 }, to: { file: 5, rank: 7 } },
+                    { from: { file: 5, rank: 7 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-007',
+                name: 'Skewer Pattern',
+                fen: '5rk1/5ppp/5N2/6R1/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 7, rank: 4 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-008',
+                name: 'Intermezzo Tactic',
+                fen: '6k1/5ppp/8/5Q2/8/6N1/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 4 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-009',
+                name: 'Double Rook Mate',
+                fen: '6k1/5ppp/6R1/7R/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 7, rank: 5 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate2-010',
+                name: 'Queen Sacrifice Mate',
+                fen: '5rk1/5ppp/5Q2/8/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 5 }, to: { file: 7, rank: 7 } },
+                    { from: { file: 7, rank: 7 }, to: { file: 6, rank: 7 } },
+                ],
+                difficulty: 2,
+                category: 'standard',
+            },
+            {
+                id: 'mate3-001',
+                name: 'Three Move Classic',
+                fen: '6k1/5ppp/8/5Q2/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 4 }, to: { file: 5, rank: 7 } },
+                    { from: { file: 5, rank: 7 }, to: { file: 6, rank: 6 } },
+                    { from: { file: 6, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 3,
+                category: 'standard',
+            },
+            {
+                id: 'mate3-002',
+                name: 'Rook Ladder Mate',
+                fen: '5rk1/5ppp/6R1/8/8/8/R7/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 6, rank: 5 }, to: { file: 6, rank: 6 } },
+                    { from: { file: 6, rank: 6 }, to: { file: 6, rank: 7 } },
+                    { from: { file: 0, rank: 1 }, to: { file: 0, rank: 7 } },
+                ],
+                difficulty: 3,
+                category: 'standard',
+            },
+            {
+                id: 'mate3-003',
+                name: 'Knight Check Mate',
+                fen: '6k1/5ppp/8/5N2/5Q2/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 4 }, to: { file: 7, rank: 5 } },
+                    { from: { file: 7, rank: 5 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 3,
+                category: 'standard',
+            },
+            {
+                id: 'mate3-004',
+                name: 'Quiet Maneuver',
+                fen: '6k1/5ppp/8/8/8/5Q2/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 5, rank: 2 }, to: { file: 1, rank: 2 } },
+                    { from: { file: 1, rank: 2 }, to: { file: 1, rank: 7 } },
+                    { from: { file: 1, rank: 7 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 3,
+                category: 'standard',
+            },
+            {
+                id: 'mate3-005',
+                name: 'Patient Attack',
+                fen: '5rk1/5ppp/6Q1/8/8/8/8/K7 w - - 0 1',
+                solution: [
+                    { from: { file: 6, rank: 5 }, to: { file: 6, rank: 6 } },
+                    { from: { file: 6, rank: 6 }, to: { file: 7, rank: 6 } },
+                    { from: { file: 7, rank: 6 }, to: { file: 7, rank: 7 } },
+                ],
+                difficulty: 3,
+                category: 'standard',
+            },
+        ];
+
+        // ============================================================================
+        // GAME STATE
+        // ============================================================================
+
+        class ChessGame {
+            constructor() {
+                this.canvas = document.getElementById('chessBoard');
+                this.ctx = this.canvas.getContext('2d');
+                this.squareSize = 500 / 8;
+
+                this.selectedSquare = null;
+                this.validMoves = [];
+                this.highlightedSquares = [];
+                this.playerMoves = [];
+                this.currentPuzzleIndex = 0;
+                this.gameScore = {
+                    puzzlesCompleted: 0,
+                    totalScore: 0,
+                    currentCombo: 0,
+                    currentPuzzleScore: 0,
+                };
+                this.usedHint = false;
+                this.timerInterval = null;
+                this.timeRemaining = 60;
+                this.gamePaused = false;
+
+                this.loadPuzzle();
+                this.setupEventListeners();
+                this.startTimer();
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+                document.getElementById('submitBtn').addEventListener('click', () => this.submitSolution());
+                document.getElementById('hintBtn').addEventListener('click', () => this.getHint());
+                document.getElementById('resetBtn').addEventListener('click', () => this.resetPuzzle());
+                document.getElementById('nextBtn').addEventListener('click', () => this.nextPuzzle());
+            }
+
+            loadPuzzle() {
+                const puzzle = STANDARD_PUZZLES[this.currentPuzzleIndex % STANDARD_PUZZLES.length];
+                this.currentPuzzle = puzzle;
+                this.engine = new SimpleChessEngine(puzzle.fen);
+                this.playerMoves = [];
+                this.usedHint = false;
+                this.timeRemaining = 60;
+                this.updateUI();
+                this.render();
+            }
+
+            handleCanvasClick(e) {
+                if (this.gamePaused) return;
+
+                const rect = this.canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const file = Math.floor(x / this.squareSize);
+                const rank = 7 - Math.floor(y / this.squareSize);
+
+                if (this.selectedSquare) {
+                    const from = this.selectedSquare;
+                    const to = { file, rank };
+                    this.tryMove(from, to);
+                } else {
+                    this.selectSquare({ file, rank });
+                }
+
+                this.render();
+            }
+
+            selectSquare(square) {
+                this.selectedSquare = square;
+                this.validMoves = this.getValidMovesFromSquare(square);
+            }
+
+            getValidMovesFromSquare(square) {
+                const piece = this.engine.board[square.rank][square.file];
+                if (!piece || piece.color !== this.engine.toMove) {
+                    return [];
+                }
+
+                return this.engine.getValidMoves().filter(
+                    m => m.from.file === square.file && m.from.rank === square.rank
+                );
+            }
+
+            tryMove(from, to) {
+                const move = this.validMoves.find(m => m.to.file === to.file && m.to.rank === to.rank);
+                if (move) {
+                    this.engine.makeMove(move);
+                    this.playerMoves.push(move);
+                    this.updateMoveLog();
+                    this.selectedSquare = null;
+                    this.validMoves = [];
+                }
+            }
+
+            getHint() {
+                if (this.usedHint) {
+                    showStatus('You already used your hint!', 'error');
+                    return;
+                }
+                this.usedHint = true;
+                const hintMove = this.currentPuzzle.solution[this.playerMoves.length];
+                if (hintMove) {
+                    showStatus(`Hint: Move ${this.moveToAlgebraic(hintMove)}`, 'success');
+                }
+                document.getElementById('hintBtn').disabled = true;
+                this.updateUI();
+            }
+
+            moveToAlgebraic(move) {
+                const files = 'abcdefgh';
+                const from = files[move.from.file] + (move.from.rank + 1);
+                const to = files[move.to.file] + (move.to.rank + 1);
+                return from + to;
+            }
+
+            submitSolution() {
+                const expectedMoves = this.currentPuzzle.solution;
+                let correct = true;
+
+                for (let i = 0; i < expectedMoves.length; i++) {
+                    if (i >= this.playerMoves.length) {
+                        correct = false;
+                        break;
+                    }
+                    const player = this.playerMoves[i];
+                    const expected = expectedMoves[i];
+                    if (player.from.file !== expected.from.file ||
+                        player.from.rank !== expected.from.rank ||
+                        player.to.file !== expected.to.file ||
+                        player.to.rank !== expected.to.rank) {
+                        correct = false;
+                        break;
+                    }
+                }
+
+                if (!correct || this.playerMoves.length !== expectedMoves.length) {
+                    showStatus('Incorrect solution. Try again!', 'error');
+                    return;
+                }
+
+                this.puzzleSolved();
+            }
+
+            puzzleSolved() {
+                this.gamePaused = true;
+                clearInterval(this.timerInterval);
+
+                const score = this.calculateScore();
+                this.gameScore.totalScore += score;
+                this.gameScore.puzzlesCompleted++;
+                this.gameScore.currentPuzzleScore = score;
+                this.gameScore.currentCombo++;
+
+                showModal(score, this.currentPuzzle);
+            }
+
+            calculateScore() {
+                const elapsed = 60 - this.timeRemaining;
+                const baseBonus = Math.max(0, (60 - elapsed) * 5);
+                const difficultyBonus = this.currentPuzzle.difficulty * 50;
+                const hintPenalty = this.usedHint ? 100 : 0;
+                const comboMultiplier = 1 + this.gameScore.currentCombo * 0.1;
+                return Math.floor((baseBonus + difficultyBonus - hintPenalty) * Math.min(2, comboMultiplier));
+            }
+
+            resetPuzzle() {
+                this.loadPuzzle();
+                this.render();
+            }
+
+            nextPuzzle() {
+                this.currentPuzzleIndex++;
+                this.gamePaused = false;
+                this.loadPuzzle();
+                this.startTimer();
+                this.render();
+            }
+
+            updateUI() {
+                document.getElementById('totalScore').textContent = this.gameScore.totalScore;
+                document.getElementById('puzzleCount').textContent = this.gameScore.puzzlesCompleted;
+                document.getElementById('comboCount').textContent = this.gameScore.currentCombo + 'x';
+                document.getElementById('puzzleName').textContent = this.currentPuzzle.name;
+                document.getElementById('puzzleDesc').textContent = `Checkmate in ${this.currentPuzzle.difficulty} move${this.currentPuzzle.difficulty > 1 ? 's' : ''}`;
+                document.getElementById('difficultyTag').textContent = `Difficulty: ${'★'.repeat(this.currentPuzzle.difficulty)}`;
+                document.getElementById('hintBtn').disabled = this.usedHint;
+            }
+
+            updateMoveLog() {
+                const log = document.getElementById('moveLog');
+                const moves = this.playerMoves.map((m, i) => this.moveToAlgebraic(m)).join(' ');
+                log.innerHTML = `<div class="move-entry"><strong>Moves:</strong> ${moves || 'None yet'}</div>`;
+            }
+
+            startTimer() {
+                clearInterval(this.timerInterval);
+                this.timeRemaining = 60;
+                this.timerInterval = setInterval(() => {
+                    if (!this.gamePaused) {
+                        this.timeRemaining--;
+                        this.updateTimer();
+                        if (this.timeRemaining <= 0) {
+                            this.timesUp();
+                        }
+                    }
+                }, 1000);
+            }
+
+            updateTimer() {
+                const timerBox = document.getElementById('timerBox');
+                const timerDisplay = document.getElementById('timer');
+                timerDisplay.textContent = this.timeRemaining;
+                if (this.timeRemaining <= 10) {
+                    timerBox.classList.add('critical');
+                } else {
+                    timerBox.classList.remove('critical');
+                }
+            }
+
+            timesUp() {
+                this.gamePaused = true;
+                showStatus('Time\'s up! Your solution was incorrect.', 'error');
+                this.gameScore.currentCombo = 0;
+            }
+
+            render() {
+                this.ctx.fillStyle = '#f5f5f5';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw board
+                for (let rank = 0; rank < 8; rank++) {
+                    for (let file = 0; file < 8; file++) {
+                        const isLight = (file + rank) % 2 === 0;
+                        this.ctx.fillStyle = isLight ? '#e8d5c4' : '#b58863';
+
+                        const x = file * this.squareSize;
+                        const y = (7 - rank) * this.squareSize;
+                        this.ctx.fillRect(x, y, this.squareSize, this.squareSize);
+
+                        // Highlight selected square
+                        if (this.selectedSquare && this.selectedSquare.file === file && this.selectedSquare.rank === rank) {
+                            this.ctx.fillStyle = 'rgba(102, 126, 234, 0.4)';
+                            this.ctx.fillRect(x, y, this.squareSize, this.squareSize);
+                        }
+
+                        // Highlight valid moves
+                        if (this.validMoves.some(m => m.to.file === file && m.to.rank === rank)) {
+                            this.ctx.fillStyle = 'rgba(76, 175, 80, 0.4)';
+                            this.ctx.fillRect(x, y, this.squareSize, this.squareSize);
+                        }
+                    }
+                }
+
+                // Draw pieces
+                for (let rank = 0; rank < 8; rank++) {
+                    for (let file = 0; file < 8; file++) {
+                        const piece = this.engine.board[rank][file];
+                        if (piece) {
+                            this.drawPiece(file, rank, piece);
+                        }
+                    }
+                }
+            }
+
+            drawPiece(file, rank, piece) {
+                const x = file * this.squareSize + this.squareSize / 2;
+                const y = (7 - rank) * this.squareSize + this.squareSize / 2;
+                const fontSize = this.squareSize * 0.7;
+
+                this.ctx.font = `bold ${fontSize}px Arial`;
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+
+                const pieceSymbols = {
+                    'P': '♟',
+                    'N': '♞',
+                    'B': '♝',
+                    'R': '♜',
+                    'Q': '♛',
+                    'K': '♚',
+                };
+
+                const symbol = pieceSymbols[piece.type] || piece.type;
+                this.ctx.fillStyle = piece.color === Color.White ? '#ffffff' : '#000000';
+                this.ctx.fillText(symbol, x, y);
+                this.ctx.strokeStyle = piece.color === Color.White ? '#000000' : '#ffffff';
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeText(symbol, x, y);
+            }
+        }
+
+        // ============================================================================
+        // SIMPLIFIED CHESS ENGINE FOR UI
+        // ============================================================================
+
+        class SimpleChessEngine {
+            constructor(fen) {
+                this.board = this.parseFEN(fen);
+                this.toMove = Color.White;
+            }
+
+            parseFEN(fen) {
+                const parts = fen.split(' ');
+                const boardPart = parts[0];
+                this.toMove = parts[1] || Color.White;
+
+                const board = [];
+                const ranks = boardPart.split('/');
+                for (let i = 0; i < 8; i++) {
+                    const rank = [];
+                    for (let j = 0; j < ranks[i].length; j++) {
+                        const ch = ranks[i][j];
+                        if (/\d/.test(ch)) {
+                            for (let k = 0; k < parseInt(ch); k++) rank.push(null);
+                        } else {
+                            rank.push({
+                                type: ch.toUpperCase(),
+                                color: ch === ch.toUpperCase() ? Color.White : Color.Black,
+                            });
+                        }
+                    }
+                    board.push(rank);
+                }
+                return board;
+            }
+
+            getValidMoves() {
+                const moves = [];
+                for (let rank = 0; rank < 8; rank++) {
+                    for (let file = 0; file < 8; file++) {
+                        const piece = this.board[rank][file];
+                        if (piece && piece.color === this.toMove) {
+                            moves.push(...this.getPieceMoves(file, rank));
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            getPieceMoves(file, rank) {
+                const piece = this.board[rank][file];
+                if (!piece) return [];
+
+                switch (piece.type) {
+                    case PieceType.Pawn:
+                        return this.getPawnMoves(file, rank, piece.color);
+                    case PieceType.Knight:
+                        return this.getKnightMoves(file, rank, piece.color);
+                    case PieceType.Bishop:
+                        return this.getBishopMoves(file, rank, piece.color);
+                    case PieceType.Rook:
+                        return this.getRookMoves(file, rank, piece.color);
+                    case PieceType.Queen:
+                        return [...this.getRookMoves(file, rank, piece.color), ...this.getBishopMoves(file, rank, piece.color)];
+                    case PieceType.King:
+                        return this.getKingMoves(file, rank, piece.color);
+                }
+                return [];
+            }
+
+            getPawnMoves(file, rank, color) {
+                const moves = [];
+                const direction = color === Color.White ? 1 : -1;
+                const startRank = color === Color.White ? 1 : 6;
+
+                const nextRank = rank + direction;
+                if (nextRank >= 0 && nextRank <= 7 && !this.board[nextRank][file]) {
+                    moves.push({ from: { file, rank }, to: { file, rank: nextRank } });
+                    if (rank === startRank && !this.board[rank + 2 * direction][file]) {
+                        moves.push({ from: { file, rank }, to: { file, rank: rank + 2 * direction } });
+                    }
+                }
+
+                for (const captureFile of [file - 1, file + 1]) {
+                    if (captureFile >= 0 && captureFile <= 7) {
+                        const target = this.board[nextRank]?.[captureFile];
+                        if (target && target.color !== color) {
+                            moves.push({ from: { file, rank }, to: { file: captureFile, rank: nextRank } });
+                        }
+                    }
+                }
+
+                return moves;
+            }
+
+            getKnightMoves(file, rank, color) {
+                const moves = [];
+                const offsets = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+                for (const [df, dr] of offsets) {
+                    const nf = file + df, nr = rank + dr;
+                    if (nf >= 0 && nf <= 7 && nr >= 0 && nr <= 7) {
+                        const target = this.board[nr][nf];
+                        if (!target || target.color !== color) {
+                            moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            getBishopMoves(file, rank, color) {
+                const moves = [];
+                const directions = [[-1,-1],[-1,1],[1,-1],[1,1]];
+                for (const [df, dr] of directions) {
+                    for (let i = 1; i < 8; i++) {
+                        const nf = file + df * i, nr = rank + dr * i;
+                        if (nf < 0 || nf > 7 || nr < 0 || nr > 7) break;
+                        const target = this.board[nr][nf];
+                        if (!target) {
+                            moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                        } else if (target.color !== color) {
+                            moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            getRookMoves(file, rank, color) {
+                const moves = [];
+                const directions = [[-1,0],[1,0],[0,-1],[0,1]];
+                for (const [df, dr] of directions) {
+                    for (let i = 1; i < 8; i++) {
+                        const nf = file + df * i, nr = rank + dr * i;
+                        if (nf < 0 || nf > 7 || nr < 0 || nr > 7) break;
+                        const target = this.board[nr][nf];
+                        if (!target) {
+                            moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                        } else if (target.color !== color) {
+                            moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            getKingMoves(file, rank, color) {
+                const moves = [];
+                for (let df = -1; df <= 1; df++) {
+                    for (let dr = -1; dr <= 1; dr++) {
+                        if (df === 0 && dr === 0) continue;
+                        const nf = file + df, nr = rank + dr;
+                        if (nf >= 0 && nf <= 7 && nr >= 0 && nr <= 7) {
+                            const target = this.board[nr][nf];
+                            if (!target || target.color !== color) {
+                                moves.push({ from: { file, rank }, to: { file: nf, rank: nr } });
+                            }
+                        }
+                    }
+                }
+                return moves;
+            }
+
+            makeMove(move) {
+                const piece = this.board[move.from.rank][move.from.file];
+                this.board[move.to.rank][move.to.file] = piece;
+                this.board[move.from.rank][move.from.file] = null;
+                this.toMove = this.toMove === Color.White ? Color.Black : Color.White;
+            }
+        }
+
+        // ============================================================================
+        // UI FUNCTIONS
+        // ============================================================================
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('statusMessage');
+            statusEl.textContent = message;
+            statusEl.className = `status-message show ${type}`;
+            setTimeout(() => statusEl.classList.remove('show'), 4000);
+        }
+
+        function showModal(score, puzzle) {
+            document.getElementById('modalTitle').textContent = 'Puzzle Solved!';
+            document.getElementById('modalScore').textContent = score;
+            document.getElementById('modalMessage').textContent = `Great job! You solved "${puzzle.name}" correctly.`;
+
+            const stats = `
+                <div>Time Bonus: +${Math.max(0, (60 - (60 - game.timeRemaining)) * 5)} points</div>
+                <div>Difficulty: +${puzzle.difficulty * 50} points</div>
+                <div>Combo: ${game.gameScore.currentCombo}x</div>
+            `;
+            document.getElementById('modalStats').innerHTML = stats;
+            document.getElementById('solutionModal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('solutionModal').classList.remove('active');
+        }
+
+        function nextPuzzle() {
+            if (game) game.nextPuzzle();
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        let game;
+        window.addEventListener('load', () => {
+            game = new ChessGame();
+        });
+    </script>
+</body>
+</html>

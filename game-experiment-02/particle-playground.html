@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Playground - Physics Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px #00FF00;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 1400px;
+        }
+
+        .canvas-container {
+            position: relative;
+            border: 3px solid #00FF00;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            background: #0a0a0a;
+        }
+
+        canvas {
+            display: block;
+            background: #000;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 20px;
+            border: 2px solid #FFD700;
+            background: #0a0a0a;
+            border-radius: 8px;
+            min-width: 300px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-group h3 {
+            color: #FFD700;
+            font-size: 14px;
+            text-transform: uppercase;
+            border-bottom: 1px solid #FFD700;
+            padding-bottom: 5px;
+        }
+
+        button {
+            padding: 10px 15px;
+            background: #00FF00;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #00DD00;
+            box-shadow: 0 0 10px #00FF00;
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button.secondary {
+            background: #4444FF;
+            color: #fff;
+        }
+
+        button.secondary:hover {
+            background: #5555FF;
+            box-shadow: 0 0 10px #4444FF;
+        }
+
+        button.danger {
+            background: #FF4444;
+            color: #fff;
+        }
+
+        button.danger:hover {
+            background: #FF5555;
+            box-shadow: 0 0 10px #FF4444;
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .button-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .level-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .level-selector select {
+            padding: 10px;
+            background: #1a1a1a;
+            color: #fff;
+            border: 1px solid #FFD700;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .level-selector button {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .particle-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .particle-button {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .status {
+            padding: 10px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            border-left: 3px solid #00FF00;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+
+        .status-label {
+            color: #FFD700;
+        }
+
+        .status-value {
+            color: #00FF00;
+        }
+
+        .mode-toggle {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .mode-button {
+            padding: 12px;
+            font-weight: bold;
+            border: 2px solid #FFD700;
+            background: transparent;
+            color: #FFD700;
+        }
+
+        .mode-button.active {
+            background: #FFD700;
+            color: #000;
+        }
+
+        .mode-button:hover {
+            box-shadow: 0 0 15px #FFD700;
+        }
+
+        .attractor-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .attractor-button {
+            padding: 8px;
+            font-size: 12px;
+        }
+
+        .info-panel {
+            padding: 15px;
+            background: #1a1a1a;
+            border: 1px solid #4444FF;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+
+        .info-panel h4 {
+            color: #4444FF;
+            margin-bottom: 8px;
+        }
+
+        .shortcut-key {
+            background: #333;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 11px;
+            margin-left: 5px;
+        }
+
+        .help-text {
+            font-size: 11px;
+            color: #888;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #333;
+        }
+
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .controls {
+                width: 100%;
+                max-width: 600px;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Particle Playground</h1>
+    <p style="margin-bottom: 20px; color: #888;">A physics sandbox puzzle game</p>
+
+    <div class="container">
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="800" height="600"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <h3>Mode</h3>
+                <div class="mode-toggle">
+                    <button class="mode-button active" id="modeGameBtn">Puzzle</button>
+                    <button class="mode-button" id="modeSandboxBtn">Sandbox</button>
+                </div>
+            </div>
+
+            <!-- PUZZLE MODE CONTROLS -->
+            <div id="puzzleControls" class="control-group">
+                <h3>Level Selection</h3>
+                <select id="levelSelect">
+                    <option>Loading levels...</option>
+                </select>
+                <div class="button-row">
+                    <button id="prevLevelBtn">Previous</button>
+                    <button id="nextLevelBtn">Next</button>
+                </div>
+                <button id="resetLevelBtn" class="secondary">Reset Level</button>
+            </div>
+
+            <div id="puzzleStatus" class="status">
+                <div class="status-item">
+                    <span class="status-label">Level:</span>
+                    <span class="status-value" id="statusLevel">1/16</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Time:</span>
+                    <span class="status-value" id="statusTime">0.0s</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Particles in Goal:</span>
+                    <span class="status-value" id="statusGoal">0/1</span>
+                </div>
+            </div>
+
+            <!-- SANDBOX MODE CONTROLS -->
+            <div id="sandboxControls" class="control-group hidden">
+                <h3>Particle Spawn</h3>
+                <div class="particle-controls">
+                    <button class="particle-button" id="spawnNeutralBtn" style="background: #808080;">Neutral</button>
+                    <button class="particle-button" id="spawnPositiveBtn" style="background: #FF4444;">Positive</button>
+                    <button class="particle-button" id="spawnNegativeBtn" style="background: #4444FF;">Negative</button>
+                    <button class="particle-button danger" id="clearParticlesBtn">Clear All</button>
+                </div>
+                <p class="help-text">Click on canvas to spawn particles at that location</p>
+
+                <h3 style="margin-top: 15px;">Attractors</h3>
+                <div class="attractor-controls">
+                    <button class="attractor-button" id="addAttractorBtn" style="background: #FFD700;">Add Attractor</button>
+                    <button class="attractor-button" id="addRepulsorBtn" style="background: #64C8FF;">Add Repulsor</button>
+                </div>
+                <p class="help-text">Click on canvas to place attractors/repulsors</p>
+
+                <h3 style="margin-top: 15px;">Environment</h3>
+                <div class="button-row full">
+                    <button id="toggleGravityBtn" class="secondary">Toggle Gravity</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>Playback</h3>
+                <button id="pausePlayBtn">Pause [SPACE]</button>
+                <button id="clearAllBtn" class="danger">Clear All [C]</button>
+            </div>
+
+            <div class="control-group">
+                <h3>Display</h3>
+                <div class="button-row">
+                    <button id="toggleTrailsBtn" class="secondary">Trails: ON</button>
+                    <button id="toggleDebugBtn" class="secondary">Debug: OFF</button>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <h4>Keyboard Controls</h4>
+                <div>SPACE: Pause/Resume</div>
+                <div>N: Next Level</div>
+                <div>P: Prev Level</div>
+                <div>R: Reset Level</div>
+                <div>C: Clear All</div>
+                <div>T: Toggle Trails</div>
+                <div>D: Debug Info</div>
+                <div>1/2/3: Spawn particles (Sandbox)</div>
+                <div>A/X: Add Attractor/Repulsor</div>
+            </div>
+        </div>
+    </div>
+
+    <script id="compiled-js">
+        // This will be replaced by compiled TypeScript
+        // For now, we'll have a placeholder that loads from external files
+    </script>
+
+    <script>
+        // Message for users
+        console.log('%cParticle Playground', 'font-size: 20px; color: #00FF00; font-weight: bold;');
+        console.log('%cCompile TypeScript files to JavaScript before running', 'color: #FFD700;');
+        console.log('Run: npx tsc && node dist/main.js');
+    </script>
+</body>
+</html>

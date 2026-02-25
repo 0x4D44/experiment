@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Beat Maker Quest - Music Sequencer Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: #fff;
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          color: #fff;
+        }
+        50% {
+          color: #ffff00;
+        }
+      }
+
+      .subtitle {
+        font-size: 1.1em;
+        color: #ccc;
+        margin-bottom: 20px;
+      }
+
+      .controls-panel {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #00ff00;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      label {
+        font-weight: bold;
+        font-size: 0.9em;
+        text-transform: uppercase;
+        color: #00ff00;
+      }
+
+      button {
+        background: #00ff00;
+        color: #000;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 5px;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 1em;
+        transition: all 0.3s;
+        text-transform: uppercase;
+      }
+
+      button:hover {
+        background: #ffff00;
+        transform: scale(1.05);
+      }
+
+      button:active {
+        transform: scale(0.95);
+      }
+
+      button.secondary {
+        background: #ff6b6b;
+      }
+
+      button.secondary:hover {
+        background: #ff8787;
+      }
+
+      input[type='range'] {
+        cursor: pointer;
+        height: 6px;
+        accent-color: #00ff00;
+      }
+
+      input[type='text'],
+      input[type='number'],
+      select {
+        padding: 10px;
+        border: 1px solid #00ff00;
+        border-radius: 5px;
+        background: rgba(0, 0, 0, 0.5);
+        color: #fff;
+        font-size: 1em;
+      }
+
+      .mode-selector {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .mode-btn {
+        flex: 1;
+        padding: 15px;
+        font-size: 1.1em;
+        border: 2px solid #00ff00;
+        background: rgba(0, 0, 0, 0.3);
+        color: #00ff00;
+        cursor: pointer;
+        border-radius: 5px;
+        transition: all 0.3s;
+      }
+
+      .mode-btn.active {
+        background: #00ff00;
+        color: #000;
+      }
+
+      .mode-btn:hover {
+        transform: scale(1.02);
+      }
+
+      .sequencer-container {
+        background: rgba(0, 0, 0, 0.5);
+        border: 3px solid #00ff00;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+
+      .sequencer-title {
+        font-size: 1.3em;
+        margin-bottom: 15px;
+        color: #00ff00;
+        text-transform: uppercase;
+      }
+
+      .grid-wrapper {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 500px;
+        border: 1px solid #00ff00;
+        border-radius: 5px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 100px repeat(16, 40px);
+        gap: 2px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        min-width: min-content;
+      }
+
+      .grid-label {
+        background: #1a1a1a;
+        border: 1px solid #00ff00;
+        border-radius: 3px;
+        padding: 8px;
+        font-weight: bold;
+        color: #00ff00;
+        font-size: 0.8em;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 40px;
+      }
+
+      .grid-cell {
+        width: 40px;
+        height: 40px;
+        border: 1px solid #444;
+        background: #1a1a1a;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: all 0.2s;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7em;
+        color: #00ff00;
+      }
+
+      .grid-cell:hover {
+        background: #2a2a2a;
+        border-color: #00ff00;
+      }
+
+      .grid-cell.active {
+        background: #00ff00;
+        border-color: #00ff00;
+        color: #000;
+        font-weight: bold;
+        box-shadow: 0 0 10px #00ff00;
+      }
+
+      .grid-cell.current-step {
+        border: 2px solid #ffff00;
+      }
+
+      .playback-info {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 5px;
+      }
+
+      .info-item {
+        text-align: center;
+      }
+
+      .info-label {
+        font-size: 0.8em;
+        color: #aaa;
+        text-transform: uppercase;
+      }
+
+      .info-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #00ff00;
+      }
+
+      .puzzle-info {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #ff6b6b;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+
+      .puzzle-title {
+        font-size: 1.3em;
+        color: #ff6b6b;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+      }
+
+      .puzzle-description {
+        color: #ccc;
+        margin-bottom: 15px;
+        line-height: 1.6;
+      }
+
+      .puzzle-difficulty {
+        display: inline-block;
+        padding: 5px 15px;
+        background: #ff6b6b;
+        color: #fff;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9em;
+        text-transform: uppercase;
+      }
+
+      .puzzle-difficulty.easy {
+        background: #51cf66;
+      }
+
+      .puzzle-difficulty.medium {
+        background: #ffd43b;
+        color: #000;
+      }
+
+      .puzzle-difficulty.hard {
+        background: #ff6b6b;
+      }
+
+      .puzzle-controls {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .score-display {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #ffff00;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .score-label {
+        font-size: 0.9em;
+        color: #aaa;
+        text-transform: uppercase;
+      }
+
+      .score-value {
+        font-size: 3em;
+        font-weight: bold;
+        color: #ffff00;
+        margin: 10px 0;
+      }
+
+      .score-bar {
+        width: 100%;
+        height: 20px;
+        background: #1a1a1a;
+        border: 1px solid #ffff00;
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+
+      .score-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00ff00, #ffff00);
+        transition: width 0.3s;
+      }
+
+      .pattern-storage {
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #00ffff;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 30px;
+      }
+
+      .pattern-storage-title {
+        font-size: 1.3em;
+        color: #00ffff;
+        margin-bottom: 15px;
+        text-transform: uppercase;
+      }
+
+      .pattern-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .pattern-item {
+        background: rgba(0, 0, 0, 0.5);
+        border: 1px solid #00ffff;
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .pattern-item:hover {
+        background: rgba(0, 255, 255, 0.1);
+        border-color: #ffff00;
+      }
+
+      .pattern-name {
+        font-weight: bold;
+        color: #00ffff;
+        margin-bottom: 5px;
+      }
+
+      .pattern-meta {
+        font-size: 0.8em;
+        color: #aaa;
+      }
+
+      footer {
+        text-align: center;
+        color: #aaa;
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #444;
+      }
+
+      .note-selector {
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 5px;
+        margin-top: 10px;
+      }
+
+      .note-btn {
+        padding: 8px;
+        background: rgba(0, 255, 0, 0.2);
+        border: 1px solid #00ff00;
+        color: #00ff00;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 0.8em;
+        transition: all 0.2s;
+      }
+
+      .note-btn:hover {
+        background: #00ff00;
+        color: #000;
+      }
+
+      .note-btn.selected {
+        background: #00ff00;
+        color: #000;
+        font-weight: bold;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .octave-control {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .octave-control button {
+        padding: 8px 12px;
+        font-size: 0.9em;
+      }
+
+      .current-octave {
+        color: #00ff00;
+        font-weight: bold;
+        min-width: 30px;
+        text-align: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <header>
+        <h1>🎵 Beat Maker Quest 🎵</h1>
+        <p class="subtitle">Create music, solve puzzles, become the ultimate beat master!</p>
+      </header>
+
+      <div class="mode-selector">
+        <button class="mode-btn active" id="sandboxBtn">Sandbox Mode</button>
+        <button class="mode-btn" id="puzzleBtn">Puzzle Mode</button>
+      </div>
+
+      <!-- SANDBOX MODE -->
+      <div id="sandboxMode">
+        <div class="controls-panel">
+          <div class="control-group">
+            <label for="bpmInput">BPM</label>
+            <input type="number" id="bpmInput" min="40" max="300" value="120" />
+          </div>
+
+          <div class="control-group">
+            <label for="bpmSlider">Adjust BPM</label>
+            <input type="range" id="bpmSlider" min="40" max="300" value="120" />
+          </div>
+
+          <div class="control-group">
+            <label for="trackSelect">Select Track</label>
+            <select id="trackSelect">
+              <option value="0">🥁 Kick Drum</option>
+              <option value="1">🥁 Snare</option>
+              <option value="2">🥁 Hi-Hat</option>
+              <option value="3">🥁 Tom</option>
+              <option value="4">🎸 Bass</option>
+              <option value="5">🎹 Lead</option>
+              <option value="6">🎹 Pad</option>
+              <option value="7">🎻 Strings</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label>Playback Controls</label>
+            <button id="playBtn">▶ Play</button>
+          </div>
+
+          <div class="control-group">
+            <label>&nbsp;</label>
+            <button id="stopBtn">⏹ Stop</button>
+          </div>
+
+          <div class="control-group">
+            <label>&nbsp;</label>
+            <button id="clearBtn" class="secondary">🗑 Clear Grid</button>
+          </div>
+        </div>
+
+        <div class="control-group" style="margin-bottom: 20px">
+          <label>Select Note (Pitch)</label>
+          <div class="note-selector">
+            <button class="note-btn" data-pitch="0">C</button>
+            <button class="note-btn" data-pitch="1">C#</button>
+            <button class="note-btn" data-pitch="2">D</button>
+            <button class="note-btn" data-pitch="3">D#</button>
+            <button class="note-btn" data-pitch="4">E</button>
+            <button class="note-btn" data-pitch="5">F</button>
+            <button class="note-btn" data-pitch="6">F#</button>
+            <button class="note-btn" data-pitch="7">G</button>
+            <button class="note-btn" data-pitch="8">G#</button>
+            <button class="note-btn" data-pitch="9">A</button>
+            <button class="note-btn" data-pitch="10">A#</button>
+            <button class="note-btn" data-pitch="11">B</button>
+          </div>
+        </div>
+
+        <div class="control-group" style="margin-bottom: 20px">
+          <label>Octave Control</label>
+          <div class="octave-control">
+            <button id="octaveDownBtn">-</button>
+            <div class="current-octave" id="octaveDisplay">3</div>
+            <button id="octaveUpBtn">+</button>
+          </div>
+        </div>
+
+        <div class="sequencer-container">
+          <div class="sequencer-title">Step Sequencer Grid</div>
+          <p style="color: #aaa; margin-bottom: 10px; font-size: 0.9em">
+            Click cells to add notes. Sequencer will loop through 16 steps.
+          </p>
+          <div class="grid-wrapper">
+            <div class="grid" id="sequencerGrid"></div>
+          </div>
+          <div class="playback-info">
+            <div class="info-item">
+              <div class="info-label">Current Step</div>
+              <div class="info-value" id="currentStepDisplay">0/16</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Status</div>
+              <div class="info-value" id="statusDisplay">Stopped</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">BPM</div>
+              <div class="info-value" id="bpmDisplay">120</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">Notes</div>
+              <div class="info-value" id="noteCountDisplay">0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pattern-storage">
+          <div class="pattern-storage-title">Saved Patterns</div>
+          <div class="controls-panel">
+            <div class="control-group">
+              <label for="patternNameInput">Pattern Name</label>
+              <input type="text" id="patternNameInput" placeholder="Enter pattern name..." />
+            </div>
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="savePatternBtn">💾 Save Pattern</button>
+            </div>
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="exportPatternBtn">📥 Export as JSON</button>
+            </div>
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="importPatternBtn">📤 Import from JSON</button>
+            </div>
+          </div>
+          <div class="pattern-list" id="patternList"></div>
+        </div>
+      </div>
+
+      <!-- PUZZLE MODE -->
+      <div id="puzzleMode" class="hidden">
+        <div class="puzzle-info">
+          <div class="puzzle-title" id="puzzleTitle">Loading Puzzle...</div>
+          <div class="puzzle-description" id="puzzleDescription"></div>
+          <div id="puzzleDifficulty" class="puzzle-difficulty"></div>
+          <div class="puzzle-controls">
+            <button id="prevLevelBtn">⬅ Previous</button>
+            <button id="nextLevelBtn">Next ➜</button>
+            <button id="checkAnswerBtn" class="secondary">✓ Check Answer</button>
+            <button id="resetPuzzleBtn" class="secondary">🔄 Reset Puzzle</button>
+          </div>
+        </div>
+
+        <div class="score-display">
+          <div class="score-label">Your Score</div>
+          <div class="score-value" id="scoreValue">0</div>
+          <div class="score-bar">
+            <div class="score-bar-fill" id="scoreBar" style="width: 0%"></div>
+          </div>
+          <div style="margin-top: 10px; font-size: 0.9em; color: #aaa">
+            <span id="maxScoreDisplay">0</span> max points
+          </div>
+        </div>
+
+        <div class="sequencer-container">
+          <div class="sequencer-title">Your Solution</div>
+          <div class="grid-wrapper">
+            <div class="grid" id="puzzleGrid"></div>
+          </div>
+          <div class="playback-info">
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="playPuzzleBtn">▶ Play Your Solution</button>
+            </div>
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="stopPuzzleBtn">⏹ Stop</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sequencer-container">
+          <div class="sequencer-title">Target Solution (Reference)</div>
+          <p style="color: #aaa; margin-bottom: 10px; font-size: 0.9em">
+            Try to recreate this pattern in your grid above
+          </p>
+          <div class="grid-wrapper">
+            <div class="grid" id="targetGrid"></div>
+          </div>
+          <div class="playback-info">
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="playTargetBtn">▶ Play Target</button>
+            </div>
+            <div class="control-group">
+              <label>&nbsp;</label>
+              <button id="stopTargetBtn">⏹ Stop</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>Beat Maker Quest - Music Sequencer Game | Challenge yourself in Puzzle Mode!</p>
+      </footer>
+    </div>
+
+    <input type="file" id="jsonFileInput" accept=".json" style="display: none" />
+
+    <script>
+      /**
+       * Beat Maker Quest - Game Implementation
+       * Full game with UI, event handlers, and game logic
+       */
+
+      // ========================================================================
+      // GAME STATE AND CONFIGURATION
+      // ========================================================================
+
+      const gameConfig = {
+        gridTracks: 8,
+        gridSteps: 16,
+        instrumentNames: [
+          '🥁 Kick Drum',
+          '🥁 Snare',
+          '🥁 Hi-Hat',
+          '🥁 Tom',
+          '🎸 Bass',
+          '🎹 Lead',
+          '🎹 Pad',
+          '🎻 Strings',
+        ],
+        instrumentColors: [
+          '#FF0000',
+          '#FF6B6B',
+          '#FFA500',
+          '#FFD700',
+          '#0000FF',
+          '#00FF00',
+          '#FF00FF',
+          '#00FFFF',
+        ],
+      };
+
+      const gameState = {
+        mode: 'sandbox', // 'sandbox' or 'puzzle'
+        isPlaying: false,
+        currentStep: 0,
+        bpm: 120,
+        activeTrack: 0,
+        selectedPitch: 0,
+        selectedOctave: 3,
+        selectedVelocity: 100,
+        grid: [],
+        puzzleMode: null,
+        currentPuzzleIndex: 0,
+        puzzleGrid: [],
+        targetGrid: [],
+        score: 0,
+      };
+
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      let stepTimer = null;
+
+      // ========================================================================
+      // GRID MANAGEMENT
+      // ========================================================================
+
+      function createEmptyGrid() {
+        const grid = [];
+        for (let i = 0; i < gameConfig.gridTracks; i++) {
+          grid[i] = new Array(gameConfig.gridSteps).fill(null);
+        }
+        return grid;
+      }
+
+      function initializeGame() {
+        gameState.grid = createEmptyGrid();
+        gameState.puzzleGrid = createEmptyGrid();
+        gameState.targetGrid = createEmptyGrid();
+        renderSequencerGrid();
+      }
+
+      // ========================================================================
+      // RENDERING
+      // ========================================================================
+
+      function renderSequencerGrid() {
+        const gridElement = document.getElementById('sequencerGrid');
+        gridElement.innerHTML = '';
+
+        // Add track labels
+        for (let track = 0; track < gameConfig.gridTracks; track++) {
+          const label = document.createElement('div');
+          label.className = 'grid-label';
+          label.textContent = gameConfig.instrumentNames[track].split(' ')[0];
+          label.style.backgroundColor = gameConfig.instrumentColors[track];
+          label.style.color = '#000';
+          gridElement.appendChild(label);
+
+          // Add cells for this track
+          for (let step = 0; step < gameConfig.gridSteps; step++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.id = `cell-${track}-${step}`;
+
+            if (gameState.grid[track][step] !== null) {
+              cell.classList.add('active');
+              const note = gameState.grid[track][step];
+              cell.textContent = getPitchName(note.pitch);
+            }
+
+            cell.addEventListener('click', () => handleCellClick(track, step));
+            gridElement.appendChild(cell);
+          }
+        }
+      }
+
+      function renderPuzzleGrids() {
+        renderPuzzlePlayerGrid();
+        renderTargetGrid();
+      }
+
+      function renderPuzzlePlayerGrid() {
+        const gridElement = document.getElementById('puzzleGrid');
+        gridElement.innerHTML = '';
+
+        for (let track = 0; track < gameConfig.gridTracks; track++) {
+          const label = document.createElement('div');
+          label.className = 'grid-label';
+          label.textContent = gameConfig.instrumentNames[track].split(' ')[0];
+          label.style.backgroundColor = gameConfig.instrumentColors[track];
+          label.style.color = '#000';
+          gridElement.appendChild(label);
+
+          for (let step = 0; step < gameConfig.gridSteps; step++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+            cell.id = `puzzle-cell-${track}-${step}`;
+
+            if (gameState.puzzleGrid[track][step] !== null) {
+              cell.classList.add('active');
+              const note = gameState.puzzleGrid[track][step];
+              cell.textContent = getPitchName(note.pitch);
+            }
+
+            cell.addEventListener('click', () => handlePuzzleCellClick(track, step));
+            gridElement.appendChild(cell);
+          }
+        }
+      }
+
+      function renderTargetGrid() {
+        const gridElement = document.getElementById('targetGrid');
+        gridElement.innerHTML = '';
+
+        for (let track = 0; track < gameConfig.gridTracks; track++) {
+          const label = document.createElement('div');
+          label.className = 'grid-label';
+          label.textContent = gameConfig.instrumentNames[track].split(' ')[0];
+          label.style.backgroundColor = gameConfig.instrumentColors[track];
+          label.style.color = '#000';
+          gridElement.appendChild(label);
+
+          for (let step = 0; step < gameConfig.gridSteps; step++) {
+            const cell = document.createElement('div');
+            cell.className = 'grid-cell';
+
+            if (gameState.targetGrid[track][step] !== null) {
+              cell.classList.add('active');
+              const note = gameState.targetGrid[track][step];
+              cell.textContent = getPitchName(note.pitch);
+            } else {
+              cell.style.opacity = '0.5';
+            }
+
+            gridElement.appendChild(cell);
+          }
+        }
+      }
+
+      function updateCurrentStepDisplay() {
+        document.getElementById('currentStepDisplay').textContent = `${gameState.currentStep}/16`;
+      }
+
+      function updateStatusDisplay() {
+        const status = gameState.isPlaying ? 'Playing 🎵' : 'Stopped';
+        document.getElementById('statusDisplay').textContent = status;
+      }
+
+      function updateBPMDisplay() {
+        document.getElementById('bpmDisplay').textContent = gameState.bpm;
+      }
+
+      function updateNoteCountDisplay() {
+        let count = 0;
+        gameState.grid.forEach((track) => {
+          count += track.filter((n) => n !== null).length;
+        });
+        document.getElementById('noteCountDisplay').textContent = count;
+      }
+
+      function updateOctaveDisplay() {
+        document.getElementById('octaveDisplay').textContent = gameState.selectedOctave;
+      }
+
+      function updateScoreDisplay() {
+        const maxScore = gameState.puzzleMode ? gameState.puzzleMode.maxScore : 0;
+        document.getElementById('scoreValue').textContent = gameState.score;
+        document.getElementById('maxScoreDisplay').textContent = maxScore;
+        const percentage = maxScore > 0 ? (gameState.score / maxScore) * 100 : 0;
+        document.getElementById('scoreBar').style.width = percentage + '%';
+      }
+
+      function updatePuzzleInfo() {
+        if (!gameState.puzzleMode) {
+          document.getElementById('puzzleTitle').textContent = 'No Puzzle Loaded';
+          document.getElementById('puzzleDescription').textContent = '';
+          return;
+        }
+
+        document.getElementById('puzzleTitle').textContent = gameState.puzzleMode.name;
+        document.getElementById('puzzleDescription').textContent = gameState.puzzleMode.description;
+
+        const diffElement = document.getElementById('puzzleDifficulty');
+        diffElement.textContent = gameState.puzzleMode.difficulty.toUpperCase();
+        diffElement.className = `puzzle-difficulty ${gameState.puzzleMode.difficulty}`;
+      }
+
+      // ========================================================================
+      // EVENT HANDLERS
+      // ========================================================================
+
+      function handleCellClick(track, step) {
+        if (gameState.grid[track][step] === null) {
+          // Add note
+          gameState.grid[track][step] = {
+            pitch: gameState.selectedPitch,
+            octave: gameState.selectedOctave,
+            velocity: gameState.selectedVelocity,
+          };
+        } else {
+          // Remove note
+          gameState.grid[track][step] = null;
+        }
+
+        renderSequencerGrid();
+        updateNoteCountDisplay();
+      }
+
+      function handlePuzzleCellClick(track, step) {
+        if (gameState.puzzleGrid[track][step] === null) {
+          gameState.puzzleGrid[track][step] = {
+            pitch: gameState.selectedPitch,
+            octave: gameState.selectedOctave,
+            velocity: gameState.selectedVelocity,
+          };
+        } else {
+          gameState.puzzleGrid[track][step] = null;
+        }
+
+        renderPuzzlePlayerGrid();
+      }
+
+      function handlePitchSelection(pitch) {
+        gameState.selectedPitch = pitch;
+        document.querySelectorAll('.note-btn').forEach((btn) => {
+          btn.classList.remove('selected');
+        });
+        document.querySelector(`[data-pitch="${pitch}"]`).classList.add('selected');
+      }
+
+      // ========================================================================
+      // AUDIO PLAYBACK
+      // ========================================================================
+
+      function playNote(pitch, octave, duration = 0.5) {
+        const frequency = noteToFrequency(pitch, octave);
+        const now = audioContext.currentTime;
+
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.frequency.setValueAtTime(frequency, now);
+        oscillator.type = 'sine';
+
+        // ADSR Envelope
+        const attack = 0.01;
+        const decay = 0.1;
+        const sustain = 0.7;
+        const release = 0.2;
+
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.3, now + attack);
+        gain.gain.exponentialRampToValueAtTime(sustain * 0.3, now + attack + decay);
+        gain.gain.setValueAtTime(sustain * 0.3, now + attack + decay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration - release);
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        oscillator.start(now);
+        oscillator.stop(now + duration);
+      }
+
+      function noteToFrequency(pitch, octave) {
+        const noteIndex = octave * 12 + pitch;
+        const semitoneOffset = noteIndex - 57; // A4
+        return 440 * Math.pow(2, semitoneOffset / 12);
+      }
+
+      function getPitchName(pitch) {
+        const names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        return names[pitch];
+      }
+
+      function playSequence(grid) {
+        const stepDuration = (60 / gameState.bpm) * 1000;
+        let currentStep = 0;
+
+        function playStep() {
+          for (let track = 0; track < gameConfig.gridTracks; track++) {
+            const note = grid[track][currentStep];
+            if (note !== null) {
+              playNote(note.pitch, note.octave, (stepDuration - 50) / 1000);
+            }
+          }
+
+          // Update UI
+          document.querySelectorAll('.grid-cell').forEach((cell) => {
+            cell.classList.remove('current-step');
+          });
+          const cellId = `cell-${0}-${currentStep}`;
+          const cell = document.getElementById(cellId);
+          if (cell) {
+            cell.classList.add('current-step');
+          }
+
+          gameState.currentStep = currentStep;
+          updateCurrentStepDisplay();
+
+          currentStep = (currentStep + 1) % gameConfig.gridSteps;
+
+          if (gameState.isPlaying) {
+            stepTimer = setTimeout(playStep, stepDuration);
+          }
+        }
+
+        playStep();
+      }
+
+      // ========================================================================
+      // MODE SWITCHING
+      // ========================================================================
+
+      function switchToSandboxMode() {
+        gameState.mode = 'sandbox';
+        gameState.isPlaying = false;
+        document.getElementById('sandboxMode').classList.remove('hidden');
+        document.getElementById('puzzleMode').classList.add('hidden');
+        document.getElementById('sandboxBtn').classList.add('active');
+        document.getElementById('puzzleBtn').classList.remove('active');
+        updateStatusDisplay();
+      }
+
+      function switchToPuzzleMode() {
+        gameState.mode = 'puzzle';
+        gameState.isPlaying = false;
+        gameState.puzzleGrid = createEmptyGrid();
+        gameState.currentPuzzleIndex = 0;
+        loadPuzzle(0);
+        document.getElementById('sandboxMode').classList.add('hidden');
+        document.getElementById('puzzleMode').classList.remove('hidden');
+        document.getElementById('sandboxBtn').classList.remove('active');
+        document.getElementById('puzzleBtn').classList.add('active');
+      }
+
+      // ========================================================================
+      // PUZZLE LOGIC
+      // ========================================================================
+
+      function loadPuzzle(index) {
+        const puzzles = getPuzzles();
+        if (index >= 0 && index < puzzles.length) {
+          gameState.currentPuzzleIndex = index;
+          gameState.puzzleMode = puzzles[index];
+          gameState.targetGrid = JSON.parse(JSON.stringify(puzzles[index].targetPattern.grid.cells));
+          gameState.puzzleGrid = createEmptyGrid();
+          gameState.score = 0;
+          updatePuzzleInfo();
+          renderPuzzleGrids();
+          updateScoreDisplay();
+        }
+      }
+
+      function getPuzzles() {
+        return [
+          {
+            id: 'level1',
+            name: 'Basic Beat',
+            difficulty: 'easy',
+            description: 'Place kick drum beats at steps 0, 4, 8, and 12',
+            maxScore: 100,
+            targetPattern: {
+              grid: {
+                cells: [
+                  [
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  ...Array(7)
+                    .fill(null)
+                    .map(() => Array(16).fill(null)),
+                ],
+              },
+            },
+          },
+          {
+            id: 'level2',
+            name: 'Drum Duo',
+            difficulty: 'easy',
+            description: 'Layer kick and snare drums to create a rhythm',
+            maxScore: 100,
+            targetPattern: {
+              grid: {
+                cells: [
+                  [
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  [
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                  ],
+                  ...Array(6)
+                    .fill(null)
+                    .map(() => Array(16).fill(null)),
+                ],
+              },
+            },
+          },
+          {
+            id: 'level3',
+            name: 'Groove Master',
+            difficulty: 'medium',
+            description: 'Create a complete groove with drums and bass',
+            maxScore: 150,
+            targetPattern: {
+              grid: {
+                cells: [
+                  [
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  [
+                    null,
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  Array(16).fill(null),
+                  Array(16).fill(null),
+                  [
+                    { pitch: 5, octave: 1, velocity: 80 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 7, octave: 1, velocity: 80 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 5, octave: 1, velocity: 80 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 9, octave: 1, velocity: 80 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  ...Array(3)
+                    .fill(null)
+                    .map(() => Array(16).fill(null)),
+                ],
+              },
+            },
+          },
+          {
+            id: 'level4',
+            name: 'Complex Rhythm',
+            difficulty: 'hard',
+            description: 'Create a complex pattern with drums and a melodic line',
+            maxScore: 200,
+            targetPattern: {
+              grid: {
+                cells: [
+                  [
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  [
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                  ],
+                  [
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                  ],
+                  Array(16).fill(null),
+                  Array(16).fill(null),
+                  [
+                    { pitch: 0, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 2, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 4, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 5, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 7, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 9, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 11, octave: 4, velocity: 85 },
+                    null,
+                    { pitch: 0, octave: 5, velocity: 85 },
+                    null,
+                  ],
+                  ...Array(2)
+                    .fill(null)
+                    .map(() => Array(16).fill(null)),
+                ],
+              },
+            },
+          },
+          {
+            id: 'level5',
+            name: 'Full Production',
+            difficulty: 'hard',
+            description: 'Recreate a full multi-track production',
+            maxScore: 250,
+            targetPattern: {
+              grid: {
+                cells: [
+                  [
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 2, velocity: 100 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  [
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 1, octave: 3, velocity: 90 },
+                    null,
+                  ],
+                  [
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                    { pitch: 2, octave: 3, velocity: 80 },
+                    null,
+                  ],
+                  [
+                    { pitch: 3, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 4, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 5, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 6, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 7, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 8, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 9, octave: 3, velocity: 70 },
+                    null,
+                    { pitch: 10, octave: 3, velocity: 70 },
+                    null,
+                  ],
+                  [
+                    { pitch: 0, octave: 1, velocity: 85 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 5, octave: 1, velocity: 85 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 0, octave: 1, velocity: 85 },
+                    null,
+                    null,
+                    null,
+                    { pitch: 7, octave: 1, velocity: 85 },
+                    null,
+                    null,
+                    null,
+                  ],
+                  ...Array(3)
+                    .fill(null)
+                    .map(() => Array(16).fill(null)),
+                ],
+              },
+            },
+          },
+        ];
+      }
+
+      function checkAnswer() {
+        if (!gameState.puzzleMode) return;
+
+        let correctNotes = 0;
+        let totalTargetNotes = 0;
+
+        for (let track = 0; track < gameConfig.gridTracks; track++) {
+          for (let step = 0; step < gameConfig.gridSteps; step++) {
+            const targetNote = gameState.targetGrid[track][step];
+            const playerNote = gameState.puzzleGrid[track][step];
+
+            if (targetNote !== null) {
+              totalTargetNotes++;
+              if (
+                playerNote !== null &&
+                playerNote.pitch === targetNote.pitch &&
+                playerNote.octave === targetNote.octave
+              ) {
+                correctNotes++;
+              }
+            }
+          }
+        }
+
+        if (totalTargetNotes === 0) {
+          gameState.score = 0;
+        } else {
+          gameState.score = Math.round(
+            (correctNotes / totalTargetNotes) * gameState.puzzleMode.maxScore
+          );
+        }
+
+        updateScoreDisplay();
+      }
+
+      // ========================================================================
+      // PATTERN STORAGE
+      // ========================================================================
+
+      function savePattern() {
+        const name = document.getElementById('patternNameInput').value || 'Untitled Pattern';
+        const pattern = {
+          id: Date.now().toString(),
+          name: name,
+          bpm: gameState.bpm,
+          grid: gameState.grid,
+          createdAt: Date.now(),
+        };
+
+        let patterns = JSON.parse(localStorage.getItem('beatMakerPatterns') || '[]');
+        patterns.push(pattern);
+        localStorage.setItem('beatMakerPatterns', JSON.stringify(patterns));
+
+        document.getElementById('patternNameInput').value = '';
+        renderPatternList();
+      }
+
+      function renderPatternList() {
+        const patternList = document.getElementById('patternList');
+        patternList.innerHTML = '';
+
+        let patterns = JSON.parse(localStorage.getItem('beatMakerPatterns') || '[]');
+
+        if (patterns.length === 0) {
+          patternList.innerHTML = '<p style="color: #aaa;">No saved patterns yet</p>';
+          return;
+        }
+
+        patterns.forEach((pattern) => {
+          const item = document.createElement('div');
+          item.className = 'pattern-item';
+          item.innerHTML = `
+            <div class="pattern-name">${pattern.name}</div>
+            <div class="pattern-meta">${pattern.bpm} BPM</div>
+            <div style="margin-top: 10px; display: flex; gap: 5px;">
+              <button style="flex: 1; padding: 5px; font-size: 0.8em;" onclick="loadPattern('${pattern.id}')">Load</button>
+              <button style="flex: 1; padding: 5px; font-size: 0.8em;" onclick="deletePattern('${pattern.id}')">Delete</button>
+            </div>
+          `;
+          patternList.appendChild(item);
+        });
+      }
+
+      function loadPattern(id) {
+        let patterns = JSON.parse(localStorage.getItem('beatMakerPatterns') || '[]');
+        const pattern = patterns.find((p) => p.id === id);
+
+        if (pattern) {
+          gameState.grid = JSON.parse(JSON.stringify(pattern.grid));
+          gameState.bpm = pattern.bpm;
+          document.getElementById('bpmInput').value = gameState.bpm;
+          document.getElementById('bpmSlider').value = gameState.bpm;
+          updateBPMDisplay();
+          renderSequencerGrid();
+          updateNoteCountDisplay();
+        }
+      }
+
+      function deletePattern(id) {
+        let patterns = JSON.parse(localStorage.getItem('beatMakerPatterns') || '[]');
+        patterns = patterns.filter((p) => p.id !== id);
+        localStorage.setItem('beatMakerPatterns', JSON.stringify(patterns));
+        renderPatternList();
+      }
+
+      function exportPattern() {
+        const name = document.getElementById('patternNameInput').value || 'pattern';
+        const pattern = {
+          name: name,
+          bpm: gameState.bpm,
+          grid: gameState.grid,
+        };
+
+        const json = JSON.stringify(pattern, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${name}.json`;
+        a.click();
+      }
+
+      function importPattern() {
+        document.getElementById('jsonFileInput').click();
+      }
+
+      document.getElementById('jsonFileInput').addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const pattern = JSON.parse(event.target.result);
+            gameState.grid = pattern.grid;
+            gameState.bpm = pattern.bpm;
+            document.getElementById('bpmInput').value = gameState.bpm;
+            document.getElementById('bpmSlider').value = gameState.bpm;
+            updateBPMDisplay();
+            renderSequencerGrid();
+            updateNoteCountDisplay();
+          } catch (error) {
+            alert('Invalid JSON file');
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // ========================================================================
+      // EVENT LISTENER SETUP
+      // ========================================================================
+
+      function setupEventListeners() {
+        // Mode buttons
+        document.getElementById('sandboxBtn').addEventListener('click', switchToSandboxMode);
+        document.getElementById('puzzleBtn').addEventListener('click', switchToPuzzleMode);
+
+        // Playback controls
+        document.getElementById('playBtn').addEventListener('click', () => {
+          gameState.isPlaying = true;
+          gameState.currentStep = 0;
+          updateStatusDisplay();
+          playSequence(gameState.grid);
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+          gameState.isPlaying = false;
+          gameState.currentStep = 0;
+          clearTimeout(stepTimer);
+          updateStatusDisplay();
+          updateCurrentStepDisplay();
+        });
+
+        document.getElementById('clearBtn').addEventListener('click', () => {
+          if (confirm('Clear the entire grid?')) {
+            gameState.grid = createEmptyGrid();
+            renderSequencerGrid();
+            updateNoteCountDisplay();
+          }
+        });
+
+        // BPM controls
+        document.getElementById('bpmInput').addEventListener('change', (e) => {
+          const bpm = Math.max(40, Math.min(300, parseInt(e.target.value)));
+          gameState.bpm = bpm;
+          document.getElementById('bpmSlider').value = bpm;
+          updateBPMDisplay();
+        });
+
+        document.getElementById('bpmSlider').addEventListener('input', (e) => {
+          gameState.bpm = parseInt(e.target.value);
+          document.getElementById('bpmInput').value = gameState.bpm;
+          updateBPMDisplay();
+        });
+
+        // Track selection
+        document.getElementById('trackSelect').addEventListener('change', (e) => {
+          gameState.activeTrack = parseInt(e.target.value);
+        });
+
+        // Note selection
+        document.querySelectorAll('.note-btn').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            const pitch = parseInt(e.target.getAttribute('data-pitch'));
+            handlePitchSelection(pitch);
+          });
+        });
+
+        // Octave controls
+        document.getElementById('octaveDownBtn').addEventListener('click', () => {
+          gameState.selectedOctave = Math.max(0, gameState.selectedOctave - 1);
+          updateOctaveDisplay();
+        });
+
+        document.getElementById('octaveUpBtn').addEventListener('click', () => {
+          gameState.selectedOctave = Math.min(8, gameState.selectedOctave + 1);
+          updateOctaveDisplay();
+        });
+
+        // Pattern storage
+        document.getElementById('savePatternBtn').addEventListener('click', savePattern);
+        document.getElementById('exportPatternBtn').addEventListener('click', exportPattern);
+        document.getElementById('importPatternBtn').addEventListener('click', importPattern);
+
+        // Puzzle mode controls
+        document.getElementById('playPuzzleBtn').addEventListener('click', () => {
+          gameState.isPlaying = true;
+          gameState.currentStep = 0;
+          playSequence(gameState.puzzleGrid);
+        });
+
+        document.getElementById('stopPuzzleBtn').addEventListener('click', () => {
+          gameState.isPlaying = false;
+          gameState.currentStep = 0;
+          clearTimeout(stepTimer);
+        });
+
+        document.getElementById('playTargetBtn').addEventListener('click', () => {
+          gameState.isPlaying = true;
+          gameState.currentStep = 0;
+          playSequence(gameState.targetGrid);
+        });
+
+        document.getElementById('stopTargetBtn').addEventListener('click', () => {
+          gameState.isPlaying = false;
+          gameState.currentStep = 0;
+          clearTimeout(stepTimer);
+        });
+
+        document.getElementById('checkAnswerBtn').addEventListener('click', checkAnswer);
+
+        document.getElementById('resetPuzzleBtn').addEventListener('click', () => {
+          gameState.puzzleGrid = createEmptyGrid();
+          gameState.score = 0;
+          renderPuzzlePlayerGrid();
+          updateScoreDisplay();
+        });
+
+        document.getElementById('prevLevelBtn').addEventListener('click', () => {
+          if (gameState.currentPuzzleIndex > 0) {
+            loadPuzzle(gameState.currentPuzzleIndex - 1);
+          }
+        });
+
+        document.getElementById('nextLevelBtn').addEventListener('click', () => {
+          const puzzles = getPuzzles();
+          if (gameState.currentPuzzleIndex < puzzles.length - 1) {
+            loadPuzzle(gameState.currentPuzzleIndex + 1);
+          }
+        });
+      }
+
+      // ========================================================================
+      // INITIALIZATION
+      // ========================================================================
+
+      window.addEventListener('DOMContentLoaded', () => {
+        initializeGame();
+        setupEventListeners();
+        renderPatternList();
+        handlePitchSelection(0);
+        updateOctaveDisplay();
+        updateBPMDisplay();
+        updateStatusDisplay();
+        updateNoteCountDisplay();
+      });
+    </script>
+  </body>
+</html>

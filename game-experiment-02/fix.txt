@@ -1,0 +1,16 @@
+    test('abundant weather increases water level', () => {
+      simulator.setWeather(WeatherType.Abundant);
+      simulator.startGame();
+      const initialWater = simulator.getWaterLevel();
+
+      for (let i = 0; i < 10; i++) {
+        simulator.simulateCycle();
+        // Keep setting abundant weather in case it changes randomly
+        if (simulator.getCurrentWeather() !== WeatherType.Abundant) {
+          simulator.setWeather(WeatherType.Abundant);
+        }
+      }
+
+      const finalWater = simulator.getWaterLevel();
+      expect(finalWater).toBeGreaterThanOrEqual(initialWater);
+    });

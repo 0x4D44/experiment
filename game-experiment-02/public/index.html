@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rhythm Runner</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            width: 100%; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            font-family: Arial, sans-serif; color: #fff; overflow: hidden;
+        }
+        #game-container {
+            position: relative; width: 100%; max-width: 1200px; height: 100%; max-height: 600px;
+            background: #000; box-shadow: 0 0 60px rgba(138, 43, 226, 0.5);
+        }
+        canvas {
+            display: block; width: 100%; height: 100%;
+        }
+        #ui-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; z-index: 50;
+        }
+        .info-display {
+            position: absolute; top: 20px; left: 20px; font-size: 16px;
+            color: #00ff00; text-shadow: 0 0 10px #00ff00;
+            font-family: 'Courier New', monospace; z-index: 51;
+        }
+        .score { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .combo { color: #ffff00; text-shadow: 0 0 10px #ffff00; }
+        .difficulty { margin-top: 10px; font-size: 12px; }
+        .menu {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            display: flex; flex-direction: column; justify-content: center;
+            align-items: center; background: rgba(0, 0, 0, 0.95); z-index: 100;
+            text-align: center;
+        }
+        .menu h1 {
+            font-size: 48px; margin-bottom: 30px;
+            background: linear-gradient(45deg, #00ff00, #ffff00, #ff00ff);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .menu-button {
+            padding: 15px 40px; margin: 10px; font-size: 18px;
+            background: #300063; color: #fff; border: 2px solid #8a2be2;
+            border-radius: 5px; cursor: pointer; transition: all 0.3s;
+        }
+        .menu-button:hover { background: #8a2be2; box-shadow: 0 0 20px #8a2be2; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay">
+            <div class="info-display">
+                <div class="score">Score: <span id="score">0</span></div>
+                <div class="combo">Combo: <span id="combo">0</span></div>
+                <div class="difficulty">BPM: <span id="bpm">120</span></div>
+            </div>
+        </div>
+        <div id="menu" class="menu">
+            <h1>RHYTHM RUNNER</h1>
+            <p style="margin-bottom: 30px; color: #aaa;">Sync to the beat, chain perfect hits</p>
+            <button class="menu-button" onclick="window.game.startGame('easy')">Easy (100 BPM)</button>
+            <button class="menu-button" onclick="window.game.startGame('normal')">Normal (120 BPM)</button>
+            <button class="menu-button" onclick="window.game.startGame('hard')">Hard (140 BPM)</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

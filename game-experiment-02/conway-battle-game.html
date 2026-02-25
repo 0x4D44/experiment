@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conway's Battle Arena</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(30, 30, 40, 0.95);
+            border: 2px solid #00ff88;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+
+        h1 {
+            text-align: center;
+            color: #00ff88;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #00ff88;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #00ccff;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .game-layout {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+
+        .canvas-wrapper {
+            background: #000;
+            border: 2px solid #00ff88;
+            border-radius: 4px;
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 4px;
+            padding: 15px;
+            color: #00ff88;
+            font-size: 0.85em;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #00ff8833;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #00ccff;
+        }
+
+        .stat-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        .player1-color {
+            color: #0088ff;
+        }
+
+        .player2-color {
+            color: #ff4488;
+        }
+
+        .controls-panel {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff88;
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .controls-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #00ff88;
+            color: #000;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            transition: all 0.3s;
+        }
+
+        button:hover {
+            background: #00ffaa;
+            box-shadow: 0 0 10px #00ff88;
+            transform: scale(1.02);
+        }
+
+        button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .game-state {
+            color: #00ff88;
+            text-align: center;
+            font-weight: bold;
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .game-state.setup {
+            color: #ffaa00;
+        }
+
+        .game-state.deployment {
+            color: #00ccff;
+        }
+
+        .game-state.battle {
+            color: #ff8800;
+        }
+
+        .game-state.game-over {
+            color: #ff4488;
+        }
+
+        .info-section {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ccff;
+            border-radius: 4px;
+            padding: 15px;
+            color: #00ccff;
+            font-size: 0.8em;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #00ff88;
+        }
+
+        .info-text {
+            margin: 5px 0;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+        }
+
+        .controls-grid button {
+            padding: 8px;
+            font-size: 0.75em;
+        }
+
+        .difficulty-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin: 10px 0;
+        }
+
+        .difficulty-selector button {
+            padding: 8px;
+            font-size: 0.75em;
+            background: #004488;
+            color: #00ccff;
+            border: 2px solid #00ccff;
+        }
+
+        .difficulty-selector button.active {
+            background: #00ccff;
+            color: #000;
+        }
+
+        .difficulty-selector button:hover {
+            background: #00ccff;
+            color: #000;
+        }
+
+        @media (max-width: 900px) {
+            .game-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .stats-panel, .controls-panel {
+                flex: 1;
+                min-width: 150px;
+            }
+        }
+
+        .turn-indicator {
+            color: #00ff88;
+            text-align: center;
+            font-size: 0.9em;
+            padding: 10px;
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .turn-player1 {
+            color: #0088ff;
+            border-color: #0088ff;
+            background: rgba(0, 136, 255, 0.1);
+        }
+
+        .turn-player2 {
+            color: #ff4488;
+            border-color: #ff4488;
+            background: rgba(255, 68, 136, 0.1);
+        }
+
+        .victory-message {
+            color: #ffff00;
+            text-align: center;
+            font-weight: bold;
+            padding: 15px;
+            background: rgba(255, 255, 0, 0.1);
+            border: 2px solid #ffff00;
+            border-radius: 4px;
+            font-size: 0.95em;
+            margin: 10px 0;
+        }
+
+        .ai-status {
+            color: #ffaa00;
+            text-align: center;
+            font-size: 0.8em;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧬 Conway's Battle Arena</h1>
+        <div class="subtitle">A competitive twist on Conway's Game of Life</div>
+
+        <div class="info-section">
+            <div class="info-title">Game Modes</div>
+            <div class="info-text">
+                <strong>PvP Mode:</strong> Two players compete locally. Click to place cells.
+            </div>
+            <div class="info-text">
+                <strong>vs AI Modes:</strong> Play against AI with different difficulty levels (Easy, Normal, Hard).
+            </div>
+            <div class="info-text">
+                <strong>Rules:</strong> Place cells, then watch them evolve using Conway's Game of Life rules with player ownership tracking.
+            </div>
+        </div>
+
+        <div class="game-layout">
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas"></canvas>
+            </div>
+
+            <div class="sidebar">
+                <div class="controls-panel">
+                    <div class="controls-title">GAME MODE</div>
+                    <button id="pvpButton" onclick="selectMode('pvp')">PvP</button>
+                    <button id="vsAIButton" onclick="selectMode('vsai')">vs AI</button>
+
+                    <div class="controls-title" style="margin-top: 15px;">AI DIFFICULTY</div>
+                    <div class="difficulty-selector">
+                        <button id="easyButton" class="active" onclick="selectDifficulty('easy')">Easy</button>
+                        <button id="normalButton" onclick="selectDifficulty('normal')">Normal</button>
+                        <button id="hardButton" onclick="selectDifficulty('hard')">Hard</button>
+                    </div>
+
+                    <div class="controls-title" style="margin-top: 15px;">GAME</div>
+                    <button onclick="startGame()">Start New Game</button>
+                    <button onclick="pauseGame()">Pause/Resume</button>
+                    <button onclick="resetGame()">Reset Game</button>
+                </div>
+
+                <div class="stats-panel">
+                    <div class="controls-title">STATISTICS</div>
+                    <div class="stat-row">
+                        <span class="stat-label">Phase:</span>
+                        <span class="stat-value" id="phaseDisplay">SETUP</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label player1-color">Player 1 Cells:</span>
+                        <span class="stat-value player1-color" id="p1CellsDisplay">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label player2-color">Player 2 Cells:</span>
+                        <span class="stat-value player2-color" id="p2CellsDisplay">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Generation:</span>
+                        <span class="stat-value" id="generationDisplay">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Turn:</span>
+                        <span class="stat-value" id="turnDisplay">P1</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="turnIndicator" class="turn-indicator" style="display:none;">
+            <span id="turnText">Player 1's Turn</span> - Click to place cells
+        </div>
+
+        <div id="victoryMessage" class="victory-message" style="display:none;"></div>
+        <div id="aiStatus" class="ai-status" style="display:none;"></div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // TYPES & ENUMS
+        // ============================================================================
+
+        const PlayerColor = {
+            Empty: 0,
+            Player1: 1,
+            Player2: 2,
+        };
+
+        const GamePhase = {
+            SETUP: 'SETUP',
+            DEPLOYMENT: 'DEPLOYMENT',
+            BATTLE: 'BATTLE',
+            GAME_OVER: 'GAME_OVER',
+        };
+
+        const GameResult = {
+            PLAYER1_WINS: 'PLAYER1_WINS',
+            PLAYER2_WINS: 'PLAYER2_WINS',
+            DRAW: 'DRAW',
+            IN_PROGRESS: 'IN_PROGRESS',
+        };
+
+        const AIDifficulty = {
+            EASY: 'EASY',
+            NORMAL: 'NORMAL',
+            HARD: 'HARD',
+        };
+
+        // ============================================================================
+        // CELL CLASS
+        // ============================================================================
+
+        class Cell {
+            constructor(x, y, owner = PlayerColor.Empty) {
+                this.x = x;
+                this.y = y;
+                this.owner = owner;
+            }
+
+            isAlive() {
+                return this.owner !== PlayerColor.Empty;
+            }
+
+            setOwner(owner) {
+                this.owner = owner;
+            }
+
+            reset() {
+                this.owner = PlayerColor.Empty;
+            }
+
+            clone() {
+                return new Cell(this.x, this.y, this.owner);
+            }
+        }
+
+        // ============================================================================
+        // GAME BOARD CLASS
+        // ============================================================================
+
+        class GameBoard {
+            constructor(width = 40, height = 40) {
+                this.width = width;
+                this.height = height;
+                this.grid = [];
+                this.stats = {
+                    player1Cells: 0,
+                    player2Cells: 0,
+                    emptyCells: width * height,
+                    generation: 0,
+                    player1CellsCreated: 0,
+                    player2CellsCreated: 0,
+                    cellsBorn: 0,
+                    cellsDied: 0,
+                };
+
+                this.initializeGrid();
+            }
+
+            initializeGrid() {
+                for (let y = 0; y < this.height; y++) {
+                    this.grid[y] = [];
+                    for (let x = 0; x < this.width; x++) {
+                        this.grid[y][x] = new Cell(x, y, PlayerColor.Empty);
+                    }
+                }
+            }
+
+            getWidth() {
+                return this.width;
+            }
+
+            getHeight() {
+                return this.height;
+            }
+
+            isInBounds(pos) {
+                return pos.x >= 0 && pos.x < this.width && pos.y >= 0 && pos.y < this.height;
+            }
+
+            getCell(pos) {
+                if (!this.isInBounds(pos)) return null;
+                return this.grid[pos.y][pos.x];
+            }
+
+            setCell(pos, owner) {
+                if (!this.isInBounds(pos)) return false;
+                const cell = this.grid[pos.y][pos.x];
+
+                const oldOwner = cell.owner;
+                cell.setOwner(owner);
+
+                // Update stats
+                if (oldOwner === PlayerColor.Empty && owner !== PlayerColor.Empty) {
+                    this.stats.emptyCells--;
+                    if (owner === PlayerColor.Player1) {
+                        this.stats.player1Cells++;
+                        this.stats.player1CellsCreated++;
+                    } else {
+                        this.stats.player2Cells++;
+                        this.stats.player2CellsCreated++;
+                    }
+                } else if (oldOwner !== PlayerColor.Empty && owner === PlayerColor.Empty) {
+                    this.stats.emptyCells++;
+                    if (oldOwner === PlayerColor.Player1) {
+                        this.stats.player1Cells--;
+                    } else {
+                        this.stats.player2Cells--;
+                    }
+                } else if (oldOwner !== PlayerColor.Empty && owner !== PlayerColor.Empty && oldOwner !== owner) {
+                    if (oldOwner === PlayerColor.Player1) {
+                        this.stats.player1Cells--;
+                        this.stats.player2Cells++;
+                    } else {
+                        this.stats.player2Cells--;
+                        this.stats.player1Cells++;
+                    }
+                }
+
+                return true;
+            }
+
+            getAllCells() {
+                const cells = [];
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        cells.push(this.grid[y][x]);
+                    }
+                }
+                return cells;
+            }
+
+            getStats() {
+                return { ...this.stats };
+            }
+
+            incrementGeneration() {
+                this.stats.generation++;
+            }
+
+            getGeneration() {
+                return this.stats.generation;
+            }
+
+            clear() {
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        this.grid[y][x].reset();
+                    }
+                }
+                this.stats = {
+                    player1Cells: 0,
+                    player2Cells: 0,
+                    emptyCells: this.width * this.height,
+                    generation: 0,
+                    player1CellsCreated: 0,
+                    player2CellsCreated: 0,
+                    cellsBorn: 0,
+                    cellsDied: 0,
+                };
+            }
+
+            countNeighbors(pos) {
+                let total = 0;
+                let player1 = 0;
+                let player2 = 0;
+
+                for (let dy = -1; dy <= 1; dy++) {
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const neighborPos = { x: pos.x + dx, y: pos.y + dy };
+                        if (this.isInBounds(neighborPos)) {
+                            const neighbor = this.grid[neighborPos.y][neighborPos.x];
+                            if (neighbor.isAlive()) {
+                                total++;
+                                if (neighbor.owner === PlayerColor.Player1) {
+                                    player1++;
+                                } else {
+                                    player2++;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return { total, player1, player2 };
+            }
+
+            evolveGeneration() {
+                const newGrid = [];
+                let cellsBorn = 0;
+                let cellsDied = 0;
+
+                for (let y = 0; y < this.height; y++) {
+                    newGrid[y] = [];
+                    for (let x = 0; x < this.width; x++) {
+                        const cell = this.grid[y][x];
+                        const pos = { x, y };
+                        const neighbors = this.countNeighbors(pos);
+
+                        let newOwner = PlayerColor.Empty;
+
+                        if (cell.isAlive()) {
+                            if (neighbors.total === 2 || neighbors.total === 3) {
+                                newOwner = cell.owner;
+                            } else {
+                                cellsDied++;
+                            }
+                        } else {
+                            if (neighbors.total === 3) {
+                                if (neighbors.player1 > neighbors.player2) {
+                                    newOwner = PlayerColor.Player1;
+                                } else if (neighbors.player2 > neighbors.player1) {
+                                    newOwner = PlayerColor.Player2;
+                                } else {
+                                    newOwner = PlayerColor.Empty;
+                                }
+
+                                if (newOwner !== PlayerColor.Empty) {
+                                    cellsBorn++;
+                                }
+                            }
+                        }
+
+                        newGrid[y][x] = new Cell(x, y, newOwner);
+                    }
+                }
+
+                this.grid = newGrid;
+                this.stats.cellsBorn += cellsBorn;
+                this.stats.cellsDied += cellsDied;
+
+                let player1Count = 0;
+                let player2Count = 0;
+                let emptyCount = 0;
+
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const owner = this.grid[y][x].owner;
+                        if (owner === PlayerColor.Player1) {
+                            player1Count++;
+                        } else if (owner === PlayerColor.Player2) {
+                            player2Count++;
+                        } else {
+                            emptyCount++;
+                        }
+                    }
+                }
+
+                this.stats.player1Cells = player1Count;
+                this.stats.player2Cells = player2Count;
+                this.stats.emptyCells = emptyCount;
+                this.incrementGeneration();
+            }
+        }
+
+        // ============================================================================
+        // DEPLOYMENT MANAGER
+        // ============================================================================
+
+        class DeploymentManager {
+            constructor(maxCellsPerPlayer = 30) {
+                this.maxCellsPerPlayer = maxCellsPerPlayer;
+                this.cellsPlaced = {};
+                this.cellsPlaced[PlayerColor.Player1] = 0;
+                this.cellsPlaced[PlayerColor.Player2] = 0;
+                this.currentPlayerTurn = PlayerColor.Player1;
+            }
+
+            getCurrentPlayer() {
+                return this.currentPlayerTurn;
+            }
+
+            canPlaceCell(player) {
+                return (this.cellsPlaced[player] || 0) < this.maxCellsPerPlayer;
+            }
+
+            placeCell(player) {
+                if (player !== this.currentPlayerTurn) {
+                    return false;
+                }
+
+                if (!this.canPlaceCell(player)) {
+                    return false;
+                }
+
+                this.cellsPlaced[player] = (this.cellsPlaced[player] || 0) + 1;
+                return true;
+            }
+
+            switchTurn() {
+                this.currentPlayerTurn = this.currentPlayerTurn === PlayerColor.Player1 ? PlayerColor.Player2 : PlayerColor.Player1;
+            }
+
+            getCellsPlaced(player) {
+                return this.cellsPlaced[player] || 0;
+            }
+
+            getCellsRemaining(player) {
+                return this.maxCellsPerPlayer - (this.cellsPlaced[player] || 0);
+            }
+
+            isDeploymentComplete() {
+                return (
+                    (this.cellsPlaced[PlayerColor.Player1] || 0) === this.maxCellsPerPlayer &&
+                    (this.cellsPlaced[PlayerColor.Player2] || 0) === this.maxCellsPerPlayer
+                );
+            }
+
+            reset() {
+                this.cellsPlaced = {
+                    [PlayerColor.Player1]: 0,
+                    [PlayerColor.Player2]: 0,
+                };
+                this.currentPlayerTurn = PlayerColor.Player1;
+            }
+        }
+
+        // ============================================================================
+        // VICTORY CHECKER
+        // ============================================================================
+
+        class VictoryChecker {
+            constructor() {
+                this.dominationThreshold = 0.7;
+                this.maxTurns = 500;
+            }
+
+            checkVictory(board, generation) {
+                const stats = board.getStats();
+                const totalAlive = stats.player1Cells + stats.player2Cells;
+
+                if (stats.player1Cells === 0 && stats.player2Cells > 0) {
+                    return GameResult.PLAYER2_WINS;
+                }
+                if (stats.player2Cells === 0 && stats.player1Cells > 0) {
+                    return GameResult.PLAYER1_WINS;
+                }
+
+                if (totalAlive > 0) {
+                    const p1Dominance = stats.player1Cells / totalAlive;
+                    const p2Dominance = stats.player2Cells / totalAlive;
+
+                    if (p1Dominance >= this.dominationThreshold) {
+                        return GameResult.PLAYER1_WINS;
+                    }
+                    if (p2Dominance >= this.dominationThreshold) {
+                        return GameResult.PLAYER2_WINS;
+                    }
+                }
+
+                if (generation >= this.maxTurns) {
+                    if (stats.player1Cells > stats.player2Cells) {
+                        return GameResult.PLAYER1_WINS;
+                    } else if (stats.player2Cells > stats.player1Cells) {
+                        return GameResult.PLAYER2_WINS;
+                    } else {
+                        return GameResult.DRAW;
+                    }
+                }
+
+                return GameResult.IN_PROGRESS;
+            }
+
+            isGameOver(result) {
+                return result !== GameResult.IN_PROGRESS;
+            }
+        }
+
+        // ============================================================================
+        // AI PLAYER
+        // ============================================================================
+
+        class AIPlayer {
+            constructor(difficulty = AIDifficulty.NORMAL, seed = Date.now()) {
+                this.difficulty = difficulty;
+                this.seed = seed;
+            }
+
+            getRandomPosition(board) {
+                let attempts = 0;
+                const maxAttempts = 100;
+
+                while (attempts < maxAttempts) {
+                    const x = (this.seededRandom() * board.getWidth()) | 0;
+                    const y = (this.seededRandom() * board.getHeight()) | 0;
+                    const pos = { x, y };
+
+                    const cell = board.getCell(pos);
+                    if (cell && !cell.isAlive()) {
+                        return pos;
+                    }
+                    attempts++;
+                }
+
+                return null;
+            }
+
+            getStrategicPosition(board, playerColor) {
+                switch (this.difficulty) {
+                    case AIDifficulty.EASY:
+                        return this.getRandomPosition(board);
+
+                    case AIDifficulty.NORMAL:
+                        return this.getNormalStrategy(board, playerColor);
+
+                    case AIDifficulty.HARD:
+                        return this.getHardStrategy(board, playerColor);
+
+                    default:
+                        return this.getRandomPosition(board);
+                }
+            }
+
+            getNormalStrategy(board, playerColor) {
+                const cells = board.getAllCells().filter((c) => c.owner === playerColor);
+
+                if (cells.length === 0) {
+                    return this.getEdgePosition(board);
+                }
+
+                const center = cells[(this.seededRandom() * cells.length) | 0];
+                const offsets = [
+                    { x: 1, y: 0 },
+                    { x: -1, y: 0 },
+                    { x: 0, y: 1 },
+                    { x: 0, y: -1 },
+                    { x: 1, y: 1 },
+                    { x: -1, y: -1 },
+                ];
+
+                for (const offset of offsets) {
+                    const pos = { x: center.x + offset.x, y: center.y + offset.y };
+                    const cell = board.getCell(pos);
+                    if (cell && !cell.isAlive()) {
+                        return pos;
+                    }
+                }
+
+                return this.getRandomPosition(board);
+            }
+
+            getHardStrategy(board, playerColor) {
+                const cells = board.getAllCells().filter((c) => c.owner === playerColor);
+
+                if (cells.length < 5) {
+                    return this.getEdgePosition(board);
+                }
+
+                const centerX = board.getWidth() / 2;
+                const centerY = board.getHeight() / 2;
+
+                let bestPos = null;
+                let bestDistance = Infinity;
+
+                for (let attempts = 0; attempts < 20; attempts++) {
+                    const pos = this.getRandomPosition(board);
+                    if (!pos) continue;
+
+                    const distance = Math.sqrt(Math.pow(pos.x - centerX, 2) + Math.pow(pos.y - centerY, 2));
+                    if (distance < bestDistance) {
+                        bestDistance = distance;
+                        bestPos = pos;
+                    }
+                }
+
+                return bestPos || this.getRandomPosition(board);
+            }
+
+            getEdgePosition(board) {
+                const edge = (this.seededRandom() * 4) | 0;
+                let pos;
+
+                switch (edge) {
+                    case 0:
+                        pos = { x: (this.seededRandom() * board.getWidth()) | 0, y: 0 };
+                        break;
+                    case 1:
+                        pos = { x: (this.seededRandom() * board.getWidth()) | 0, y: board.getHeight() - 1 };
+                        break;
+                    case 2:
+                        pos = { x: 0, y: (this.seededRandom() * board.getHeight()) | 0 };
+                        break;
+                    case 3:
+                        pos = { x: board.getWidth() - 1, y: (this.seededRandom() * board.getHeight()) | 0 };
+                        break;
+                    default:
+                        return null;
+                }
+
+                const cell = board.getCell(pos);
+                if (cell && !cell.isAlive()) {
+                    return pos;
+                }
+
+                return this.getRandomPosition(board);
+            }
+
+            seededRandom() {
+                this.seed = (this.seed * 9301 + 49297) % 233280;
+                return this.seed / 233280;
+            }
+        }
+
+        // ============================================================================
+        // MAIN GAME ENGINE
+        // ============================================================================
+
+        class ConwayBattleGame {
+            constructor(aiPlayer = null, gridWidth = 40, gridHeight = 40, cellsPerPlayer = 30) {
+                this.board = new GameBoard(gridWidth, gridHeight);
+                this.deploymentManager = new DeploymentManager(cellsPerPlayer);
+                this.victoryChecker = new VictoryChecker();
+                this.aiPlayer = aiPlayer;
+                this.gamePhase = GamePhase.SETUP;
+                this.gameResult = GameResult.IN_PROGRESS;
+                this.frameCount = 0;
+                this.battleFrameCounter = 0;
+                this.battleFrameInterval = 30;
+            }
+
+            startDeployment() {
+                this.gamePhase = GamePhase.DEPLOYMENT;
+                this.deploymentManager.reset();
+            }
+
+            getCurrentPhase() {
+                return this.gamePhase;
+            }
+
+            startBattle() {
+                if (this.gamePhase === GamePhase.DEPLOYMENT) {
+                    this.gamePhase = GamePhase.BATTLE;
+                    this.frameCount = 0;
+                }
+            }
+
+            placeCell(pos, player) {
+                if (this.gamePhase !== GamePhase.DEPLOYMENT) {
+                    return false;
+                }
+
+                if (this.deploymentManager.getCurrentPlayer() !== player) {
+                    return false;
+                }
+
+                const cell = this.board.getCell(pos);
+                if (!cell || cell.isAlive()) {
+                    return false;
+                }
+
+                this.board.setCell(pos, player);
+
+                if (!this.deploymentManager.placeCell(player)) {
+                    return false;
+                }
+
+                this.deploymentManager.switchTurn();
+
+                return true;
+            }
+
+            aiTakeTurn() {
+                if (!this.aiPlayer || this.gamePhase !== GamePhase.DEPLOYMENT) {
+                    return false;
+                }
+
+                const currentPlayer = this.deploymentManager.getCurrentPlayer();
+                if (this.deploymentManager.getCellsRemaining(currentPlayer) <= 0) {
+                    return false;
+                }
+
+                const pos = this.aiPlayer.getStrategicPosition(this.board, currentPlayer);
+                if (!pos) {
+                    return false;
+                }
+
+                return this.placeCell(pos, currentPlayer);
+            }
+
+            update() {
+                this.frameCount++;
+
+                if (this.gamePhase === GamePhase.BATTLE) {
+                    this.battleFrameCounter++;
+
+                    if (this.battleFrameCounter >= this.battleFrameInterval) {
+                        this.battleFrameCounter = 0;
+                        this.board.evolveGeneration();
+
+                        this.gameResult = this.victoryChecker.checkVictory(this.board, this.board.getGeneration());
+
+                        if (this.victoryChecker.isGameOver(this.gameResult)) {
+                            this.gamePhase = GamePhase.GAME_OVER;
+                        }
+                    }
+                }
+            }
+
+            getBoard() {
+                return this.board;
+            }
+
+            getGameResult() {
+                return this.gameResult;
+            }
+
+            getDeploymentManager() {
+                return this.deploymentManager;
+            }
+
+            isDeploymentComplete() {
+                return this.deploymentManager.isDeploymentComplete();
+            }
+
+            getStats() {
+                return this.board.getStats();
+            }
+
+            reset() {
+                this.board.clear();
+                this.deploymentManager.reset();
+                this.gamePhase = GamePhase.SETUP;
+                this.gameResult = GameResult.IN_PROGRESS;
+                this.frameCount = 0;
+                this.battleFrameCounter = 0;
+            }
+        }
+
+        // ============================================================================
+        // RENDERER
+        // ============================================================================
+
+        class GameRenderer {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.cellSize = 0;
+                this.updateCanvasSize();
+                window.addEventListener('resize', () => this.updateCanvasSize());
+            }
+
+            updateCanvasSize() {
+                const rect = this.canvas.parentElement.getBoundingClientRect();
+                this.canvas.width = rect.width;
+                this.canvas.height = rect.height;
+                this.cellSize = Math.min(this.canvas.width, this.canvas.height) / 40;
+            }
+
+            render(game) {
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                const board = game.getBoard();
+                const cells = board.getAllCells();
+
+                for (const cell of cells) {
+                    if (cell.isAlive()) {
+                        const color = cell.owner === PlayerColor.Player1 ? '#0088ff' : '#ff4488';
+                        this.drawCell(cell.x, cell.y, color);
+                    }
+                }
+
+                // Draw grid
+                this.ctx.strokeStyle = '#00ff8822';
+                this.ctx.lineWidth = 0.5;
+                for (let x = 0; x <= board.getWidth(); x++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x * this.cellSize, 0);
+                    this.ctx.lineTo(x * this.cellSize, this.canvas.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y <= board.getHeight(); y++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y * this.cellSize);
+                    this.ctx.lineTo(this.canvas.width, y * this.cellSize);
+                    this.ctx.stroke();
+                }
+            }
+
+            drawCell(x, y, color) {
+                const padding = 1;
+                this.ctx.fillStyle = color;
+                this.ctx.fillRect(
+                    x * this.cellSize + padding,
+                    y * this.cellSize + padding,
+                    this.cellSize - 2 * padding,
+                    this.cellSize - 2 * padding
+                );
+            }
+
+            getGridPosition(event) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = event.clientX - rect.left;
+                const y = event.clientY - rect.top;
+                const gridX = Math.floor(x / this.cellSize);
+                const gridY = Math.floor(y / this.cellSize);
+                return { x: gridX, y: gridY };
+            }
+        }
+
+        // ============================================================================
+        // GAME CONTROLLER
+        // ============================================================================
+
+        let game = null;
+        let renderer = null;
+        let gameMode = 'pvp'; // 'pvp' or 'vsai'
+        let aiDifficulty = AIDifficulty.EASY;
+        let isGameRunning = false;
+        let isPaused = false;
+        let animationId = null;
+
+        function selectMode(mode) {
+            gameMode = mode;
+            document.getElementById('pvpButton').style.background = mode === 'pvp' ? '#00ffaa' : '#00ff88';
+            document.getElementById('vsAIButton').style.background = mode === 'vsai' ? '#00ffaa' : '#00ff88';
+        }
+
+        function selectDifficulty(difficulty) {
+            const diffMap = { easy: AIDifficulty.EASY, normal: AIDifficulty.NORMAL, hard: AIDifficulty.HARD };
+            aiDifficulty = diffMap[difficulty];
+            document.getElementById('easyButton').classList.toggle('active', difficulty === 'easy');
+            document.getElementById('normalButton').classList.toggle('active', difficulty === 'normal');
+            document.getElementById('hardButton').classList.toggle('active', difficulty === 'hard');
+        }
+
+        function startGame() {
+            const aiPlayer = gameMode === 'vsai' ? new AIPlayer(aiDifficulty) : null;
+            game = new ConwayBattleGame(aiPlayer, 40, 40, 30);
+            renderer = new GameRenderer('gameCanvas');
+
+            game.startDeployment();
+            isGameRunning = true;
+            isPaused = false;
+
+            document.getElementById('turnIndicator').style.display = 'block';
+            document.getElementById('victoryMessage').style.display = 'none';
+            document.getElementById('aiStatus').style.display = gameMode === 'vsai' ? 'block' : 'none';
+
+            gameLoop();
+        }
+
+        function pauseGame() {
+            if (!game) return;
+            isPaused = !isPaused;
+            if (!isPaused) {
+                gameLoop();
+            }
+        }
+
+        function resetGame() {
+            if (game) {
+                game.reset();
+                isGameRunning = false;
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+                document.getElementById('turnIndicator').style.display = 'none';
+                document.getElementById('victoryMessage').style.display = 'none';
+            }
+        }
+
+        function gameLoop() {
+            if (!isGameRunning || isPaused) return;
+
+            game.update();
+
+            // AI turn in deployment phase
+            if (gameMode === 'vsai' && game.getCurrentPhase() === GamePhase.DEPLOYMENT) {
+                const currentPlayer = game.getDeploymentManager().getCurrentPlayer();
+                if (currentPlayer === PlayerColor.Player2) {
+                    setTimeout(() => {
+                        game.aiTakeTurn();
+                        updateUI();
+                        if (game.isDeploymentComplete()) {
+                            game.startBattle();
+                        }
+                    }, 300);
+                }
+            }
+
+            // Auto-start battle when deployment complete
+            if (game.getCurrentPhase() === GamePhase.DEPLOYMENT && game.isDeploymentComplete()) {
+                game.startBattle();
+                document.getElementById('turnIndicator').style.display = 'none';
+            }
+
+            // Handle game over
+            if (game.getCurrentPhase() === GamePhase.GAME_OVER) {
+                isGameRunning = false;
+                showVictoryMessage(game.getGameResult());
+            }
+
+            updateUI();
+            renderer.render(game);
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function updateUI() {
+            const stats = game.getStats();
+            const phase = game.getCurrentPhase();
+            const manager = game.getDeploymentManager();
+
+            // Update phase
+            const phaseDisplay = document.getElementById('phaseDisplay');
+            phaseDisplay.textContent = phase;
+            phaseDisplay.parentElement.parentElement.className = `stat-row`;
+
+            // Update stats
+            document.getElementById('p1CellsDisplay').textContent = stats.player1Cells;
+            document.getElementById('p2CellsDisplay').textContent = stats.player2Cells;
+            document.getElementById('generationDisplay').textContent = stats.generation;
+
+            const turnText = manager.getCurrentPlayer() === PlayerColor.Player1 ? 'P1' : 'P2';
+            document.getElementById('turnDisplay').textContent = turnText;
+
+            // Update turn indicator
+            if (phase === GamePhase.DEPLOYMENT) {
+                const turnIndicator = document.getElementById('turnIndicator');
+                const color = manager.getCurrentPlayer() === PlayerColor.Player1 ? 'turn-player1' : 'turn-player2';
+                const playerName = manager.getCurrentPlayer() === PlayerColor.Player1 ? 'Player 1' : 'Player 2';
+                turnIndicator.className = `turn-indicator ${color}`;
+                turnIndicator.innerHTML = `<span id="turnText">${playerName}'s Turn</span> - Click to place cells (${manager.getCellsRemaining(manager.getCurrentPlayer())} remaining)`;
+            }
+
+            // Update AI status
+            if (gameMode === 'vsai' && phase === GamePhase.DEPLOYMENT) {
+                const aiStatus = document.getElementById('aiStatus');
+                if (manager.getCurrentPlayer() === PlayerColor.Player2) {
+                    aiStatus.textContent = 'AI is thinking...';
+                } else {
+                    aiStatus.textContent = '';
+                }
+            }
+        }
+
+        function showVictoryMessage(result) {
+            const messageDiv = document.getElementById('victoryMessage');
+            let message = '';
+
+            switch (result) {
+                case GameResult.PLAYER1_WINS:
+                    message = '🎉 PLAYER 1 WINS! 🎉';
+                    break;
+                case GameResult.PLAYER2_WINS:
+                    message = '🎉 PLAYER 2 WINS! 🎉';
+                    break;
+                case GameResult.DRAW:
+                    message = '⚖️ DRAW! Perfectly balanced. ⚖️';
+                    break;
+            }
+
+            messageDiv.textContent = message;
+            messageDiv.style.display = 'block';
+        }
+
+        // Canvas click handler
+        document.getElementById('gameCanvas').addEventListener('click', (event) => {
+            if (!game || game.getCurrentPhase() !== GamePhase.DEPLOYMENT) return;
+
+            const pos = renderer.getGridPosition(event);
+            const currentPlayer = game.getDeploymentManager().getCurrentPlayer();
+
+            // In PvP mode, allow both players to click
+            // In AI mode, only allow Player 1 to click
+            if (gameMode === 'vsai' && currentPlayer === PlayerColor.Player2) {
+                return;
+            }
+
+            game.placeCell(pos, currentPlayer);
+            updateUI();
+        });
+
+        // Initialize
+        document.getElementById('pvpButton').style.background = '#00ffaa';
+        selectDifficulty('easy');
+    </script>
+</body>
+</html>

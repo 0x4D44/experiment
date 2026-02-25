@@ -4,3 +4,13 @@ jrnrvw/lcov.info
 
 # coding challenge build dirs
 coding-challenge-01/**/target/
+
+# game experiment build artifacts
+game-experiment-01/**/target/
+game-experiment-01/**/node_modules/
+game-experiment-01/**/dist/
+game-experiment-01/**/*.exe
+game-experiment-01/**/*.pdb
+game-experiment-02/**/target/
+game-experiment-02/**/node_modules/
+game-experiment-02/**/dist/

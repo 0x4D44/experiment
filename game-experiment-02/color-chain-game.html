@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Color Chain Reaction - Puzzle Game</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 30px;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      color: #333;
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-bottom: 20px;
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-label {
+      color: #666;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+
+    .stat-value {
+      color: #333;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .stat-value.moves {
+      color: #e74c3c;
+    }
+
+    .game-area {
+      background: #f9f9f9;
+      border-radius: 10px;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      margin-bottom: 20px;
+      border: 2px solid #eee;
+    }
+
+    canvas {
+      display: block;
+      border: 3px solid #333;
+      background: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+    }
+
+    .btn-primary {
+      background: #667eea;
+      color: white;
+      grid-column: 1 / -1;
+    }
+
+    .btn-primary:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #27ae60;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #229954;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+    }
+
+    .btn-danger {
+      background: #e74c3c;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .message {
+      text-align: center;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-weight: bold;
+      display: none;
+    }
+
+    .message.show {
+      display: block;
+    }
+
+    .message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .message.info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .level-selector {
+      margin-bottom: 20px;
+      background: #f5f5f5;
+      padding: 15px;
+      border-radius: 10px;
+    }
+
+    .level-selector label {
+      display: block;
+      margin-bottom: 10px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .footer {
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+      margin-top: 20px;
+    }
+
+    .instructions {
+      background: #fffbea;
+      border-left: 4px solid #f39c12;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 5px;
+      font-size: 13px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .orb-legend {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+      font-size: 12px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #ddd;
+    }
+
+    .legend-label {
+      color: #666;
+    }
+
+    .stats-detailed {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+
+    .stats-detailed div {
+      display: flex;
+      justify-content: space-between;
+      color: #666;
+    }
+
+    .stats-detailed strong {
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎨 Color Chain Reaction</h1>
+      <p class="subtitle">Match colored orbs to trigger chain reactions!</p>
+    </div>
+
+    <div class="instructions">
+      <strong>How to Play:</strong><br>
+      Click on colored orbs to match adjacent orbs of the same color. Matching groups create explosions that push nearby orbs and trigger cascades. Clear the board within your move limit to win!
+    </div>
+
+    <div class="level-selector">
+      <label for="levelSelect">Select Level:</label>
+      <select id="levelSelect" onchange="loadLevel()">
+        <option value="">Choose a level...</option>
+      </select>
+    </div>
+
+    <div class="message" id="statusMessage"></div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="scoreValue">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Moves Left</div>
+        <div class="stat-value moves" id="movesValue">20</div>
+      </div>
+    </div>
+
+    <div class="game-area">
+      <canvas id="gameCanvas" width="360" height="360"></canvas>
+    </div>
+
+    <div class="controls">
+      <button class="btn-primary" onclick="startGame()">Start Game</button>
+      <button class="btn-secondary" onclick="pauseGame()">Pause</button>
+      <button class="btn-danger" onclick="resetGame()">Reset</button>
+    </div>
+
+    <div class="stats-detailed">
+      <div>
+        <span>Level:</span>
+        <strong id="levelInfo">-</strong>
+      </div>
+      <div>
+        <span>Total Matches:</span>
+        <strong id="matchesInfo">0</strong>
+      </div>
+    </div>
+
+    <div class="orb-legend">
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e74c3c;"></div>
+        <span class="legend-label">Red</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #3498db;"></div>
+        <span class="legend-label">Blue</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #2ecc71;"></div>
+        <span class="legend-label">Green</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #f39c12;"></div>
+        <span class="legend-label">Yellow</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #9b59b6;"></div>
+        <span class="legend-label">Purple</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: linear-gradient(45deg, #e74c3c, #3498db, #2ecc71);"></div>
+        <span class="legend-label">Rainbow</span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Color Chain Reaction &copy; 2025 | Game Development Competition Round 2</p>
+    </div>
+  </div>
+
+  <!-- Game will be loaded here via TypeScript compilation -->
+  <script>
+    // Placeholder for compiled game code
+    console.log('Color Chain Reaction game interface loaded. Awaiting game engine...');
+
+    function loadLevel() {
+      const select = document.getElementById('levelSelect');
+      const levelId = select.value;
+      if (levelId) {
+        console.log('Loading level:', levelId);
+        if (window.gameManager) {
+          window.gameManager.loadLevel(parseInt(levelId));
+        }
+      }
+    }
+
+    function startGame() {
+      if (window.gameManager) {
+        window.gameManager.startGame();
+      }
+    }
+
+    function pauseGame() {
+      if (window.gameManager) {
+        window.gameManager.pauseGame();
+      }
+    }
+
+    function resetGame() {
+      if (window.gameManager) {
+        window.gameManager.resetGame();
+      }
+    }
+
+    function showMessage(text, type = 'info') {
+      const msg = document.getElementById('statusMessage');
+      msg.textContent = text;
+      msg.className = `message show ${type}`;
+      setTimeout(() => {
+        msg.classList.remove('show');
+      }, 4000);
+    }
+
+    function updateUI(score, moves, level, matches) {
+      document.getElementById('scoreValue').textContent = score;
+      document.getElementById('movesValue').textContent = moves;
+      document.getElementById('levelInfo').textContent = level || '-';
+      document.getElementById('matchesInfo').textContent = matches;
+    }
+  </script>
+</body>
+</html>

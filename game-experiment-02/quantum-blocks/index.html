@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Blocks - Puzzle Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a0033 0%, #330066 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #00FFFF;
+            font-size: 2.5em;
+            text-shadow: 0 0 10px #00FFFF, 0 0 20px #FF00FF;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #CCCCCC;
+            font-size: 1.1em;
+        }
+
+        .game-area {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        #gameCanvas {
+            border: 3px solid #00FFFF;
+            background: #000000;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.5);
+            display: block;
+        }
+
+        .ui-panel {
+            background: rgba(0, 100, 100, 0.3);
+            border: 2px solid #00FFFF;
+            border-radius: 5px;
+            padding: 20px;
+            min-width: 200px;
+            color: #FFFFFF;
+        }
+
+        .ui-panel h3 {
+            color: #00FFFF;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #00FFFF;
+            padding-bottom: 10px;
+        }
+
+        .mode-selector {
+            margin-bottom: 20px;
+        }
+
+        .mode-selector label {
+            display: block;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        .mode-selector input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        .controls {
+            background: rgba(100, 0, 100, 0.3);
+            border: 1px solid #FF00FF;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+
+        .controls h4 {
+            color: #FF00FF;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 0.9em;
+        }
+
+        .control-item .key {
+            color: #00FFFF;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            flex-direction: column;
+        }
+
+        button {
+            background: linear-gradient(135deg, #00FFFF, #FF00FF);
+            color: #000000;
+            border: none;
+            padding: 12px 20px;
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8), 0 0 15px rgba(255, 0, 255, 0.8);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats {
+            background: rgba(100, 100, 0, 0.3);
+            border: 1px solid #FFFF00;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 8px 0;
+        }
+
+        .stat-label {
+            color: #CCCCCC;
+        }
+
+        .stat-value {
+            color: #FFFF00;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            color: #666666;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .game-area {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            #gameCanvas {
+                transform: scale(0.8);
+                transform-origin: top center;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚛️ QUANTUM BLOCKS</h1>
+            <p>Tetris meets Match-3 Puzzle Gaming</p>
+        </div>
+
+        <div class="game-area">
+            <canvas id="gameCanvas"></canvas>
+
+            <div class="ui-panel">
+                <h3>Game Settings</h3>
+
+                <div class="mode-selector">
+                    <h4>Game Mode:</h4>
+                    <label>
+                        <input type="radio" name="mode" value="zen" checked>
+                        Zen Mode (Endless)
+                    </label>
+                    <label>
+                        <input type="radio" name="mode" value="time-attack">
+                        Time Attack (3 min)
+                    </label>
+                </div>
+
+                <div class="controls">
+                    <h4>CONTROLS</h4>
+                    <div class="control-item">
+                        <span class="key">← →</span>
+                        <span>Move Block</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">↓</span>
+                        <span>Speed Up</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="key">SPACE</span>
+                        <span>Pause/Resume</span>
+                    </div>
+                </div>
+
+                <div class="stats">
+                    <h4 style="color: #FFFF00; margin-bottom: 10px;">Stats</h4>
+                    <div class="stat-row">
+                        <span class="stat-label">Score:</span>
+                        <span class="stat-value" id="scoreDisplay">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Level:</span>
+                        <span class="stat-value" id="levelDisplay">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Speed:</span>
+                        <span class="stat-value" id="speedDisplay">1.0x</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Chain:</span>
+                        <span class="stat-value" id="chainDisplay">1x</span>
+                    </div>
+                </div>
+
+                <div class="buttons">
+                    <button id="startBtn" onclick="game.start()">Start Game</button>
+                    <button id="pauseBtn" onclick="game.togglePause()" disabled>Pause</button>
+                    <button id="resetBtn" onclick="game.reset()" disabled>Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Press LEFT/RIGHT to move, DOWN to speed up, SPACE to pause.</p>
+            <p>Match 3+ blocks of the same color to clear them!</p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { GameController, Renderer, GAME_MODES } from './game.js';
+
+        class QuantumBlocksGame {
+            constructor() {
+                this.controller = null;
+                this.renderer = new Renderer('gameCanvas');
+                this.isRunning = false;
+                this.isPaused = false;
+                this.animationFrameId = null;
+            }
+
+            start() {
+                if (this.isRunning) {
+                    alert('Game is already running!');
+                    return;
+                }
+
+                const modeSelect = document.querySelector('input[name="mode"]:checked');
+                const mode = modeSelect.value === 'zen' ? GAME_MODES.ZEN : GAME_MODES.TIME_ATTACK;
+
+                this.controller = new GameController(mode);
+                this.isRunning = true;
+                this.isPaused = false;
+
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                document.getElementById('resetBtn').disabled = false;
+                document.querySelector('input[name="mode"]').parentElement.parentElement.parentElement.style.opacity = '0.5';
+                document.querySelectorAll('input[name="mode"]').forEach(r => r.disabled = true);
+
+                this.controller.start();
+                this.gameLoop();
+            }
+
+            reset() {
+                if (this.controller) {
+                    this.controller.stop();
+                }
+                this.isRunning = false;
+                this.isPaused = false;
+
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('resetBtn').disabled = true;
+                document.querySelector('input[name="mode"]').parentElement.parentElement.parentElement.style.opacity = '1';
+                document.querySelectorAll('input[name="mode"]').forEach(r => r.disabled = false);
+
+                this.renderer.render({
+                    grid: Array(20).fill(null).map(() => Array(10).fill(null)),
+                    score: 0,
+                    level: 1,
+                    speed: 1,
+                    mode: GAME_MODES.ZEN,
+                    timeRemaining: 180,
+                    gameOver: false,
+                    nextBlockColor: 0,
+                    chainMultiplier: 1,
+                    gravityReversed: false,
+                    particleEffects: []
+                });
+
+                this.updateUI({
+                    score: 0,
+                    level: 1,
+                    speed: 1,
+                    chainMultiplier: 1
+                });
+            }
+
+            togglePause() {
+                if (!this.isRunning) return;
+
+                if (this.isPaused) {
+                    this.controller.resume();
+                    this.isPaused = false;
+                    document.getElementById('pauseBtn').textContent = 'Pause';
+                } else {
+                    this.controller.pause();
+                    this.isPaused = true;
+                    document.getElementById('pauseBtn').textContent = 'Resume';
+                }
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+
+                if (this.controller) {
+                    const state = this.controller.getGameState();
+                    this.renderer.render(state);
+                    this.updateUI(state);
+
+                    if (state.gameOver) {
+                        this.isRunning = false;
+                        document.getElementById('pauseBtn').disabled = true;
+                    }
+                }
+
+                this.animationFrameId = requestAnimationFrame(() => this.gameLoop());
+            }
+
+            updateUI(state) {
+                document.getElementById('scoreDisplay').textContent = state.score;
+                document.getElementById('levelDisplay').textContent = state.level;
+                document.getElementById('speedDisplay').textContent = state.speed.toFixed(1) + 'x';
+                document.getElementById('chainDisplay').textContent = state.chainMultiplier + 'x';
+            }
+
+            handleKeyDown(event) {
+                if (!this.isRunning || !this.controller) return;
+
+                switch (event.key) {
+                    case 'ArrowLeft':
+                        event.preventDefault();
+                        this.controller.moveLeft();
+                        break;
+                    case 'ArrowRight':
+                        event.preventDefault();
+                        this.controller.moveRight();
+                        break;
+                    case 'ArrowDown':
+                        event.preventDefault();
+                        this.controller.speedUp();
+                        break;
+                    case ' ':
+                        event.preventDefault();
+                        this.togglePause();
+                        break;
+                }
+            }
+        }
+
+        // Initialize game
+        const game = new QuantumBlocksGame();
+        window.game = game;
+
+        // Handle keyboard input
+        document.addEventListener('keydown', (event) => game.handleKeyDown(event));
+
+        // Initial render
+        game.reset();
+    </script>
+</body>
+</html>
