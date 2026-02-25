@@ -4,6 +4,12 @@ jrnrvw/lcov.info
 
 # coding challenge build dirs
 coding-challenge-01/**/target/
+coding-challenge-02/**/target/
+coding-challenge-03/**/target/
+coding-challenge-04/**/target/
+
+# Python virtualenvs
+**/.venv/
 
 # game experiment build artifacts
 game-experiment-01/**/target/

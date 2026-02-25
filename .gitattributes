@@ -1,0 +1,5 @@
+# Reverse engineering assets tracked via Git LFS
+*.gpr filter=lfs diff=lfs merge=lfs -text
+*.ghidra filter=lfs diff=lfs merge=lfs -text
+re/artifacts/**/*.bin filter=lfs diff=lfs merge=lfs -text
+re/artifacts/**/*.dat filter=lfs diff=lfs merge=lfs -text
