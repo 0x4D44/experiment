@@ -1,0 +1,30 @@
+[package]
+name = "minesweeper-cli"
+version = "1.0.0"
+edition = "2021"
+authors = ["Claude Code"]
+description = "A fully-featured Minesweeper CLI game in Rust"
+license = "MIT"
+
+[dependencies]
+rand = "0.8"
+crossterm = "0.27"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = "0.4"
+
+[dev-dependencies]
+proptest = "1.4"
+
+[[bin]]
+name = "minesweeper"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0

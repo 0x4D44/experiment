@@ -1,0 +1,274 @@
+{
+  "title": "Dungeon Escape",
+  "description": "A dark dungeon filled with mysteries and puzzles. Escape or perish!",
+  "version": "1.0",
+  "author": "Text Adventure Engine",
+  "startingRoom": "cell",
+  "maxInventory": 10,
+  "maxCarryWeight": 50.0,
+  "variables": {
+    "escapeAttempts": 0,
+    "puzzlesSolved": 0,
+    "hasKey": false,
+    "doorUnlocked": false
+  },
+  "rooms": {
+    "cell": {
+      "name": "Dungeon Cell",
+      "description": "You awaken in a cold, damp cell. Stone walls surround you on three sides, with iron bars on the fourth, looking out into a dark corridor. A thin straw mattress lies in one corner, partially torn. The air smells of dampness and decay.",
+      "exits": {
+        "north": "corridor"
+      },
+      "items": ["mattress", "key", "straw"],
+      "npcs": [],
+      "locked": false
+    },
+    "corridor": {
+      "name": "Dungeon Corridor",
+      "description": "A long, dark corridor stretches before you. Stone walls line both sides, and you can see the faint glow of torchlight from the north. Water drips from the ceiling, creating small puddles on the floor.",
+      "exits": {
+        "south": "cell",
+        "north": "guardroom",
+        "east": "treasury"
+      },
+      "items": ["torch", "bones"],
+      "npcs": ["guard"],
+      "locked": false
+    },
+    "guardroom": {
+      "name": "Guard's Chamber",
+      "description": "This chamber appears to be where guards once rested. A crude wooden table sits in one corner with scattered papers and cups. The walls are lined with weapon racks, now empty. A faint sound of snoring echoes from the shadows.",
+      "exits": {
+        "south": "corridor",
+        "west": "armory",
+        "down": "cellar"
+      },
+      "items": ["scroll", "coins"],
+      "npcs": ["sleeping_guard"],
+      "locked": false
+    },
+    "armory": {
+      "name": "Dungeon Armory",
+      "description": "Weapons of all kinds line the walls - swords, shields, axes, and more. Most are rusted and brittle. A few serviceable items remain on a central rack. The floor is covered with bits of broken metal and wood.",
+      "exits": {
+        "east": "guardroom"
+      },
+      "items": ["sword", "shield"],
+      "npcs": [],
+      "locked": false
+    },
+    "treasury": {
+      "name": "Treasury",
+      "description": "This grand chamber once held the kingdom's treasures. Now, only a few items remain, scattered across the floor. A large stone chest sits against the far wall, its lid hanging open. Golden dust covers everything.",
+      "exits": {
+        "west": "corridor",
+        "down": "cellar"
+      },
+      "items": ["chest", "gold_coins", "crown"],
+      "npcs": [],
+      "locked": false
+    },
+    "cellar": {
+      "name": "Dungeon Cellar",
+      "description": "The cellar is damp and smells strongly of mold. Water from above drips steadily onto the stone floor, creating a small pool in the center. Strange markings cover the walls - perhaps left by previous prisoners.",
+      "exits": {
+        "north": "guardroom",
+        "up": "treasury",
+        "down": "deep_cellar",
+        "east": "escape_tunnel"
+      },
+      "items": ["bones_pile", "ancient_map"],
+      "npcs": [],
+      "locked": false
+    },
+    "deep_cellar": {
+      "name": "Deep Cellar",
+      "description": "This deep underground chamber seems untouched for years. Thick dust covers everything. Suddenly, you notice ancient inscriptions on the walls - warnings perhaps? A faint breeze comes from an opening to the south, carrying fresh air from somewhere outside.",
+      "exits": {
+        "up": "cellar",
+        "south": "escape_tunnel"
+      },
+      "items": ["ancient_scroll", "key_golden"],
+      "npcs": [],
+      "locked": false
+    },
+    "escape_tunnel": {
+      "name": "Escape Tunnel",
+      "description": "A narrow tunnel carved through solid rock. The walls glisten with moisture. You can hear the faint sound of running water and feel a cool breeze from ahead. Freedom might be close!",
+      "exits": {
+        "north": "cellar",
+        "west": "deep_cellar",
+        "east": "outside"
+      },
+      "items": ["rope"],
+      "npcs": [],
+      "locked": false
+    },
+    "outside": {
+      "name": "Outside the Dungeon",
+      "description": "You have escaped! The bright sunlight blinds you for a moment as you emerge from the dark tunnel. Before you lies a vast forest, and in the distance, you can see the smoke of a distant town. Freedom at last!",
+      "exits": {},
+      "items": [],
+      "npcs": [],
+      "locked": false
+    }
+  },
+  "items": {
+    "mattress": {
+      "name": "straw mattress",
+      "description": "A thin, worn mattress filled with straw. It's partially torn, and straw pokes out in several places.",
+      "takeable": false,
+      "useable": false,
+      "container": false,
+      "weight": 5.0
+    },
+    "key": {
+      "name": "iron key",
+      "description": "A heavy iron key, cold to the touch. It's old and corroded but appears functional. You wonder what door it opens.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 0.3
+    },
+    "straw": {
+      "name": "handful of straw",
+      "description": "Straw from the mattress. It could be useful for starting a fire.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 0.1
+    },
+    "torch": {
+      "name": "burning torch",
+      "description": "A torch that still has a flame flickering at its end. It provides light and some warmth.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 1.0
+    },
+    "bones": {
+      "name": "old bones",
+      "description": "The skeletal remains of some unfortunate creature. They clatter when you move them.",
+      "takeable": true,
+      "useable": false,
+      "container": false,
+      "weight": 2.0
+    },
+    "scroll": {
+      "name": "ancient scroll",
+      "description": "A scroll that's yellowed with age. The writing is barely legible: 'The key to freedom lies beneath the stone floor in the eastern chamber.'",
+      "takeable": true,
+      "useable": false,
+      "container": false,
+      "weight": 0.2
+    },
+    "coins": {
+      "name": "gold coins",
+      "description": "A small pouch of ancient gold coins. They might have value to traders outside.",
+      "takeable": true,
+      "useable": false,
+      "container": false,
+      "weight": 0.5,
+      "stackable": true,
+      "quantity": 10
+    },
+    "sword": {
+      "name": "iron sword",
+      "description": "A serviceable sword, though showing signs of rust. It's still sharp enough to be dangerous.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 3.0
+    },
+    "shield": {
+      "name": "wooden shield",
+      "description": "A reinforced wooden shield, worn but still intact. It could protect you from harm.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 2.5
+    },
+    "chest": {
+      "name": "stone chest",
+      "description": "A large stone chest, its lid partially open. You can see something glinting inside.",
+      "takeable": false,
+      "useable": true,
+      "container": true,
+      "weight": 100.0
+    },
+    "gold_coins": {
+      "name": "ancient gold coins",
+      "description": "A collection of gold coins from an ancient empire. They're worth a fortune!",
+      "takeable": true,
+      "useable": false,
+      "container": false,
+      "weight": 5.0,
+      "stackable": true,
+      "quantity": 50
+    },
+    "crown": {
+      "name": "golden crown",
+      "description": "A magnificent golden crown, encrusted with jewels. It's the crown of a long-dead king.",
+      "takeable": true,
+      "useable": false,
+      "container": false,
+      "weight": 2.0
+    },
+    "bones_pile": {
+      "name": "pile of bones",
+      "description": "The remains of many unfortunate prisoners, stacked in a corner. A grim reminder of the dungeon's purpose.",
+      "takeable": false,
+      "useable": false,
+      "container": false,
+      "weight": 50.0
+    },
+    "ancient_map": {
+      "name": "ancient map",
+      "description": "A weathered map showing the dungeon layout and marked escape routes. It's in poor condition but still readable.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 0.3
+    },
+    "ancient_scroll": {
+      "name": "ancient scroll",
+      "description": "A scroll with ancient writing. It describes a hidden exit to the east: 'When the darkness is complete, look for the light beyond.'",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 0.2
+    },
+    "key_golden": {
+      "name": "golden key",
+      "description": "A smaller, more delicate key made of pure gold. It's beautifully crafted and seems precious.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 0.2
+    },
+    "rope": {
+      "name": "coiled rope",
+      "description": "A length of sturdy rope, neatly coiled. It could be useful for climbing or securing something.",
+      "takeable": true,
+      "useable": true,
+      "container": false,
+      "weight": 1.5
+    }
+  },
+  "npcs": {
+    "guard": {
+      "name": "Guard",
+      "description": "A grizzled dungeon guard, scarred from years of duty. His eyes are cold and calculating.",
+      "location": "corridor",
+      "friendly": false,
+      "canTrade": false
+    },
+    "sleeping_guard": {
+      "name": "Sleeping Guard",
+      "description": "A guard, apparently asleep at a wooden table. He snores loudly and doesn't notice your presence.",
+      "location": "guardroom",
+      "friendly": false,
+      "canTrade": false
+    }
+  }
+}
