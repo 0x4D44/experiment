@@ -9,6 +9,7 @@ on:
       - maciici-bootstrap/current.patch
       - maciici-bootstrap/rbv-delta.patch.zlib.b85
       - maciici-bootstrap/smoke-fix.patch.zlib.b85
+      - maciici-bootstrap/iici-post-fix.patch.zlib.b85
   workflow_dispatch:
 
 permissions:
@@ -45,12 +46,14 @@ jobs:
           for source, output in [
               ("maciici-bootstrap/rbv-delta.patch.zlib.b85", "/tmp/maciici-rbv.patch"),
               ("maciici-bootstrap/smoke-fix.patch.zlib.b85", "/tmp/maciici-smoke-fix.patch"),
+              ("maciici-bootstrap/iici-post-fix.patch.zlib.b85", "/tmp/maciici-post-fix.patch"),
           ]:
               encoded = pathlib.Path(source).read_bytes().strip()
               pathlib.Path(output).write_bytes(zlib.decompress(base64.b85decode(encoded)))
           PY
           test "$(sha256sum /tmp/maciici-rbv.patch | cut -d' ' -f1)" = "9be17fe2374b67a8eed6cdfb9cc553624ebc55055a952683b421e4a00c0745b8"
           test "$(sha256sum /tmp/maciici-smoke-fix.patch | cut -d' ' -f1)" = "1b6d7607df3cd865a54a9eb70b75b022638728955fdbb3b231c148321377af49"
+          test "$(sha256sum /tmp/maciici-post-fix.patch | cut -d' ' -f1)" = "2452c798804c774c389f3dc3913520db05fcb455e459c4ba03f0324dcfdfaf61"
 
       - name: Clone exact Snow v1.5.0 source
         run: |
@@ -67,6 +70,8 @@ jobs:
           git -C snow apply /tmp/maciici-rbv.patch
           git -C snow apply --check /tmp/maciici-smoke-fix.patch
           git -C snow apply /tmp/maciici-smoke-fix.patch
+          git -C snow apply --check /tmp/maciici-post-fix.patch
+          git -C snow apply /tmp/maciici-post-fix.patch
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
           git -C snow diff > formatted-maciici.patch
