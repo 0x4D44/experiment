@@ -1,0 +1,123 @@
+name: Sun 3/60 Gauntlet
+
+on:
+  push:
+    branches:
+      - codex/sun3-60-gauntlet
+    paths:
+      - "sun3-gauntlet/**"
+      - ".github/workflows/sun3-gauntlet.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sun3-gauntlet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out gauntlet branch
+        uses: actions/checkout@v4
+
+      - name: Record toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p sun3-gauntlet/bootstrap
+          {
+            rustc --version
+            cargo --version
+            python3 --version
+            git --version
+          } | tee sun3-gauntlet/bootstrap/toolchain.txt
+
+      - name: Fetch pinned m68k-rs reference core
+        run: |
+          set -euo pipefail
+          rm -rf sun3-gauntlet/bootstrap/m68k-rs
+          git clone --filter=blob:none https://github.com/benletchford/m68k-rs.git sun3-gauntlet/bootstrap/m68k-rs
+          git -C sun3-gauntlet/bootstrap/m68k-rs checkout ef5dc486bc05410608545da1f83ec49d088af1f1
+          git -C sun3-gauntlet/bootstrap/m68k-rs rev-parse HEAD | tee sun3-gauntlet/bootstrap/m68k-rs.commit
+          rm -rf sun3-gauntlet/bootstrap/m68k-rs/.git
+          tar -C sun3-gauntlet/bootstrap -cJf sun3-gauntlet/bootstrap/m68k-rs-source.tar.xz m68k-rs
+
+      - name: Inspect genuine Sun 3/60 PROM archive
+        env:
+          PROM_URL: https://oldsilicon.com/technologies/sun-rom-images/ROMS/3.60_v3.0.1.zip
+          EXPECTED_MAME_SHA1: 6e48414ce2139282e69f57612b20f7d5c475e74c
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          trap 'rm -rf "$work"' EXIT
+          curl --fail --location --retry 3 --output "$work/3.60_v3.0.1.zip" "$PROM_URL"
+          unzip -l "$work/3.60_v3.0.1.zip" | tee sun3-gauntlet/bootstrap/prom-archive-list.txt
+          mkdir "$work/extracted"
+          unzip -q "$work/3.60_v3.0.1.zip" -d "$work/extracted"
+          python3 - "$work/extracted" "$EXPECTED_MAME_SHA1" <<'PY' | tee sun3-gauntlet/bootstrap/prom-layout.txt
+          from __future__ import annotations
+          import hashlib
+          import itertools
+          import pathlib
+          import sys
+
+          root = pathlib.Path(sys.argv[1])
+          expected = sys.argv[2].lower()
+          files = sorted(p for p in root.rglob('*') if p.is_file())
+          print(f"archive_files={len(files)}")
+          blobs: list[tuple[pathlib.Path, bytes]] = []
+          for path in files:
+              data = path.read_bytes()
+              blobs.append((path, data))
+              print(f"file={path.relative_to(root)} size={len(data)} sha1={hashlib.sha1(data).hexdigest()} sha256={hashlib.sha256(data).hexdigest()} head={data[:32].hex()}")
+
+          candidates: dict[str, bytes] = {}
+          for path, data in blobs:
+              candidates[f"raw:{path.relative_to(root)}"] = data
+
+          # EPROM archives commonly contain two or four equal-sized byte lanes.
+          lane_blobs = [(p, b) for p, b in blobs if len(b) > 0]
+          if 1 < len(lane_blobs) <= 6 and len({len(b) for _, b in lane_blobs}) == 1:
+              for perm in itertools.permutations(lane_blobs):
+                  names = ','.join(str(p.relative_to(root)) for p, _ in perm)
+                  candidates[f"concat:{names}"] = b''.join(b for _, b in perm)
+                  candidates[f"byte-interleave:{names}"] = bytes(x for i in range(len(perm[0][1])) for _, lane in perm for x in (lane[i],))
+                  if len(perm[0][1]) % 2 == 0:
+                      candidates[f"word-interleave:{names}"] = b''.join(
+                          lane[i:i+2]
+                          for i in range(0, len(perm[0][1]), 2)
+                          for _, lane in perm
+                      )
+
+          matches = []
+          for name, data in candidates.items():
+              digest = hashlib.sha1(data).hexdigest()
+              if digest == expected:
+                  matches.append((name, data))
+          print(f"expected_mame_sha1={expected}")
+          print(f"matching_layouts={len(matches)}")
+          for name, data in matches:
+              print(f"MATCH layout={name} size={len(data)} sha1={hashlib.sha1(data).hexdigest()} sha256={hashlib.sha256(data).hexdigest()} reset_ssp=0x{int.from_bytes(data[0:4], 'big'):08x} reset_pc=0x{int.from_bytes(data[4:8], 'big'):08x}")
+          if len(matches) != 1:
+              raise SystemExit(f"expected exactly one logical PROM layout, found {len(matches)}")
+          PY
+
+      - name: Upload bootstrap evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sun3-gauntlet-bootstrap
+          path: |
+            sun3-gauntlet/bootstrap/toolchain.txt
+            sun3-gauntlet/bootstrap/m68k-rs.commit
+            sun3-gauntlet/bootstrap/m68k-rs-source.tar.xz
+            sun3-gauntlet/bootstrap/prom-archive-list.txt
+            sun3-gauntlet/bootstrap/prom-layout.txt
+          if-no-files-found: error
+          retention-days: 7
