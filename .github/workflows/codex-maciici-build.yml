@@ -27,6 +27,12 @@ jobs:
             .github
             maciici-bootstrap
 
+      - name: Install Snow Linux prerequisites
+        run: |
+          set -euxo pipefail
+          sudo apt-get -y update
+          sudo apt-get -y install libasound2-dev python3
+
       - name: Decode RBV implementation delta
         run: |
           set -euxo pipefail
