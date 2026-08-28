@@ -1,0 +1,48 @@
+--- a/core/src/mac/macii/rbv.rs
++++ b/core/src/mac/macii/rbv.rs
+@@ -52,7 +52,6 @@
+ where
+     TRenderer: Renderer,
+ {
+-    const RAMDAC_SIZE: Address = 0x10;
+     const PSEUDOVIA_BASE: Address = 0x2000;
+     const PSEUDOVIA_END: Address = 0x3FFF;
+ 
+@@ -74,7 +73,7 @@
+     const SLOT_D: u8 = 0x10;
+     const SLOT_E: u8 = 0x20;
+     const SLOT_VIDEO: u8 = 0x40;
+-    const IIci_SLOT_MASK: u8 = Self::SLOT_C | Self::SLOT_D | Self::SLOT_E | Self::SLOT_VIDEO;
++    const IICI_SLOT_MASK: u8 = Self::SLOT_C | Self::SLOT_D | Self::SLOT_E | Self::SLOT_VIDEO;
+ 
+     pub fn new(renderer: TRenderer, monitor: MacMonitor, clock_speed: Ticks) -> Self {
+         let mut result = Self {
+@@ -170,8 +169,8 @@
+     }
+ 
+     fn recalculate_irq(&mut self) {
+-        let mut slot_irqs = (!self.registers[Self::REG_SLOT_IFR]) & Self::IIci_SLOT_MASK;
+-        slot_irqs &= self.registers[Self::REG_SLOT_IER] & Self::IIci_SLOT_MASK;
++        let mut slot_irqs = (!self.registers[Self::REG_SLOT_IFR]) & Self::IICI_SLOT_MASK;
++        slot_irqs &= self.registers[Self::REG_SLOT_IER] & Self::IICI_SLOT_MASK;
+ 
+         if slot_irqs != 0 {
+             self.registers[Self::REG_IFR] |= Self::IRQ_ANY_SLOT;
+@@ -487,7 +486,7 @@
+ {
+     fn read(&mut self, addr: Address) -> Option<u8> {
+         match addr {
+-            0..=Self::RAMDAC_SIZE - 1 => {
++            0x0000..=0x000F => {
+                 if addr & 3 == 0 {
+                     Some(self.ramdac_read((addr >> 2) as usize))
+                 } else {
+@@ -503,7 +502,7 @@
+ 
+     fn write(&mut self, addr: Address, value: u8) -> Option<()> {
+         match addr {
+-            0..=Self::RAMDAC_SIZE - 1 => {
++            0x0000..=0x000F => {
+                 if addr & 3 == 0 {
+                     self.ramdac_write((addr >> 2) as usize, value);
+                 }
