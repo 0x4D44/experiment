@@ -1,0 +1,101 @@
+name: Codex Mac IIci macOS build
+
+on:
+  push:
+    branches:
+      - codex/maciici-bootstrap
+    paths:
+      - .github/workflows/codex-maciici-macos.yml
+      - maciici-bootstrap/current.patch
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: fat
+  MACOSX_DEPLOYMENT_TARGET: "10.15"
+
+jobs:
+  build:
+    name: macOS universal app
+    runs-on: macos-latest
+    steps:
+      - name: Checkout build inputs
+        uses: actions/checkout@v4
+        with:
+          ref: codex/maciici-bootstrap
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            maciici-bootstrap
+
+      - name: Clone exact Snow v1.5.0 source
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.5.0 https://github.com/twvd/snow.git snow
+          test "$(git -C snow rev-parse HEAD)" = "317c188999dac854b3a8252d8a05adcaeeb3d589"
+
+      - name: Apply Mac IIci patch
+        run: |
+          set -euxo pipefail
+          git -C snow apply --check ../maciici-bootstrap/current.patch
+          git -C snow apply ../maciici-bootstrap/current.patch
+          git -C snow diff --check
+          cargo fmt --manifest-path snow/Cargo.toml --all -- --check
+
+      - name: Install Rust targets
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Build both architectures
+        run: |
+          set -euxo pipefail
+          cargo build --manifest-path snow/Cargo.toml --release --locked --target aarch64-apple-darwin
+          cargo build --manifest-path snow/Cargo.toml --release --locked --target x86_64-apple-darwin
+
+      - name: Build and sign universal app bundle
+        run: |
+          set -euxo pipefail
+          lipo \
+            snow/target/aarch64-apple-darwin/release/snowemu \
+            snow/target/x86_64-apple-darwin/release/snowemu \
+            -create -output snow/snowemu-universal
+          cd snow
+          ./.github/mac-bundle.sh "$PWD/snowemu-universal"
+          codesign --force -s - -vvvv Snow.app
+          mkdir -p ../package
+          mv Snow.app ../package/Mac-IIci.app
+          cp ../maciici-bootstrap/current.patch ../package/Mac-IIci-support.patch
+          cat > ../package/README.txt <<'EOF'
+Macintosh IIci experimental build
+=================================
+
+This is a universal macOS application built from Snow v1.5.0 plus the
+Macintosh IIci model patch in Mac-IIci-support.patch.
+
+1. Move Mac-IIci.app to Applications if desired.
+2. Open it. On first launch macOS may require Control-click > Open because
+   this CI build is ad-hoc signed, not notarised.
+3. Select the supplied Macintosh IIci ROM in Snow's ROM dialog.
+4. Select Macintosh IIci as the model and attach your own legal SCSI disk image.
+
+No Apple ROM or operating-system image is included in this public artifact.
+This build is experimental: the patch adds the IIci model/ROM identity to
+Snow's existing Macintosh II-family core; it is not evidence of a completed
+RBV-accurate System 6/System 7 boot.
+EOF
+          cd ../package
+          ditto -c -k --sequesterRsrc --keepParent Mac-IIci.app Mac-IIci-macOS-universal.zip
+          shasum -a 256 Mac-IIci-macOS-universal.zip > SHA256SUMS.txt
+
+      - name: Upload macOS bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: maciici-macos-universal
+          path: package
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
