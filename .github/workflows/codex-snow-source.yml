@@ -43,6 +43,13 @@ jobs:
           git add maciici-bootstrap/snow-v1.5.0-source.tar.gz
           git commit -m 'Refresh Snow v1.5.0 source archive for Mac IIci build'
           git push origin HEAD:codex/maciici-bootstrap
+      - name: Upload native transfer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: snow-source-bootstrap
+          path: publisher/maciici-bootstrap/snow-v1.5.0-source.tar.gz
+          retention-days: 1
+          compression-level: 0
       - name: Publish stable release asset
         env:
           GH_TOKEN: ${{ github.token }}
