@@ -7,7 +7,6 @@ on:
     paths:
       - .github/workflows/codex-maciici-build.yml
       - maciici-bootstrap/patch-parts/**
-      - maciici-bootstrap/fix*.patch
 
 permissions:
   contents: read
@@ -30,8 +29,8 @@ jobs:
         run: |
           set -euxo pipefail
           cat maciici-bootstrap/patch-parts/part*.b64 | base64 --decode > /tmp/maciici.patch
-          test "$(sha256sum /tmp/maciici.patch | cut -d' ' -f1)" = "8dca77003af8963fb64d74fb2f12d1bfe83bb67c8af85fa4664e9f83e518f209"
-          wc -c /tmp/maciici.patch
+          test "$(sha256sum /tmp/maciici.patch | cut -d' ' -f1)" = "d9a94d4b814fa4922cba919cf745820ff1a7202f2b8ad51f615a8ba9d7e7410c"
+          test "$(wc -c < /tmp/maciici.patch)" = "47039"
 
       - name: Clone exact Snow v1.5.0 source
         run: |
@@ -42,16 +41,8 @@ jobs:
       - name: Apply and format Mac IIci implementation
         run: |
           set -euxo pipefail
-          # The staged implementation was developed against rustfmt-normalised
-          # v1.5.0 source. Normalise the exact upstream checkout before applying it.
-          cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow apply --check /tmp/maciici.patch
           git -C snow apply /tmp/maciici.patch
-          for fix in maciici-bootstrap/fix*.patch; do
-            [ -e "$fix" ] || continue
-            git -C snow apply --check "../$fix"
-            git -C snow apply "../$fix"
-          done
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
           git -C snow diff > formatted-maciici.patch
