@@ -1,0 +1,83 @@
+name: Codex Mac IIci iterative build
+
+on:
+  push:
+    branches:
+      - codex/maciici-bootstrap
+    paths:
+      - .github/workflows/codex-maciici-build.yml
+      - maciici-bootstrap/phase1.patch
+      - maciici-bootstrap/current.patch
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout only build inputs
+        uses: actions/checkout@v4
+        with:
+          ref: codex/maciici-bootstrap
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            maciici-bootstrap
+
+      - name: Clone exact Snow v1.5.0 source
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.5.0 https://github.com/twvd/snow.git snow
+          test "$(git -C snow rev-parse HEAD)" = "317c188999dac854b3a8252d8a05adcaeeb3d589"
+
+      - name: Apply Mac IIci patch
+        run: |
+          set -euxo pipefail
+          patch=maciici-bootstrap/current.patch
+          if [ ! -f "$patch" ]; then patch=maciici-bootstrap/phase1.patch; fi
+          git -C snow apply --check "../$patch"
+          git -C snow apply "../$patch"
+          git -C snow diff --check
+
+      - name: Format check
+        run: |
+          set -euxo pipefail
+          cd snow
+          cargo fmt --all -- --check
+
+      - name: Core tests
+        run: |
+          set -euxo pipefail
+          cd snow
+          cargo test -p snow_core --lib --locked 2>&1 | tee ../core-tests.log
+
+      - name: Build headless test runner
+        run: |
+          set -euxo pipefail
+          cd snow
+          cargo build -p testrunner --bin single --release --locked 2>&1 | tee ../build.log
+
+      - name: Package build evidence
+        if: always()
+        run: |
+          set -euxo pipefail
+          mkdir -p out
+          cp core-tests.log out/ 2>/dev/null || true
+          cp build.log out/ 2>/dev/null || true
+          git -C snow diff > out/applied.patch
+          git -C snow status --short > out/status.txt
+          if [ -x snow/target/release/single ]; then cp snow/target/release/single out/; fi
+          rm -rf snow/.git snow/target
+          tar -czf out/maciici-source.tar.gz snow
+          sha256sum out/* > out/SHA256SUMS
+
+      - name: Upload build evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maciici-iterative-build
+          path: out
+          retention-days: 3
+          compression-level: 0
