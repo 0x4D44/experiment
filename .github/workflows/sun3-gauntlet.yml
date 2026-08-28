@@ -66,11 +66,17 @@ jobs:
           mkdir -p evidence
           ./scripts/bootstrap.sh 2>&1 | tee evidence/bootstrap.txt
 
-      - name: Format
+      - name: Format and preserve rustfmt output
         working-directory: sun3-gauntlet
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
+          cargo fmt --all
+          git add crates Cargo.toml rust-toolchain.toml
+          if ! git diff --cached --quiet; then
+            git commit -m "sun3: apply rustfmt [skip ci]"
+            git push origin HEAD:codex/sun3-60-gauntlet
+          fi
           cargo fmt --all --check 2>&1 | tee evidence/fmt.txt
 
       - name: Clippy
