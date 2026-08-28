@@ -10,6 +10,7 @@ on:
       - maciici-bootstrap/rbv-delta.patch.zlib.b85
       - maciici-bootstrap/smoke-fix.patch.zlib.b85
       - maciici-bootstrap/iici-post-fix.patch.zlib.b85
+      - maciici-bootstrap/rbv-address-fix.patch
       - maciici-bootstrap/maciici_smoke.rs
   workflow_dispatch:
 
@@ -55,6 +56,7 @@ jobs:
           test "$(sha256sum /tmp/maciici-rbv.patch | cut -d' ' -f1)" = "9be17fe2374b67a8eed6cdfb9cc553624ebc55055a952683b421e4a00c0745b8"
           test "$(sha256sum /tmp/maciici-smoke-fix.patch | cut -d' ' -f1)" = "1b6d7607df3cd865a54a9eb70b75b022638728955fdbb3b231c148321377af49"
           test "$(sha256sum /tmp/maciici-post-fix.patch | cut -d' ' -f1)" = "2452c798804c774c389f3dc3913520db05fcb455e459c4ba03f0324dcfdfaf61"
+          test "$(sha256sum maciici-bootstrap/rbv-address-fix.patch | cut -d' ' -f1)" = "55f30498a69e24af9be27da4bf40e74c7395516c9e48661bcc6e688071f08a1a"
 
       - name: Clone exact Snow v1.5.0 source
         run: |
@@ -73,6 +75,8 @@ jobs:
           git -C snow apply /tmp/maciici-smoke-fix.patch
           git -C snow apply --check /tmp/maciici-post-fix.patch
           git -C snow apply /tmp/maciici-post-fix.patch
+          git -C snow apply --check ../maciici-bootstrap/rbv-address-fix.patch
+          git -C snow apply ../maciici-bootstrap/rbv-address-fix.patch
           cp maciici-bootstrap/maciici_smoke.rs snow/testrunner/src/bin/maciici_smoke/main.rs
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
