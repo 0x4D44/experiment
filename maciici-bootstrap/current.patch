@@ -1,0 +1,160 @@
+diff --git a/core/src/emulator/mod.rs b/core/src/emulator/mod.rs
+index 206b4e8..d57c697 100644
+--- a/core/src/emulator/mod.rs
++++ b/core/src/emulator/mod.rs
+@@ -416,6 +416,34 @@ impl Emulator {
+ 
+                 EmulatorConfig::MacII30(cpu)
+             }
++            MacModel::MacIIci => {
++                assert!(override_fdd_type.is_none());
++
++                // The IIci has RBV-controlled onboard video and therefore does not
++                // require a NuBus declaration ROM.  The renderer is connected by
++                // the IIci bus implementation.
++                let nubus = [];
++
++                let extension_rom = extra_roms.iter().find_map(|p| match p {
++                    ExtraROMs::ExtensionROM(data) => Some(*data),
++                    _ => None,
++                });
++
++                let bus = MacIIBus::new(
++                    model,
++                    rom,
++                    &nubus,
++                    extension_rom,
++                    vec![renderer],
++                    monitor.unwrap_or_default(),
++                    mouse_mode,
++                    ram_size,
++                );
++                let cpu = Box::new(CpuM68030Fpu::new(bus));
++                assert_eq!(cpu.get_type(), model.cpu_type());
++
++                EmulatorConfig::MacII30(cpu)
++            }
+             MacModel::SE30 => {
+                 assert!(override_fdd_type.is_none());
+ 
+diff --git a/core/src/mac/mod.rs b/core/src/mac/mod.rs
+index bb8225e..e3ace27 100644
+--- a/core/src/mac/mod.rs
++++ b/core/src/mac/mod.rs
+@@ -61,6 +61,8 @@ pub enum MacModel {
+     MacIIx,
+     /// Macintosh IIcx
+     MacIIcx,
++    /// Macintosh IIci
++    MacIIci,
+     /// Macintosh SE/30
+     SE30,
+ }
+@@ -93,6 +95,8 @@ impl MacModel {
+         ("97f2a22bdb8972bfcc1f16aff1ebbe157887c26787a1c81747a9842fa7b97a06", &[Self::MacII]),
+         // Macintosh II FDHD / IIx / IIcx / SE/30
+         ("79fae48e2d5cfde68520e46616503963f8c16430903f410514b62c1379af20cb", &[Self::MacIIFDHD, Self::MacIIx, Self::MacIIcx, Self::SE30]),
++        // Macintosh IIci (1989-09, checksum 368CADFE)
++        ("0419966cfd7445680c0dd6ca78e8b1f4bc212e75caf56f4a5f523afa576ad3f2", &[Self::MacIIci]),
+         // ROMinator II
+         ("adb794a53976b5ddfe7e580c4071a2f38a89d0b8583bf5d342306228c1d58a4f", &[Self::MacIIx, Self::MacIIcx, Self::SE30]),
+     ];
+@@ -110,9 +114,12 @@ impl MacModel {
+             Self::Early128K => 128 * 1024,
+             Self::Early512K | Self::Early512Ke => 512 * 1024,
+             Self::Plus | Self::SE | Self::SeFdhd | Self::Classic => 4096 * 1024,
+-            Self::MacII | Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::SE30 => {
+-                8 * 1024 * 1024
+-            }
++            Self::MacII
++            | Self::MacIIFDHD
++            | Self::MacIIx
++            | Self::MacIIcx
++            | Self::MacIIci
++            | Self::SE30 => 8 * 1024 * 1024,
+         }
+     }
+ 
+@@ -132,7 +139,7 @@ impl MacModel {
+                 8 * 1024 * 1024,
+                 // Original Mac II ROM breaks > 8 MB; SCSI stops working.
+             ],
+-            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::SE30 => {
++            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::MacIIci | Self::SE30 => {
+                 &[
+                     /* 1 * */ 1024 * 1024,
+                     2 * 1024 * 1024,
+@@ -154,7 +161,7 @@ impl MacModel {
+             Self::Early128K | Self::Early512K | Self::Early512Ke | Self::Plus | Self::SE => false,
+             Self::SeFdhd | Self::Classic => true,
+             Self::MacII => false,
+-            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::SE30 => true,
++            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::MacIIci | Self::SE30 => true,
+         }
+     }
+ 
+@@ -171,7 +178,7 @@ impl MacModel {
+             ],
+             Self::Classic => &[DriveType::SuperDrive, DriveType::SuperDrive],
+             Self::MacII => &[DriveType::GCR800K, DriveType::GCR800K],
+-            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::SE30 => {
++            Self::MacIIFDHD | Self::MacIIx | Self::MacIIcx | Self::MacIIci | Self::SE30 => {
+                 &[DriveType::SuperDrive, DriveType::SuperDrive]
+             }
+         }
+@@ -215,6 +222,7 @@ impl MacModel {
+             | Self::MacIIFDHD
+             | Self::MacIIx
+             | Self::MacIIcx
++            | Self::MacIIci
+             | Self::SE30 => Some((0x000CFC, 0x574C5343)),
+         }
+     }
+@@ -229,7 +237,7 @@ impl MacModel {
+             | Self::SeFdhd
+             | Self::Classic => M68000,
+             Self::MacII | Self::MacIIFDHD => M68020,
+-            Self::MacIIx | Self::MacIIcx | Self::SE30 => M68030,
++            Self::MacIIx | Self::MacIIcx | Self::MacIIci | Self::SE30 => M68030,
+         }
+     }
+ 
+@@ -247,7 +255,9 @@ impl MacModel {
+             }
+             Self::MacII | Self::MacIIFDHD => via::RegisterA(0).with_model(1),
+             Self::MacIIx => via::RegisterA(0).with_model(0),
+-            Self::MacIIcx | Self::SE30 => via::RegisterA(0).with_model(0x03).with_model6(true),
++            Self::MacIIcx | Self::MacIIci | Self::SE30 => {
++                via::RegisterA(0).with_model(0x03).with_model6(true)
++            }
+         }
+     }
+ 
+@@ -255,7 +265,7 @@ impl MacModel {
+     pub fn nubus_slots(self) -> &'static [u8] {
+         match self {
+             Self::MacII | Self::MacIIFDHD | Self::MacIIx => &[0x9, 0xA, 0xB, 0xC, 0xD, 0xE],
+-            Self::MacIIcx => &[0x9, 0xA, 0xB],
++            Self::MacIIcx | Self::MacIIci => &[0x9, 0xA, 0xB],
+             Self::SE30 => &[0xE],
+             _ => &[],
+         }
+@@ -270,7 +280,9 @@ impl MacModel {
+             | Self::SE
+             | Self::SeFdhd
+             | Self::Classic => panic!("Invalid operation for this model"),
+-            Self::MacII | Self::MacIIFDHD | Self::MacIIcx => macii::via2::RegisterB(0xFF),
++            Self::MacII | Self::MacIIFDHD | Self::MacIIcx | Self::MacIIci => {
++                macii::via2::RegisterB(0xFF)
++            }
+             Self::MacIIx | Self::SE30 => macii::via2::RegisterB(0x87),
+         }
+     }
+@@ -323,6 +335,7 @@ impl Display for MacModel {
+                 Self::MacIIFDHD => "Macintosh II (FDHD)",
+                 Self::MacIIx => "Macintosh IIx",
+                 Self::MacIIcx => "Macintosh IIcx",
++                Self::MacIIci => "Macintosh IIci",
+                 Self::SE30 => "Macintosh SE/30",
+             }
+         )
