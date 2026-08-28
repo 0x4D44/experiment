@@ -10,6 +10,7 @@ on:
       - maciici-bootstrap/rbv-delta.patch.zlib.b85
       - maciici-bootstrap/smoke-fix.patch.zlib.b85
       - maciici-bootstrap/iici-post-fix.patch.zlib.b85
+      - maciici-bootstrap/maciici_smoke.rs
   workflow_dispatch:
 
 permissions:
@@ -72,6 +73,7 @@ jobs:
           git -C snow apply /tmp/maciici-smoke-fix.patch
           git -C snow apply --check /tmp/maciici-post-fix.patch
           git -C snow apply /tmp/maciici-post-fix.patch
+          cp maciici-bootstrap/maciici_smoke.rs snow/testrunner/src/bin/maciici_smoke/main.rs
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
           git -C snow diff > formatted-maciici.patch
