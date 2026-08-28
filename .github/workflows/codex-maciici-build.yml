@@ -8,6 +8,7 @@ on:
       - .github/workflows/codex-maciici-build.yml
       - maciici-bootstrap/current.patch
       - maciici-bootstrap/rbv-delta.patch.zlib.b85
+      - maciici-bootstrap/smoke-fix.patch.zlib.b85
   workflow_dispatch:
 
 permissions:
@@ -33,7 +34,7 @@ jobs:
           sudo apt-get -y update
           sudo apt-get -y install libasound2-dev python3
 
-      - name: Decode RBV implementation delta
+      - name: Decode implementation patches
         run: |
           set -euxo pipefail
           python3 - <<'PY'
@@ -41,11 +42,15 @@ jobs:
           import pathlib
           import zlib
 
-          encoded = pathlib.Path("maciici-bootstrap/rbv-delta.patch.zlib.b85").read_bytes().strip()
-          patch = zlib.decompress(base64.b85decode(encoded))
-          pathlib.Path("/tmp/maciici-rbv.patch").write_bytes(patch)
+          for source, output in [
+              ("maciici-bootstrap/rbv-delta.patch.zlib.b85", "/tmp/maciici-rbv.patch"),
+              ("maciici-bootstrap/smoke-fix.patch.zlib.b85", "/tmp/maciici-smoke-fix.patch"),
+          ]:
+              encoded = pathlib.Path(source).read_bytes().strip()
+              pathlib.Path(output).write_bytes(zlib.decompress(base64.b85decode(encoded)))
           PY
           test "$(sha256sum /tmp/maciici-rbv.patch | cut -d' ' -f1)" = "9be17fe2374b67a8eed6cdfb9cc553624ebc55055a952683b421e4a00c0745b8"
+          test "$(sha256sum /tmp/maciici-smoke-fix.patch | cut -d' ' -f1)" = "1b6d7607df3cd865a54a9eb70b75b022638728955fdbb3b231c148321377af49"
 
       - name: Clone exact Snow v1.5.0 source
         run: |
@@ -60,6 +65,8 @@ jobs:
           git -C snow apply ../maciici-bootstrap/current.patch
           git -C snow apply --check /tmp/maciici-rbv.patch
           git -C snow apply /tmp/maciici-rbv.patch
+          git -C snow apply --check /tmp/maciici-smoke-fix.patch
+          git -C snow apply /tmp/maciici-smoke-fix.patch
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
           git -C snow diff > formatted-maciici.patch
@@ -78,11 +85,12 @@ jobs:
           # not shipped in the source release. Run every self-contained library test.
           cargo test -p snow_core --lib --locked -- --skip cpu_m68k::tests::singlestep 2>&1 | tee ../core-tests.log
 
-      - name: Build headless test runner
+      - name: Build headless tools
         run: |
           set -euxo pipefail
           cd snow
           cargo build -p testrunner --bin single --release --locked 2>&1 | tee ../headless-build.log
+          cargo build -p testrunner --bin maciici_smoke --release --locked 2>&1 | tee ../smoke-build.log
 
       - name: Build graphical frontend
         run: |
@@ -98,11 +106,13 @@ jobs:
           cp workspace-check.log out/ 2>/dev/null || true
           cp core-tests.log out/ 2>/dev/null || true
           cp headless-build.log out/ 2>/dev/null || true
+          cp smoke-build.log out/ 2>/dev/null || true
           cp frontend-build.log out/ 2>/dev/null || true
           cp formatted-maciici.patch out/ 2>/dev/null || true
           git -C snow diff > out/applied.patch 2>/dev/null || true
           git -C snow status --short > out/status.txt 2>/dev/null || true
           if [ -x snow/target/release/single ]; then cp snow/target/release/single out/; fi
+          if [ -x snow/target/release/maciici_smoke ]; then cp snow/target/release/maciici_smoke out/; fi
           if [ -x snow/target/release/snowemu ]; then cp snow/target/release/snowemu out/; fi
           if [ -d snow ]; then
             rm -rf snow/.git snow/target
