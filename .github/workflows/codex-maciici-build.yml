@@ -8,6 +8,7 @@ on:
       - .github/workflows/codex-maciici-build.yml
       - maciici-bootstrap/phase1.patch
       - maciici-bootstrap/current.patch
+      - maciici-bootstrap/patch-parts/**
 
 permissions:
   contents: read
@@ -26,26 +27,33 @@ jobs:
             .github
             maciici-bootstrap
 
+      - name: Reconstruct staged Mac IIci patch
+        run: |
+          set -euxo pipefail
+          cat maciici-bootstrap/patch-parts/part*.b64 | base64 --decode > /tmp/maciici.patch
+          test "$(sha256sum /tmp/maciici.patch | cut -d' ' -f1)" = "8dca77003af8963fb64d74fb2f12d1bfe83bb67c8af85fa4664e9f83e518f209"
+          wc -c /tmp/maciici.patch
+
       - name: Clone exact Snow v1.5.0 source
         run: |
           set -euxo pipefail
           git clone --depth 1 --branch v1.5.0 https://github.com/twvd/snow.git snow
           test "$(git -C snow rev-parse HEAD)" = "317c188999dac854b3a8252d8a05adcaeeb3d589"
 
-      - name: Apply Mac IIci patch
+      - name: Apply and format Mac IIci implementation
         run: |
           set -euxo pipefail
-          patch=maciici-bootstrap/current.patch
-          if [ ! -f "$patch" ]; then patch=maciici-bootstrap/phase1.patch; fi
-          git -C snow apply --check "../$patch"
-          git -C snow apply "../$patch"
+          git -C snow apply --check /tmp/maciici.patch
+          git -C snow apply /tmp/maciici.patch
+          cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
+          git -C snow diff > formatted-maciici.patch
 
-      - name: Format check
+      - name: Check complete workspace and all targets
         run: |
           set -euxo pipefail
           cd snow
-          cargo fmt --all -- --check
+          cargo check --workspace --all-targets --locked 2>&1 | tee ../workspace-check.log
 
       - name: Self-contained core tests
         run: |
@@ -59,27 +67,39 @@ jobs:
         run: |
           set -euxo pipefail
           cd snow
-          cargo build -p testrunner --bin single --release --locked 2>&1 | tee ../build.log
+          cargo build -p testrunner --bin single --release --locked 2>&1 | tee ../headless-build.log
+
+      - name: Build graphical frontend
+        run: |
+          set -euxo pipefail
+          cd snow
+          cargo build -p snow_frontend_egui --bin snowemu --release --locked 2>&1 | tee ../frontend-build.log
 
       - name: Package build evidence
         if: always()
         run: |
           set -euxo pipefail
           mkdir -p out
+          cp workspace-check.log out/ 2>/dev/null || true
           cp core-tests.log out/ 2>/dev/null || true
-          cp build.log out/ 2>/dev/null || true
-          git -C snow diff > out/applied.patch
-          git -C snow status --short > out/status.txt
+          cp headless-build.log out/ 2>/dev/null || true
+          cp frontend-build.log out/ 2>/dev/null || true
+          cp formatted-maciici.patch out/ 2>/dev/null || true
+          git -C snow diff > out/applied.patch 2>/dev/null || true
+          git -C snow status --short > out/status.txt 2>/dev/null || true
           if [ -x snow/target/release/single ]; then cp snow/target/release/single out/; fi
-          rm -rf snow/.git snow/target
-          tar -czf out/maciici-source.tar.gz snow
+          if [ -x snow/target/release/snowemu ]; then cp snow/target/release/snowemu out/; fi
+          if [ -d snow ]; then
+            rm -rf snow/.git snow/target
+            tar -czf out/maciici-source.tar.gz snow
+          fi
           sha256sum out/* > out/SHA256SUMS
 
       - name: Upload build evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: maciici-iterative-build
+          name: maciici-rbv-build
           path: out
-          retention-days: 3
+          retention-days: 7
           compression-level: 0
