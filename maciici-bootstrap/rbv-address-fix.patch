@@ -1,0 +1,53 @@
+diff --git a/core/src/mac/macii/rbv.rs b/core/src/mac/macii/rbv.rs
+index bdd83db..a5ac4f1 100644
+--- a/core/src/mac/macii/rbv.rs
++++ b/core/src/mac/macii/rbv.rs
+@@ -133,9 +133,10 @@ where
+     }
+ 
+     fn decode_pseudovia_register(addr: Address) -> usize {
+-        // Pseudo-VIA occupies $50026000-$50027fff.  Like the real VIA
+-        // register map, logical registers are spaced by $200 bytes.
+-        ((addr >> 9) as usize) & 0x13
++        // The original IIci MDU pseudo-VIA only decodes physical address
++        // bits A0, A1 and A4.  Registers are therefore at byte offsets
++        // $00-$03 and $10-$13, mirrored throughout the 8 KiB aperture.
++        (addr as usize) & 0x13
+     }
+ 
+     fn recalc_irqs(&mut self) {
+@@ -425,7 +426,11 @@ where
+     fn read(&mut self, addr: Address) -> Option<u8> {
+         let offset = addr & 0x3fff;
+         match offset {
+-            0x0000..=0x000f => Some(self.ramdac_read(offset)),
++            // Bt478 is connected only to the high byte lane of the IIci's
++            // 32-bit bus.  Its four visible registers are spaced four bytes
++            // apart at offsets $00, $04, $08 and $0c.
++            0x0000..=0x000f if offset & 3 == 0 => Some(self.ramdac_read(offset)),
++            0x0000..=0x000f => Some(0),
+             0x2000..=0x3fff => Some(self.pseudovia_read(offset - 0x2000)),
+             _ => None,
+         }
+@@ -434,10 +439,11 @@ where
+     fn write(&mut self, addr: Address, val: u8) -> Option<()> {
+         let offset = addr & 0x3fff;
+         match offset {
+-            0x0000..=0x000f => {
++            0x0000..=0x000f if offset & 3 == 0 => {
+                 self.ramdac_write(offset, val);
+                 Some(())
+             }
++            0x0000..=0x000f => Some(()),
+             0x2000..=0x3fff => {
+                 self.pseudovia_write(offset - 0x2000, val);
+                 Some(())
+@@ -481,7 +487,7 @@ mod tests {
+     }
+ 
+     fn pvia_addr(reg: u32) -> u32 {
+-        0x2000 + reg * 0x200
++        0x2000 + reg
+     }
+ 
+     #[test]
