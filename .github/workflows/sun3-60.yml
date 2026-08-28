@@ -52,10 +52,28 @@ jobs:
             | sort \
             | tee sun3-60/ci-artifacts/firmware/file-sizes.txt
 
+      - name: Capture pinned m68k core source
+        shell: bash
+        run: |
+          set -euxo pipefail
+          git clone --filter=blob:none https://github.com/benletchford/m68k-rs.git \
+            sun3-60/ci-artifacts/m68k-rs
+          git -C sun3-60/ci-artifacts/m68k-rs checkout \
+            f22afee6a621284f9e5cae8d9b304370fdc4fb74
+          rm -rf sun3-60/ci-artifacts/m68k-rs/.git
+
       - name: Upload inspection evidence
         uses: actions/upload-artifact@v4
         with:
           name: sun3-60-firmware-inspection
           path: sun3-60/ci-artifacts/firmware
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload pinned m68k core source
+        uses: actions/upload-artifact@v4
+        with:
+          name: sun3-60-m68k-source
+          path: sun3-60/ci-artifacts/m68k-rs
           if-no-files-found: error
           retention-days: 14
