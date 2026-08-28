@@ -18,12 +18,12 @@ jobs:
         run: |
           set -euxo pipefail
           git clone --depth 1 --filter=blob:none --sparse https://github.com/mamedev/mame.git mame
-          git -C mame sparse-checkout set \
-            src/mame/apple/maciici.cpp \
-            src/mame/apple/rbv.cpp \
-            src/mame/apple/rbv.h \
-            src/devices/machine/pseudovia.cpp \
-            src/devices/machine/pseudovia.h
+          git -C mame sparse-checkout set --no-cone \
+            /src/mame/apple/maciici.cpp \
+            /src/mame/apple/rbv.cpp \
+            /src/mame/apple/rbv.h \
+            /src/devices/machine/pseudovia.cpp \
+            /src/devices/machine/pseudovia.h
           git -C mame rev-parse HEAD > MAME_COMMIT
           mkdir out
           cp MAME_COMMIT out/
