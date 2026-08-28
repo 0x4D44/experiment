@@ -6,9 +6,8 @@ on:
       - codex/maciici-bootstrap
     paths:
       - .github/workflows/codex-maciici-build.yml
-      - maciici-bootstrap/phase1.patch
-      - maciici-bootstrap/current.patch
       - maciici-bootstrap/patch-parts/**
+      - maciici-bootstrap/fix*.patch
 
 permissions:
   contents: read
@@ -43,8 +42,16 @@ jobs:
       - name: Apply and format Mac IIci implementation
         run: |
           set -euxo pipefail
+          # The staged implementation was developed against rustfmt-normalised
+          # v1.5.0 source. Normalise the exact upstream checkout before applying it.
+          cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow apply --check /tmp/maciici.patch
           git -C snow apply /tmp/maciici.patch
+          for fix in maciici-bootstrap/fix*.patch; do
+            [ -e "$fix" ] || continue
+            git -C snow apply --check "../$fix"
+            git -C snow apply "../$fix"
+          done
           cargo fmt --manifest-path snow/Cargo.toml --all
           git -C snow diff --check
           git -C snow diff > formatted-maciici.patch
