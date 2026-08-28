@@ -147,7 +147,8 @@ fn run_main() -> Result<bool, String> {
         outcome.script_injected && outcome.prompt_count >= 2
     );
 
-    Ok(!options.require_monitor || outcome.monitor_reached && (options.script.is_none() || outcome.prompt_count >= 2))
+    Ok(!options.require_monitor
+        || outcome.monitor_reached && (options.script.is_none() || outcome.prompt_count >= 2))
 }
 
 fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, String> {
@@ -179,13 +180,20 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
             "--rom" => rom = Some(PathBuf::from(next_value(&mut arguments, "--rom")?)),
             "--ram" => config.ram_bytes = parse_ram_size(&next_value(&mut arguments, "--ram")?)?,
             "--mac" => config.mac = parse_mac(&next_value(&mut arguments, "--mac")?)?,
-            "--hostid" => config.host_id = parse_u32(&next_value(&mut arguments, "--hostid")?)? & 0x00ff_ffff,
+            "--hostid" => {
+                config.host_id = parse_u32(&next_value(&mut arguments, "--hostid")?)? & 0x00ff_ffff
+            }
             "--diagnostic-switch" => config.diagnostic_switch = true,
             "--disk" => disk = Some(PathBuf::from(next_value(&mut arguments, "--disk")?)),
             "--max-instructions" => {
-                max_instructions = Some(parse_u64(&next_value(&mut arguments, "--max-instructions")?)?)
+                max_instructions = Some(parse_u64(&next_value(
+                    &mut arguments,
+                    "--max-instructions",
+                )?)?)
             }
-            "--max-cycles" => max_cycles = Some(parse_u64(&next_value(&mut arguments, "--max-cycles")?)?),
+            "--max-cycles" => {
+                max_cycles = Some(parse_u64(&next_value(&mut arguments, "--max-cycles")?)?)
+            }
             "--unlimited" => max_instructions = None,
             "--speed" => {
                 let value = next_value(&mut arguments, "--speed")?;
@@ -209,8 +217,12 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
                     value => return Err(format!("unknown console mode {value:?}")),
                 }
             }
-            "--console-log" => console_log = Some(PathBuf::from(next_value(&mut arguments, "--console-log")?)),
-            "--trace-file" => trace_file = Some(PathBuf::from(next_value(&mut arguments, "--trace-file")?)),
+            "--console-log" => {
+                console_log = Some(PathBuf::from(next_value(&mut arguments, "--console-log")?))
+            }
+            "--trace-file" => {
+                trace_file = Some(PathBuf::from(next_value(&mut arguments, "--trace-file")?))
+            }
             "--trace-cpu" => config.traces.cpu = true,
             "--trace-mmu" => config.traces.mmu = true,
             "--trace-bus" => config.traces.bus = true,
@@ -251,7 +263,10 @@ fn parse_options(arguments: impl Iterator<Item = String>) -> Result<Options, Str
     })
 }
 
-fn next_value(arguments: &mut impl Iterator<Item = String>, option: &str) -> Result<String, String> {
+fn next_value(
+    arguments: &mut impl Iterator<Item = String>,
+    option: &str,
+) -> Result<String, String> {
     arguments
         .next()
         .ok_or_else(|| format!("{option} requires a value"))
@@ -259,10 +274,15 @@ fn next_value(arguments: &mut impl Iterator<Item = String>, option: &str) -> Res
 
 fn parse_u64(text: &str) -> Result<u64, String> {
     let normalized = text.replace('_', "");
-    if let Some(hex) = normalized.strip_prefix("0x").or_else(|| normalized.strip_prefix("0X")) {
+    if let Some(hex) = normalized
+        .strip_prefix("0x")
+        .or_else(|| normalized.strip_prefix("0X"))
+    {
         u64::from_str_radix(hex, 16).map_err(|error| format!("invalid number {text:?}: {error}"))
     } else {
-        normalized.parse().map_err(|error| format!("invalid number {text:?}: {error}"))
+        normalized
+            .parse()
+            .map_err(|error| format!("invalid number {text:?}: {error}"))
     }
 }
 
@@ -294,7 +314,9 @@ fn parse_escaped(text: &str) -> Result<Vec<u8>, String> {
             continue;
         }
         index += 1;
-        let escape = *bytes.get(index).ok_or_else(|| "trailing backslash in --script".to_owned())?;
+        let escape = *bytes
+            .get(index)
+            .ok_or_else(|| "trailing backslash in --script".to_owned())?;
         index += 1;
         match escape {
             b'r' => output.push(b'\r'),
@@ -302,14 +324,23 @@ fn parse_escaped(text: &str) -> Result<Vec<u8>, String> {
             b't' => output.push(b'\t'),
             b'\\' => output.push(b'\\'),
             b'x' => {
-                let hi = *bytes.get(index).ok_or_else(|| "short \\x escape".to_owned())?;
-                let lo = *bytes.get(index + 1).ok_or_else(|| "short \\x escape".to_owned())?;
+                let hi = *bytes
+                    .get(index)
+                    .ok_or_else(|| "short \\x escape".to_owned())?;
+                let lo = *bytes
+                    .get(index + 1)
+                    .ok_or_else(|| "short \\x escape".to_owned())?;
                 index += 2;
                 let digits = [hi, lo];
                 let digits = std::str::from_utf8(&digits).map_err(|error| error.to_string())?;
                 output.push(u8::from_str_radix(digits, 16).map_err(|error| error.to_string())?);
             }
-            _ => return Err(format!("unsupported script escape \\{}", char::from(escape))),
+            _ => {
+                return Err(format!(
+                    "unsupported script escape \\{}",
+                    char::from(escape)
+                ));
+            }
         }
     }
     Ok(output)

@@ -302,7 +302,9 @@ impl Sun3Machine {
                 if fault.write { "write" } else { "read" },
                 fault.size,
                 fault.reason,
-                fault.pte.map_or_else(|| "-".to_owned(), |value| format!("{value:08x}"))
+                fault
+                    .pte
+                    .map_or_else(|| "-".to_owned(), |value| format!("{value:08x}"))
             );
         }
         dump
@@ -544,12 +546,7 @@ impl Sun3Machine {
         self.physical_read(address, translation, size)
     }
 
-    fn write_access(
-        &mut self,
-        address: u32,
-        size: AccessSize,
-        value: u32,
-    ) -> Result<(), BusFault> {
+    fn write_access(&mut self, address: u32, size: AccessSize, value: u32) -> Result<(), BusFault> {
         if self.current_function_code == 3 {
             return self.control_write(address, size, value);
         }
@@ -565,11 +562,7 @@ impl Sun3Machine {
                 let index = self.pte_index(address);
                 extract_register(self.page_map[index] & PTE_IMPLEMENTED_MASK, address, size)
             }
-            0x2 => byte_register_read(
-                self.segment_map[self.segment_index(address)],
-                address,
-                size,
-            ),
+            0x2 => byte_register_read(self.segment_map[self.segment_index(address)], address, size),
             0x3 => byte_register_read(self.context & 7, address, size),
             0x4 => {
                 let value = (self.enable & !1) | u8::from(self.diagnostic_switch);
@@ -632,7 +625,8 @@ impl Sun3Machine {
             0x1 => {
                 let index = self.pte_index(address);
                 let current = self.page_map[index];
-                self.page_map[index] = merge_register(current, value, address, size) & PTE_IMPLEMENTED_MASK;
+                self.page_map[index] =
+                    merge_register(current, value, address, size) & PTE_IMPLEMENTED_MASK;
             }
             0x2 => {
                 let map_index = self.segment_index(address);
@@ -645,11 +639,13 @@ impl Sun3Machine {
             0x7 => self.diagnostic = byte_register_write(value, address, size),
             0x8 => {
                 let index = ((address as usize) & 0x3fff) >> 2;
-                self.cache_tags[index] = merge_register(self.cache_tags[index], value, address, size);
+                self.cache_tags[index] =
+                    merge_register(self.cache_tags[index], value, address, size);
             }
             0x9 => {
                 let index = (address as usize) & 0x3fff;
-                self.cache_data[index] = merge_register(self.cache_data[index], value, address, size);
+                self.cache_data[index] =
+                    merge_register(self.cache_data[index], value, address, size);
             }
             0xa | 0xb | 0xf => {}
             _ => {
@@ -810,11 +806,7 @@ impl Sun3Machine {
             ));
         }
         if (0x0004_0000..=0x0004_07ff).contains(&address) {
-            return Ok(read_be(
-                &self.nvram,
-                (address - 0x0004_0000) as usize,
-                size,
-            ));
+            return Ok(read_be(&self.nvram, (address - 0x0004_0000) as usize, size));
         }
         if address <= 0x0000_000f {
             return self.scc_read(false, address, size);
@@ -1195,20 +1187,19 @@ impl Sun3Machine {
                 let prefix = &self.console[..scan_cursor];
                 if looks_like_prompt(prefix) {
                     prompts += 1;
-                    if !script_injected
-                        && let Some(script) = scripted_input
-                    {
+                    if !script_injected && let Some(script) = scripted_input {
                         self.inject_serial_a(script);
                         script_injected = true;
                     }
                 }
             }
 
-            let success = prompts >= if require_script_round_trip && scripted_input.is_some() {
-                2
-            } else {
-                1
-            };
+            let success = prompts
+                >= if require_script_round_trip && scripted_input.is_some() {
+                    2
+                } else {
+                    1
+                };
             if success {
                 reason = if script_injected {
                     "authentic PROM monitor accepted scripted input and returned to its prompt"
@@ -1250,11 +1241,13 @@ impl AddressBus for Sun3Machine {
     }
 
     fn read_word(&mut self, address: u32) -> u16 {
-        self.read_access(address, AccessSize::Word).unwrap_or(0xffff) as u16
+        self.read_access(address, AccessSize::Word)
+            .unwrap_or(0xffff) as u16
     }
 
     fn read_long(&mut self, address: u32) -> u32 {
-        self.read_access(address, AccessSize::Long).unwrap_or(u32::MAX)
+        self.read_access(address, AccessSize::Long)
+            .unwrap_or(u32::MAX)
     }
 
     fn write_byte(&mut self, address: u32, value: u8) {
@@ -1270,11 +1263,13 @@ impl AddressBus for Sun3Machine {
     }
 
     fn try_read_byte(&mut self, address: u32) -> Result<u8, BusFault> {
-        self.read_access(address, AccessSize::Byte).map(|value| value as u8)
+        self.read_access(address, AccessSize::Byte)
+            .map(|value| value as u8)
     }
 
     fn try_read_word(&mut self, address: u32) -> Result<u16, BusFault> {
-        self.read_access(address, AccessSize::Word).map(|value| value as u16)
+        self.read_access(address, AccessSize::Word)
+            .map(|value| value as u16)
     }
 
     fn try_read_long(&mut self, address: u32) -> Result<u32, BusFault> {
@@ -1474,9 +1469,15 @@ mod tests {
         assert_eq!(machine.context, 5);
         let virtual_address = 0x0123_4000;
         machine.write_byte(0x2000_0000 | virtual_address, 0x33);
-        assert_eq!(machine.segment_map[machine.segment_index(virtual_address)], 0x33);
+        assert_eq!(
+            machine.segment_map[machine.segment_index(virtual_address)],
+            0x33
+        );
         machine.write_long(0x1000_0000 | virtual_address, PTE_VALID | PTE_WRITABLE | 9);
-        assert_eq!(machine.page_map[machine.pte_index(virtual_address)], PTE_VALID | PTE_WRITABLE | 9);
+        assert_eq!(
+            machine.page_map[machine.pte_index(virtual_address)],
+            PTE_VALID | PTE_WRITABLE | 9
+        );
     }
 
     #[test]
