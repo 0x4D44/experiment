@@ -1,0 +1,51 @@
+name: Codex Mac IIci source transport
+
+on:
+  push:
+    branches:
+      - codex/maciici-transfer
+    paths:
+      - .github/workflows/codex-maciici-transfer.yml
+      - maciici/**
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-source:
+    runs-on: ubuntu-latest
+    env:
+      TAG: codex-maciici-bootstrap-20260828
+    steps:
+      - name: Checkout transport branch
+        uses: actions/checkout@v4
+        with:
+          ref: codex/maciici-transfer
+          fetch-depth: 1
+
+      - name: Clone exact Snow baseline
+        run: |
+          set -euxo pipefail
+          rm -rf work dist
+          mkdir -p work dist
+          git clone --depth 1 --branch v1.5.0 https://github.com/twvd/snow.git work/maciici
+          git -C work/maciici rev-parse HEAD | tee work/maciici/UPSTREAM_COMMIT
+          rm -rf work/maciici/.git
+          tar -C work -czf dist/maciici-snow-v1.5.0-source.tar.gz maciici
+          sha256sum dist/* | tee dist/SHA256SUMS
+
+      - name: Publish temporary source release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euxo pipefail
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
+          gh release create "$TAG" \
+            dist/maciici-snow-v1.5.0-source.tar.gz \
+            dist/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Temporary Mac IIci source transport" \
+            --notes "Temporary, ROM-free source transport for the Macintosh IIci build. Upstream Snow v1.5.0, commit recorded inside the archive." \
+            --prerelease
