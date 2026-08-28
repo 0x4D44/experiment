@@ -47,11 +47,13 @@ jobs:
           cd snow
           cargo fmt --all -- --check
 
-      - name: Core tests
+      - name: Self-contained core tests
         run: |
           set -euxo pipefail
           cd snow
-          cargo test -p snow_core --lib --locked 2>&1 | tee ../core-tests.log
+          # Snow's single-step CPU tests require a separate vector corpus that is
+          # not shipped in the source release. Run every self-contained library test.
+          cargo test -p snow_core --lib --locked -- --skip cpu_m68k::tests::singlestep 2>&1 | tee ../core-tests.log
 
       - name: Build headless test runner
         run: |
