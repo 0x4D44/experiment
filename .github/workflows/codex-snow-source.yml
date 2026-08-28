@@ -1,0 +1,45 @@
+name: Codex Snow source publisher
+
+on:
+  push:
+    branches:
+      - codex/maciici-bootstrap
+    paths:
+      - .github/workflows/codex-snow-source.yml
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout publishing branch sparsely
+        uses: actions/checkout@v4
+        with:
+          ref: codex/maciici-bootstrap
+          path: publisher
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            .github
+            maciici-bootstrap
+      - name: Clone exact Snow release
+        run: |
+          set -euxo pipefail
+          git clone --depth 1 --branch v1.5.0 https://github.com/twvd/snow.git snow
+          git -C snow rev-parse HEAD | tee snow/UPSTREAM_COMMIT
+          rm -rf snow/.git
+          tar -czf snow-v1.5.0-source.tar.gz snow
+          sha256sum snow-v1.5.0-source.tar.gz
+      - name: Commit source archive to isolated branch
+        run: |
+          set -euxo pipefail
+          mkdir -p publisher/maciici-bootstrap
+          mv snow-v1.5.0-source.tar.gz publisher/maciici-bootstrap/
+          cd publisher
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add maciici-bootstrap/snow-v1.5.0-source.tar.gz
+          git commit -m 'Publish Snow v1.5.0 source archive for Mac IIci build'
+          git push origin HEAD:codex/maciici-bootstrap
