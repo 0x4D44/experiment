@@ -1,0 +1,86 @@
+name: Sun 3/60 Gauntlet
+
+on:
+  push:
+    branches:
+      - codex/sun3-60-gauntlet
+    paths:
+      - "sun3-gauntlet/**"
+      - ".github/workflows/sun3-gauntlet.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sun3-gauntlet-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test-boot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: sun3-gauntlet
+        shell: bash
+    steps:
+      - name: Check out gauntlet branch
+        uses: actions/checkout@v4
+
+      - name: Import pinned CPU core and genuine PROM
+        run: ./scripts/bootstrap.sh | tee evidence/bootstrap.txt
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: Unit and architecture tests
+        run: cargo test --workspace --all-features | tee evidence/tests.txt
+
+      - name: Release build
+        run: cargo build --workspace --release
+
+      - name: Execute genuine PROM
+        id: prom
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          timeout 240 ./target/release/sun3 \
+            --rom firmware/sun3-60-3.0.1.bin \
+            --ram 24M \
+            --headless \
+            --console capture \
+            --max-instructions 25000000 \
+            --script-cr \
+            --trace-prom --trace-mmu --trace-io --trace-irq --trace-scc \
+            --trace-file evidence/prom-trace.log \
+            --console-log evidence/prom-console.bin \
+            > evidence/prom-run.log 2>&1
+          status=$?
+          echo "exit_status=$status" | tee evidence/prom-status.txt
+          exit "$status"
+
+      - name: Package source and executable
+        if: always()
+        run: |
+          cp target/release/sun3 evidence/sun3-linux-x86_64 || true
+          tar \
+            --exclude='./target' \
+            --exclude='./vendor' \
+            --exclude='./firmware' \
+            --exclude='./evidence' \
+            -czf evidence/sun3-gauntlet-source.tar.gz .
+          sha256sum evidence/sun3-linux-x86_64 evidence/sun3-gauntlet-source.tar.gz \
+            > evidence/artifact-sha256.txt 2>/dev/null || true
+
+      - name: Upload evidence and build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sun3-gauntlet-build
+          path: sun3-gauntlet/evidence/
+          if-no-files-found: error
+          retention-days: 14

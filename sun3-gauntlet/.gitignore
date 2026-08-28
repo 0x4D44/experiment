@@ -1,0 +1,7 @@
+/target/
+/vendor/
+/firmware/
+/evidence/*.log
+/evidence/*.txt
+*.img
+*.iso
