@@ -1,0 +1,61 @@
+name: Sun 3/60 emulator
+
+on:
+  push:
+    branches:
+      - chatgpt/sun3-60-emulator
+    paths:
+      - 'sun3-60/**'
+      - '.github/workflows/sun3-60.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  firmware-inspection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Acquire genuine Sun 3/60 PROM archive
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p sun3-60/ci-artifacts/firmware
+          curl --fail --location --retry 4 --retry-all-errors \
+            'https://oldsilicon.com/technologies/sun-rom-images/ROMS/3.60_v3.0.1.zip' \
+            --output sun3-60/ci-artifacts/firmware/3.60_v3.0.1.zip
+          sha256sum sun3-60/ci-artifacts/firmware/3.60_v3.0.1.zip \
+            | tee sun3-60/ci-artifacts/firmware/archive.sha256
+
+      - name: Inspect archive layout
+        shell: bash
+        run: |
+          set -euxo pipefail
+          unzip -l sun3-60/ci-artifacts/firmware/3.60_v3.0.1.zip \
+            | tee sun3-60/ci-artifacts/firmware/archive-listing.txt
+          mkdir -p sun3-60/ci-artifacts/firmware/unpacked
+          unzip -o sun3-60/ci-artifacts/firmware/3.60_v3.0.1.zip \
+            -d sun3-60/ci-artifacts/firmware/unpacked
+          find sun3-60/ci-artifacts/firmware/unpacked -type f -print0 \
+            | sort -z \
+            | xargs -0 file \
+            | tee sun3-60/ci-artifacts/firmware/file-types.txt
+          find sun3-60/ci-artifacts/firmware/unpacked -type f -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | tee sun3-60/ci-artifacts/firmware/files.sha256
+          find sun3-60/ci-artifacts/firmware/unpacked -type f -printf '%P %s bytes\n' \
+            | sort \
+            | tee sun3-60/ci-artifacts/firmware/file-sizes.txt
+
+      - name: Upload inspection evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: sun3-60-firmware-inspection
+          path: sun3-60/ci-artifacts/firmware
+          if-no-files-found: error
+          retention-days: 14
